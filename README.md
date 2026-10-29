@@ -7,7 +7,7 @@
 > Полное описание (архитектура, все лаунчеры, MCP, диагностика): **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)**.  
 > Правила агента: **[`AGENTS.md`](AGENTS.md)**. Ассеты: **[`ASSET-POLICY.md`](ASSET-POLICY.md)**.  
 > Уровни (Three): **[`LEVEL-SCHEMA.md`](LEVEL-SCHEMA.md)**. Студия (Three): **[`STUDIO.md`](STUDIO.md)**.  
-> Unity-стек отдельно: **[`unity/README.md`](unity/README.md)**, правила — **[`unity/AGENTS.md`](unity/AGENTS.md)**.
+> Unity-стек отдельно: **[`unity/README.md`](unity/README.md)**, правила - **[`unity/AGENTS.md`](unity/AGENTS.md)**.
 
 ## Быстрый старт
 
@@ -71,7 +71,7 @@ dev.cmd my_godot_game
 
 1. Создайте проект в Unity Hub (`New project`) в папке `projects\games\<имя>`.  
    Либо дайте это агенту: инструмент `unity_project_create` создаёт проект из ничего  
-   (`Unity.exe -batchmode -createProject`) — руками скелет Unity не собрать.
+   (`Unity.exe -batchmode -createProject`) - руками скелет Unity не собрать.
 2. Положите рядом `engine.json`:
 
 ```json
@@ -88,7 +88,7 @@ dev.cmd my_unity_game
 Проверить проект без агента: `gs unity-check my_unity_game` (линт Unity 5/6 API,  
 `--compile` добавляет реальную компиляцию редактором).
 
-Подробности стека (корпус, инструменты, лимиты) — в **[`unity/README.md`](unity/README.md)**.
+Подробности стека (корпус, инструменты, лимиты) - в **[`unity/README.md`](unity/README.md)**.
 
 ## Как агент понимает, с чем работать
 
@@ -101,7 +101,7 @@ dev.cmd my_unity_game
 | расширение `engine-gate`  | `.pi\extensions\engine-gate.ts`    | регистрирует инструменты движка только под него |
 
 При старте агент показывает строку `Active project: ... (engine: <X>)`. По `<X>` выбирается  
-и набор инструментов, и профиль агента (`pi-home-three` / `pi-home-godot` / `pi-home-unity` —  
+и набор инструментов, и профиль агента (`pi-home-three` / `pi-home-godot` / `pi-home-unity` -  
 у каждого свой `SYSTEM.md`, скиллы и `mcp.json`). `.pi\SYSTEM.md` запрещает смешивать движки  
 в одном ответе: Three-API в Godot-проекте и наоборот. Если `engine.json` непонятен, агент  
 останавливается и спрашивает.
@@ -127,8 +127,8 @@ dev.cmd my_unity_game
 даже если пользователь не просил «сгенерируй».
 
 **Blender - DCC-шаг, которого у связки не было.** ComfyUI отдаёт сырой GLB и на этом  
-останавливается; всё, что требует *редактирования* меша — авто-риггинг и ретаргет анимации,  
-quad-ретопология и чистка UV, конвертация GLB↔FBX↔OBJ, перебейк текстур, headless-превью —  
+останавливается; всё, что требует *редактирования* меша - авто-риггинг и ретаргет анимации,  
+quad-ретопология и чистка UV, конвертация GLB↔FBX↔OBJ, перебейк текстур, headless-превью -  
 идёт через Blender в фоне. Путь берётся из `BLENDER_EXE` (`cmd\_env.cmd`, на этой машине  
 `E:\Programs\Blender\blender.exe`), переопределяется `THREE_BLENDER_EXE` / `GDM_BLENDER_EXE` /  
 `UNIM_BLENDER_EXE`. Наличие проверяет `cmd\doctor.cmd`.
@@ -150,7 +150,7 @@ SQLite FTS5/BM25 - лексику, RRF складывает оба ранга. �
 применяется и к Godot.
 
 **Unity - тот же принцип, но каталог внутри `Assets/`.** Результат кладётся в  
-`<проект Unity>\Assets\Generated\` — именно внутри `Assets/`, иначе Unity файл не импортирует  
+`<проект Unity>\Assets\Generated\` - именно внутри `Assets/`, иначе Unity файл не импортирует  
 и он не появится ни в Project-окне, ни в билде. `.glb` Unity импортирует только при  
 установленном `com.unity.cloud.gltfast`.
 
@@ -177,7 +177,7 @@ SQLite FTS5/BM25 - лексику, RRF складывает оба ранга. �
 | `cmd\`            | служебные лаунчеры                                                               |
 | `tests\`          | тесты (`cmd\test.cmd`)                                                           |
 | `knowledge\`      | корпус документации Three.js для RAG                                             |
-| `models\`         | веса LLM/embed/rerank; внутри `text_image_3D\` — портативный ComfyUI, не удалять |
+| `models\`         | веса LLM/embed/rerank; внутри `text_image_3D\` - портативный ComfyUI, не удалять |
 | `bin\`            | бинарники, не править                                                            |
 | `.venv\`          | один Python на все три стека (RAG, ассеты, линты)                                |
 
@@ -194,16 +194,16 @@ gs unity-doctor                   :: Unity-стек: редактор, корп�
 
 ## Что в репозитории, а что нет
 
-В git лежит код, корпус документации и конфигурация агента — около 37 МБ. Всё тяжёлое
+В git лежит код, корпус документации и конфигурация агента - около 37 МБ. Всё тяжёлое
 и воспроизводимое исключено через `.gitignore`:
 
 | Исключено | Почему |
 | --- | --- |
-| `models\`, `bin\` | веса моделей и бинарники движков — десятки гигабайт, качаются по README |
+| `models\`, `bin\` | веса моделей и бинарники движков - десятки гигабайт, качаются по README |
 | `godot\data\`, `unity\data\`, `unity\knowledge\` | кэши и корпуса, собираются скриптами стека |
 | `data\sqlite\`, `data\gen-staging\` | индекс RAG и промежуточные артефакты генерации |
 | `projects\`, `logs\` | пользовательские игры и логи сессий |
 | `pi-home*\sessions\`, `pi-home*\auth.json` | история сессий и креды агента |
 
 Поэтому клон без дополнительных шагов не запустится: сначала нужны модели и `.venv`,
-порядок — в «Быстром старте» выше.
+порядок - в «Быстром старте» выше.
