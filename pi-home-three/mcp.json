@@ -1,0 +1,21 @@
+{
+  "autoEnableCodemode": false,
+  "mcpServers": {
+    "threejs-rag": {
+      "command": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "threejs.mcp.rag_mcp_server"],
+      "cwd": "F:\\Pets\\Projects\\local_tools\\3GS_Master",
+      "exposure": "direct",
+      "timeout": 300,
+      "description": "Three.js knowledge base: hybrid search (dense + BM25, RRF-fused) over the pinned r186 API reference, the r186 source tree with JSDoc, addon sources, cookbook, rules and anti-patterns, plus whatever Three.js project is indexed as source=project."
+    },
+    "assets": {
+      "command": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "threejs.mcp.assets_mcp_server"],
+      "cwd": "F:\\Pets\\Projects\\local_tools\\3GS_Master",
+      "exposure": "direct",
+      "timeout": 7200,
+      "description": "Local asset pipeline driven by the ComfyUI sidecar on 127.0.0.1:8188: text-to-image, background removal, image-to-3D (economy TripoSplat splat/mesh, high-quality Pixal3D/TRELLIS.2 mesh), plus listing and previewing what was produced. Every artefact is named from the request slug, never from a ComfyUI counter. `asset_generate_pack` runs a whole asset list in one serialised pass: the llama-server on :8080 is stopped so ComfyUI gets the whole 8 GB card, then restarted once the finished files are in the project. The 7200 s timeout is for that call - a pack of several 3D models is legitimately a long silence."
+    }
+  }
+}

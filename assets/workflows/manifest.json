@@ -1,0 +1,278 @@
+{
+  "_comment": "API-format ComfyUI graphs for the 3GS_Master asset pipeline. Every file is a flat class_type/inputs graph ready for POST /prompt - no UI-format conversion needed. Read by threejs/assets/comfy.py:load_manifest().",
+  "_field_notes": {
+    "imageNodes": "LoadImage node ids, in the order inputs are supplied",
+    "promptNode/promptInput": "where a text prompt is written",
+    "drop": "nodes removed before the run (UI-only previews/compare)",
+    "outputs": "node ids whose files are collected via /view; `kind` decides the destination folder",
+    "paramMap": "logical parameter -> {node.input: num|str|bool}",
+    "timeoutMs": "per-run ceiling"
+  },
+  "workflows": [
+    {
+      "id": "t2i",
+      "title": "Text -> image (Qwen-Image 2.1 uncensored, Q4_K_M)",
+      "kind": "image",
+      "file": "t2i_qwen21.json",
+      "promptNode": "459.452",
+      "promptInput": "prompt",
+      "outputs": [
+        {
+          "node": "461",
+          "type": "image"
+        }
+      ],
+      "paramMap": {
+        "resolution": {
+          "459.452.resolution": "num"
+        },
+        "megapixels": {
+          "13.megapixels": "num"
+        },
+        "aspect_ratio": {
+          "13.aspect_ratio": "str"
+        },
+        "steps": {
+          "459.458.steps": "num"
+        },
+        "seed": {
+          "459.458.seed": "num"
+        },
+        "cfg": {
+          "459.458.cfg": "num"
+        }
+      },
+      "timeoutMs": 900000
+    },
+    {
+      "id": "edit",
+      "title": "Image edit from 1-2 references (Qwen-Image 2.1)",
+      "kind": "image",
+      "file": "edit_qwen21.json",
+      "imageNodes": [
+        "470",
+        "475"
+      ],
+      "promptNode": "459.474",
+      "promptInput": "prompt",
+      "drop": [
+        "472"
+      ],
+      "outputs": [
+        {
+          "node": "461",
+          "type": "image"
+        }
+      ],
+      "paramMap": {
+        "resolution": {
+          "459.474.resolution": "num"
+        },
+        "steps": {
+          "459.458.steps": "num"
+        },
+        "seed": {
+          "459.458.seed": "num"
+        },
+        "cfg": {
+          "459.458.cfg": "num"
+        }
+      },
+      "timeoutMs": 900000
+    },
+    {
+      "id": "color_swap",
+      "title": "Colour swap on one reference (Qwen-Image 2.1)",
+      "kind": "image",
+      "file": "color_swap_qwen21.json",
+      "imageNodes": [
+        "470"
+      ],
+      "promptNode": "459.474",
+      "promptInput": "prompt",
+      "drop": [
+        "472"
+      ],
+      "outputs": [
+        {
+          "node": "461",
+          "type": "image"
+        }
+      ],
+      "timeoutMs": 900000
+    },
+    {
+      "id": "remove_bg",
+      "title": "Background removal (Qwen-Image 2.1 edit)",
+      "kind": "mask",
+      "file": "remove_bg_qwen21.json",
+      "imageNodes": [
+        "470"
+      ],
+      "promptNode": "459.474",
+      "promptInput": "prompt",
+      "drop": [
+        "472"
+      ],
+      "outputs": [
+        {
+          "node": "461",
+          "type": "mask"
+        }
+      ],
+      "timeoutMs": 900000
+    },
+    {
+      "id": "remove_bg_fast",
+      "title": "Background removal (BiRefNet) - the fast path",
+      "kind": "mask",
+      "file": "bg_remove_birefnet.json",
+      "imageNodes": [
+        "1"
+      ],
+      "outputs": [
+        {
+          "node": "6",
+          "type": "mask"
+        }
+      ],
+      "timeoutMs": 300000
+    },
+    {
+      "id": "to_3d_economy",
+      "title": "Image -> 3D, economy (TripoSplat: Gaussian splat + vertex-colour mesh)",
+      "kind": "3d",
+      "file": "3d_triposplat.json",
+      "imageNodes": [
+        "99"
+      ],
+      "outputs": [
+        {
+          "node": "51",
+          "type": "mesh"
+        },
+        {
+          "node": "67",
+          "type": "mesh"
+        },
+        {
+          "node": "92",
+          "type": "splat"
+        }
+      ],
+      "paramMap": {
+        "resolution": {
+          "88.2.size": "num"
+        },
+        "steps": {
+          "88.6.steps": "num"
+        },
+        "seed": {
+          "88.6.seed": "num"
+        },
+        "removeBgFirst": {
+          "88.35.switch": "bool"
+        }
+      },
+      "timeoutMs": 1800000
+    },
+    {
+      "id": "to_3d_high",
+      "title": "Image -> 3D, high quality (Pixal3D / TRELLIS.2: UV + PBR mesh)",
+      "kind": "3d",
+      "file": "3d_trellis2.json",
+      "imageNodes": [
+        "122"
+      ],
+      "drop": [
+        "246",
+        "323",
+        "303",
+        "302",
+        "226",
+        "235",
+        "207",
+        "208",
+        "164",
+        "262"
+      ],
+      "outputs": [
+        {
+          "node": "322",
+          "type": "mesh"
+        }
+      ],
+      "paramMap": {
+        "resolution": {
+          "312.width": "num",
+          "312.height": "num"
+        },
+        "steps": {
+          "3.steps": "num",
+          "12.steps": "num",
+          "18.steps": "num",
+          "23.steps": "num"
+        },
+        "seed": {
+          "3.seed": "num",
+          "12.seed": "num",
+          "18.seed": "num",
+          "23.seed": "num"
+        },
+        "removeBgFirst": {
+          "248.switch": "bool"
+        },
+        "faces": {
+          "186.target_face_count": "num"
+        }
+      },
+      "timeoutMs": 3600000
+    },
+    {
+      "id": "to_3d_high_multiview",
+      "title": "Images -> 3D, high quality, multi-view (Pixal3D: 4 orbit views -> UV + PBR mesh)",
+      "kind": "3d",
+      "file": "3d_pixal3d_multiview.json",
+      "imageNodes": [
+        "401",
+        "402",
+        "403",
+        "404"
+      ],
+      "drop": [
+        "246",
+        "323",
+        "226",
+        "235",
+        "207",
+        "208",
+        "164",
+        "262"
+      ],
+      "outputs": [
+        {
+          "node": "322",
+          "type": "mesh"
+        }
+      ],
+      "paramMap": {
+        "steps": {
+          "3.steps": "num",
+          "12.steps": "num",
+          "18.steps": "num",
+          "23.steps": "num"
+        },
+        "seed": {
+          "3.seed": "num",
+          "12.seed": "num",
+          "18.seed": "num",
+          "23.seed": "num"
+        },
+        "faces": {
+          "186.target_face_count": "num"
+        }
+      },
+      "timeoutMs": 3600000
+    }
+  ]
+}

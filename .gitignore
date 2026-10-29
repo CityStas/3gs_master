@@ -1,0 +1,40 @@
+# В репозитории только код и корпус знаний.
+# Модели, бинарники движков, пользовательские проекты и логи не версионируются:
+# это десятки гигабайт, которые качаются скриптами по README.
+
+# --- модели и бинарники ------------------------------------------------
+models/
+bin/
+Dust3D-win32-x86_64/
+Mesh2Motion/
+godot/bin/
+godot/models/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# --- данные и индексы (воспроизводятся из корпуса) ---------------------
+data/sqlite/
+data/gen-staging/
+data/gen-status.json
+godot/data/
+unity/data/
+unity/knowledge/
+
+# --- пользовательские проекты и логи -----------------------------------
+projects/
+logs/
+godot/logs/
+unity/logs/
+*.log
+
+# --- сессии агента и креды --------------------------------------------
+pi-home/sessions/
+pi-home-*/sessions/
+pi-home*/auth.json
+pi-home*/models-store.json
+pi-home*/models.json
+
+# --- личные заметки ----------------------------------------------------
+.workbuddy-ai/

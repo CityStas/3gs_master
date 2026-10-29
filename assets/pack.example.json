@@ -1,0 +1,53 @@
+{
+  "_comment": "A pack plan for tools/generate.py and gen.cmd. Either a bare array of jobs or {\"jobs\": [...], \"project\": \"...\"}. Run it with:  gen.cmd -p games/new_local_game -j assets\\pack.example.json",
+  "_field_notes": {
+    "kind": "image = prompt -> PNG | mask = image -> alpha PNG | 3d = image -> GLB ('character' is an alias of 3d) | upscale = image -> bigger PNG (Real-ESRGAN) | recolor = image + prompt -> PNG (z-image img2img, global restyle) | edit = 1-2 images + instruction -> PNG (Qwen-Image-Edit, keeps the composition and can write lettering)",
+    "from": "name of an EARLIER job in this same list - keeps the whole pack inside one ComfyUI session",
+    "image": "alternative to `from`: a path to an existing image, relative to the project",
+    "images": "kind=edit only: the LIST spelling of the above, in graph order - the first entry is <image1> in the instruction and it is also what sets the output's aspect ratio. To change the shape, change the reference; there is no size knob.",
+    "out": "target path relative to the project. Omit the extension to get the natural one. Without `out` it goes to public/assets/<images|masks|3d>/<name>.<ext>",
+    "quality": "3d only: economy = TripoSplat ~3 min (unlit, no UVs) | high = Pixal3D/TRELLIS.2 ~18 min (UV + PBR, for a lit scene)",
+    "resolution": "the text encoder's pixel hint (default 1024)",
+    "megapixels": "the ACTUAL size of the picture: 1.0 ~= 1024x1024, 0.25 ~= 512x512. Cost scales with area, so 0.25 is roughly four times cheaper than the default - use it for textures.",
+    "strength": "recolor only: how far img2img may drift (0.1-0.95). There is no setting that both keeps the composition and changes the palette; use edit for that."
+  },
+  "project": "new_local_game",
+  "jobs": [
+    {
+      "kind": "image",
+      "name": "nova-concept",
+      "prompt": "a small blue fox with a glowing cyan tail, full body, side view, plain pale background, stylised game art",
+      "out": "src/assets/nova-concept.png",
+      "resolution": 1024,
+      "aspect_ratio": "1:1 (Square)"
+    },
+    {
+      "kind": "image",
+      "name": "grass-tuft",
+      "prompt": "a single tuft of stylised grass, flat shading, plain background, game texture",
+      "out": "public/assets/textures/grass-tuft.png",
+      "megapixels": 0.25
+    },
+    {
+      "kind": "3d",
+      "name": "nova",
+      "from": "nova-concept",
+      "quality": "economy",
+      "out": "public/assets/models/player/nova.glb"
+    },
+    {
+      "kind": "3d",
+      "name": "shrine",
+      "prompt": "a small mossy stone shrine with a glowing blue crystal, stylised game asset",
+      "quality": "economy",
+      "out": "public/assets/models/props/shrine.glb"
+    },
+    {
+      "kind": "edit",
+      "name": "nova-keyart",
+      "images": ["public/assets/images/title-base.png", "src/assets/nova-concept.png"],
+      "prompt": "Replace the figure standing on the rock in <image1> with the fox from <image2>, same pose and same scale. Keep the background, the lighting, the palette and the title text exactly as they are in <image1>.",
+      "out": "public/assets/images/title.png"
+    }
+  ]
+}

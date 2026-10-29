@@ -1,0 +1,16 @@
+cd /d F:\Pets\Projects\local_tools\3GS_Master
+
+dev.cmd [папка_проекта]
+
+
+Three по умолчанию, но:
+
+Если хотите, чтобы инициализация была явной, скопируйте в projects/games/test_three/engine.json строку { "engine": "threejs" }. 
+Тогда в баннере будет видно engine: threejs и не придётся полагаться на значение по умолчанию.
+
+
+Запуск M2M
+
+cd F:\Pets\Projects\local_tools\3GS_Master\Mesh2Motion
+
+npm run dev

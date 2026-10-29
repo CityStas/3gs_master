@@ -1,0 +1,38 @@
+{
+  "defaultProvider": "3gs",
+  "defaultModel": "qwen3.5-9b",
+  "defaultProjectTrust": "always",
+  "defaultThinkingLevel": "off",
+  "thinkingBudgets": {
+    "minimal": 256,
+    "low": 1024,
+    "medium": 2048,
+    "high": 4096
+  },
+  "defaultTools": ["read", "write", "edit", "bash", "grep", "find", "ls"],
+  "extensions": [
+    "+builtin:mcp",
+    "-builtin:codemode",
+    "-builtin:tool-search",
+    "-builtin:llama.cpp"
+  ],
+  "quietStartup": false,
+  "hideThinkingBlock": true,
+  "compaction": {
+    "enabled": true,
+    "reserveTokens": 16384,
+    "keepRecentTokens": 16384
+  },
+  "retry": {
+    "enabled": true,
+    "maxRetries": 2,
+    "baseDelayMs": 1500,
+    "maxAgentDelayMs": 10000
+  },
+  "httpIdleTimeoutMs": 0,
+  "theme": "dark",
+  "terminal": {
+    "showTerminalProgress": false
+  },
+  "lastChangelogVersion": "1.0.2"
+}

@@ -1,0 +1,9 @@
+# Three.js RAG core. The embedder talks to llama.cpp over urllib, so no HTTP client
+# dependency is needed (httpx was listed but never imported - dropped).
+mcp>=1.2,<2
+numpy>=1.26
+# `tools/level1_fit.py` resamples generated parallax layers onto the exact size the
+# reference layers use. Generated art (1856x768) and the level_0 references
+# (2170x725) disagree on aspect, and the scene clones tiles adjacently, so the sizes
+# have to match or the seam jumps at every tile boundary.
+Pillow>=10

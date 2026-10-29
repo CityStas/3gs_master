@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3GS Studio — редактор сцен на Three</title>
+<!--
+  Студия — это ИНСТРУМЕНТ ПРОСМОТРА И РУЧНОЙ ПРАВКИ уровня: визуальный редактор
+  2D/3D, превью сгенерированных картинок и 3D-просмотрщик GLB. Агента здесь
+  НЕТ: модель работает только через консольный `pi` (`agent.cmd`), а студия
+  показывает результат — открывается в любой момент независимо от агента.
+
+  Почему одна страница, а не три. Панели делят ОДНО состояние: выбрать узел в
+  списке, посмотреть его текстуру в превью, проверить связанную модель в 3D —
+  это один рабочий ход, а не три разных. Разнеся их по страницам, пришлось бы
+  таскать состояние через URL и терять его при каждом переходе.
+
+  Favicon — data-URI. Это не украшение: файла нет, а запрошенный, но
+  отсутствующий файл даёт ошибку в консоли, и её читают гейты (см. MEMORY:
+  «просимый, но отсутствующий файл = ошибка консоли, и из JS её не подавить»).
+-->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23202838'/%3E%3Cpath d='M16 5 27 11.5v13L16 31 5 24.5v-13z' fill='none' stroke='%236fd3ff' stroke-width='2'/%3E%3Cpath d='M16 5v13l11-6.5M16 18v13' fill='none' stroke='%236fd3ff' stroke-width='2'/%3E%3C/svg%3E">
+<!--
+  Import map — не украшение, а необходимое звено.
+
+  GLTFLoader и OrbitControls взяты из аддонов three 0.186.1 (тот же номер, что у
+  сборки в `games/jelly/node_modules`). Аддоны импортируют three БАРЕ-именем
+  (`import {...} from 'three'`), а в браузере без карты импорта баре-имя не
+  резолвится вовсе: «Failed to resolve module specifier "three"». Карта
+  указывает на наш ВЕНДОРНЫЙ файл — тот самый, что грузит scene.js, поэтому в
+  сцене не появляется второй копии three (а две копии несовместимы по
+  `instanceof`, и объекты одной выглядят для другой чужими).
+
+  `three/addons/` добавлен для тех же аддонов: их собственные импорты соседей
+  идут через него (`../utils/SkeletonUtils.js` резолвится относительно файла, но
+  документация и часть кода используют баре-путь).
+-->
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.js",
+    "three/addons/": "./vendor/addons/"
+  }
+}
+</script>
+<style>
+:root{
+  /* ---- МАСШТАБ ИНТЕРФЕЙСА ----------------------------------------------
+     Раньше ВСЕ размеры были в px (шрифты 9.5–14, панели константами), и от окна
+     зависели только ширины панелей. На большом мониторе это читалось как мелкий
+     шрифт: подписи 11 px не растут вместе с экраном. Теперь размеры текста и
+     панелей — в rem, а rem задаёт ОДНА переменная `--ui-size`, то есть одна
+     величина увеличивает весь интерфейс разом: подписи, кнопки, дерево, лог.
+
+     По умолчанию `--ui-size` текучая: от 13 px на узком окне до 19 px на
+     широком (0.42vw + 8.4px). Кнопки «A−/A+» в шапке переопределяют её вручную
+     и запоминаются в localStorage (см. app.js). */
+  --ui-size: clamp(13px, 0.42vw + 8.4px, 19px);
+
+  /* Ширины панелей — от ОКНА и в rem, чтобы росли вместе с масштабом.
+     `flex:0 0 auto` у правой колонки раньше не давал ей сжиматься, и на узком
+     окне (или при браузерном зуме, который уменьшает число CSS-пикселей) она
+     вылезала за край. */
+  --bg:#0f1116; --bg2:#151922; --bg3:#1b2130; --bg4:#222a3a;
+  --fg:#e6ecf5; --fg2:#9fb0c8; --dim:#6b7a90;
+  --ac:#6fd3ff; --ac2:#7ee0a8; --warn:#ffb454; --err:#ff6a6a; --hot:#ffd45a;
+  --line:#26303f;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+*{box-sizing:border-box}
+/* `font-size` только на html: если задать его и на body, `rem` внутри body
+   начнёт считаться от body, и масштаб перестанет быть единым.
+
+   `height:100%` здесь ОБЯЗАТЕЛЕН, и это не формальность. У `body` стоит
+   `height:100%`, а процентная высота считается от высоты родителя; у `html`
+   высота была `auto`, то есть «по содержимому». Круг замыкался: содержимое
+   мерилось по body, body — по html. В итоге `#app` получал не высоту окна, а
+   сумму шапки и журнала (~188 px), `flex:1` у `.panes` отдавал остаток, а
+   остатка не было — кадр уровня сжимался в 0 px, и в студии НЕ БЫЛО
+   ОТОБРАЖЕНИЯ: канвас оставался дефолтным 300x150 и его обрезало.
+   Симптом выглядел как «scene.js сломался», хотя сцена строилась нормально. */
+html{font-size:var(--ui-size);height:100%}
+body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--fg);
+  font:1rem/1.45 system-ui, "Segoe UI", Roboto, sans-serif}
+/* ------------------------------------------------------------- раскладка */
+/* Агента в студии больше нет, поэтому левой колонки-чата нет и в разметке:
+   остаётся рабочая область (кадр + правая боковая панель). Разделитель ширины
+   и переменная `--left` тоже ушли — они делили именно чат и кадр.
+   `--side` — правая панель конкретной вкладки (инспектор уровня, панель GLB);
+   `--asset` — панель картинок. Обе текучие и в rem, чтобы расти вместе с
+   масштабом интерфейса. */
+:root{
+  --side: clamp(15.4rem, 19vw, 24.6rem);
+  --asset: clamp(17rem, 24vw, 30.8rem);
+}
+#app{display:flex;height:100%;overflow:hidden}
+
+/* -------------------------------------------------------- правая область */
+/* `flex:1 1 0` + `min-width:0`: без нулевого минимума флекс-элемент не даёт
+   себя сжать ниже содержимого, и правая часть выталкивала себя за окно.
+   `overflow:hidden` на всех уровнях — чтобы переполнение ОБРЕЗАЛОСЬ, а не
+   рисовалось поверх соседней панели. */
+#right{flex:1 1 0;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.topbar{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid var(--line);
+  background:var(--bg2);flex-wrap:wrap}
+/* Логотип переехал в шапку: раньше он открывал левую колонку-чат, которой больше
+   нет. Здесь он просто называет инструмент и не занимает отдельной полосы. */
+.brand{display:flex;align-items:baseline;gap:7px;margin-right:10px;padding-right:10px;
+  border-right:1px solid var(--line)}
+.brand b{font-size:1.077rem;letter-spacing:.3px}
+.brand .tag{font-size:0.808rem;color:var(--dim);font-family:var(--mono)}
+/* Каталог игры. Показываем всегда: без этого на новой игре нельзя понять, данные
+   какой игры открыты, и правка ушла бы не туда. Подпись «каталог: …» ставит JS. */
+#gamepath{font-family:var(--mono);font-size:0.808rem;color:var(--dim);
+  max-width:38ch;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#gamepath b{color:var(--fg);font-weight:600}
+.tabs{display:flex;gap:4px;margin-right:8px}
+.tab{padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg3);
+  color:var(--fg2);cursor:pointer;font-size:0.962rem}
+.tab.on{background:var(--ac);border-color:var(--ac);color:#06222f;font-weight:600}
+#sideToggle{margin-left:auto}
+/* Вердикт линтера. Красный — это не «мелочь»: уровень со ссылкой на файл,
+   которого нет, не нарисует НИЧЕГО, и без этой кнопки отчёт агента «готово»
+   ничем не отличался от правды. */
+.lint{border-color:var(--line);color:var(--fg2)}
+.lint.ok{border-color:var(--ac2);color:var(--ac2)}
+.lint.bad{border-color:var(--err);color:var(--err);font-weight:600}
+/* Масштаб интерфейса — компактная группа из трёх кнопок рядом с «Панель». */
+.uiscale{display:flex;align-items:center;gap:2px;margin-left:8px}
+.uiscale button{padding:5px 7px;font-size:0.846rem}
+.uilabel{min-width:3.6rem;font-family:var(--mono);color:var(--fg2)}
+.panes{flex:1;position:relative;min-height:0;min-width:0;overflow:hidden}
+.pane{position:absolute;inset:0;display:none;min-height:0;min-width:0;overflow:hidden}
+.pane.on{display:flex}
+/* Свёрнутая боковая колонка — весь кадр под уровень/модель. Кнопка «Панель». */
+#app.hide-side .side,#app.hide-side #assetPane{display:none}
+
+/* -------------------------------------------------------- уровень: кадр */
+#lvWrap{flex:1;display:flex;min-height:0;min-width:0;overflow:hidden}
+#cvLevel{flex:1 1 0;position:relative;min-width:0;overflow:hidden;background:#0b0d12;cursor:default}
+#cvLevel canvas{display:block}
+/* Инспектор сжимается (`flex-shrink:1`) и не имеет права вылезти: при узком
+   окне он уступает кадру, а на совсем узком — уходит вниз (см. медиазапросы). */
+.side{flex:0 1 var(--side);width:var(--side);min-width:0;max-width:50vw;
+  border-left:1px solid var(--line);background:var(--bg2);
+  overflow:auto;padding:8px;display:flex;flex-direction:column;gap:10px}
+.sec{border:1px solid var(--line);border-radius:9px;background:var(--bg3);overflow:hidden}
+.sec>h4{margin:0;padding:7px 9px;font-size:0.885rem;letter-spacing:.4px;text-transform:uppercase;
+  color:var(--fg2);background:var(--bg4);border-bottom:1px solid var(--line);display:flex;gap:6px;align-items:center}
+.sec>h4 .mini{margin-left:auto;font-size:0.808rem;color:var(--dim);text-transform:none;letter-spacing:0;font-family:var(--mono)}
+.secbody{padding:7px 9px;display:flex;flex-direction:column;gap:5px}
+.tools{display:flex;gap:5px;padding:7px 9px;flex-wrap:wrap}
+button{padding:5px 9px;border:1px solid var(--line);border-radius:7px;background:var(--bg4);
+  color:var(--fg);cursor:pointer;font-size:0.923rem}
+button:hover{border-color:var(--ac);color:var(--ac)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.on{background:var(--ac);border-color:var(--ac);color:#06222f;font-weight:600}
+button.hot{background:var(--hot);border-color:var(--hot);color:#2a2000;font-weight:700}
+button.danger:hover{border-color:var(--err);color:var(--err)}
+
+#tree{max-height:min(38vh,26.2rem);overflow:auto;font-family:var(--mono);font-size:0.923rem;padding:4px}
+.tgroup{margin-bottom:5px}
+.tname{color:var(--fg2);padding:3px 4px;font-size:0.846rem}
+.tname.grp{color:var(--ac);background:#152030;border-radius:6px}
+.tname.root{color:var(--ac2)}
+.n{padding:3px 6px 3px 16px;border-radius:5px;cursor:pointer;color:var(--fg2);white-space:nowrap}
+.n:hover{background:var(--bg4);color:var(--fg)}
+.n.sel{background:var(--ac);color:#06222f;font-weight:600}
+.n.edited::after{content:" ●";color:var(--hot)}
+.n.added::after{content:" +";color:var(--ac2);font-weight:700}
+.lrow{display:flex;align-items:center;gap:5px;padding:2px 3px;border-radius:5px;font-size:0.923rem}
+.lrow:hover{background:var(--bg4)}
+.icn{width:1.85rem;padding:2px;text-align:center;background:transparent;border-color:transparent}
+.icn.on{color:var(--ac)}
+.lname{flex:1;font-family:var(--mono);font-size:0.885rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lcnt{color:var(--dim);font-size:0.808rem;font-family:var(--mono)}
+.ltag{font-size:0.731rem;color:var(--warn);border:1px solid var(--warn);border-radius:4px;padding:0 3px}
+
+.irow{display:flex;gap:8px;align-items:baseline;padding:2px 0;font-size:0.923rem}
+.ik{color:var(--dim);flex:0 0 8.3rem;font-size:0.885rem}
+.iv{flex:1;font-family:var(--mono);font-size:0.885rem;word-break:break-word}
+.iv.mono{font-family:var(--mono)}
+.irow.mono .iv{font-family:var(--mono)}
+.irow.link .iv{color:var(--ac2)}
+i.warn,.warn{display:block;color:var(--warn);font-size:0.885rem;padding:5px 7px;background:#2a2214;
+  border:1px solid #5a4520;border-radius:6px;line-height:1.4}
+.dim{color:var(--dim);font-size:0.885rem;padding:4px 0}
+input.num{width:5.5rem;background:var(--bg);color:var(--fg);border:1px solid var(--line);
+  border-radius:5px;padding:3px 5px;font:0.885rem var(--mono)}
+input.num:focus{outline:none;border-color:var(--ac)}
+input.txt{width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--line);
+  border-radius:6px;padding:4px 7px;font:0.885rem var(--mono)}
+input.txt:focus{outline:none;border-color:var(--ac)}
+.iacts{display:flex;gap:6px;margin-top:8px}
+.iacts button{flex:1}
+#viewInfo{font-family:var(--mono);font-size:0.846rem;color:var(--dim)}
+
+/* ---------------------------------------------------------- превью картинок */
+#assetFilter{padding:5px 7px;border-bottom:1px solid var(--line)}
+#previewWrap{flex:1 1 0;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
+#previewBig{flex:1;display:flex;align-items:center;justify-content:center;overflow:auto;
+  min-height:0;background:#0b0d12;padding:12px}
+#previewBig img{max-width:100%;max-height:100%;image-rendering:pixelated;
+  background:repeating-conic-gradient(#20242c 0% 25%, #171a20 0% 50%) 0/22px 22px;border-radius:6px}
+#previewInfo{padding:6px 10px;border-top:1px solid var(--line);font-family:var(--mono);font-size:0.885rem;color:var(--fg2)}
+#assetPane{flex:0 1 var(--asset);width:var(--asset);min-width:0;max-width:50vw;
+  border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow:hidden;
+  background:var(--bg2)}
+#assetFilterBar{display:flex;gap:6px;align-items:center;padding:6px 7px;border-bottom:1px solid var(--line)}
+#assetFilterBar .dim{white-space:nowrap;font-family:var(--mono);font-size:0.808rem}
+#assetGrid{flex:1;overflow:auto;padding:7px;display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(7.5rem,1fr));gap:6px;align-content:start;
+  /* `grid-auto-rows` задан ЯВНО, и это не украшение. С `auto` строки схлопывались
+     до 2px: у карточки `overflow:hidden` (нужен, чтобы картинка не вылезала за
+     скругление), а такой элемент для раскладки сетки вносит min-content = 0, и
+     Chromium считал высоту строки по нему. Карточка сжималась до рамки, а `img`
+     внутри (74px) обрезался — панель выглядела как список мелких подписей без
+     превью. `max-content` берёт высоту по содержимому и снимает вопрос. */
+  grid-auto-rows:max-content}
+.card{border:1px solid var(--line);border-radius:7px;overflow:hidden;cursor:pointer;background:var(--bg3)}
+.card:hover{border-color:var(--ac)}
+.card.bad{opacity:.35}
+.card img{width:100%;height:5.7rem;object-fit:contain;display:block;
+  background:repeating-conic-gradient(#20242c 0% 25%, #171a20 0% 50%) 0/18px 18px}
+.card .cap{padding:3px 4px;font-size:0.731rem;font-family:var(--mono);color:var(--fg2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ------------------------------------------------------------------- GLB */
+#glbWrap{flex:1;display:flex;min-width:0;min-height:0;overflow:hidden}
+#cvGlb{flex:1 1 0;min-width:0;overflow:hidden;background:#14161c;position:relative}
+#cvGlb canvas{display:block}
+.glrow{display:flex;gap:6px;padding:5px 6px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:0.885rem}
+.glrow:hover{background:var(--bg4);color:var(--ac)}
+.glname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.glsz{color:var(--dim);font-size:0.808rem}
+.ovr{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px}
+.ovr label{display:flex;gap:5px;align-items:center;font-size:0.885rem;color:var(--fg2);cursor:pointer}
+.ovr input{accent-color:var(--ac)}
+
+/* ------------------------------------------------------------------- лог */
+/* Высота журнала — от высоты окна: на низком экране 118 px съедали кадр. */
+#logbox{height:clamp(7.1rem, 15vh, 13.1rem);flex:0 0 auto;border-top:1px solid var(--line);background:var(--bg2);
+  display:flex;flex-direction:column;min-height:0}
+#logbox h4{margin:0;padding:4px 10px;font-size:0.808rem;text-transform:uppercase;letter-spacing:.4px;
+  color:var(--dim);background:var(--bg4);border-bottom:1px solid var(--line)}
+#log{flex:1;overflow:auto;padding:4px 10px;font-family:var(--mono);font-size:0.846rem}
+.logline{padding:1px 0;color:var(--fg2);white-space:pre-wrap}
+.logline.warn{color:var(--warn)}
+.logline.err{color:var(--err)}
+
+/* ------------------------------------------------------------ адаптация
+   Раньше здесь не было НИ ОДНОГО медиазапроса: все ширины были константами
+   (420 / 296 / 352 px), и как только окно становилось уже их суммы — правая
+   колонка вылезала за край, а кадр уровня сжимался в полоску. Студия должна
+   работать и в половине экрана, и в четверти, и в браузерном зуме 150 % (он
+   уменьшает число CSS-пикселей ровно так же, как узкое окно).
+
+   Порядок уступок: сначала сужается инспектор, потом панель ассетов, и только
+   в самом конце инспектор уходит ПОД кадр. Кадр уровня не отдаём никогда — это
+   главное в студии. Инспектор под кадром держим как последнее средство:
+   уровень — длинная горизонтальная полоса, и ему ширина важнее высоты. */
+@media (max-width:1500px){
+  :root{--side:clamp(15.4rem, 18vw, 22.3rem); --asset:clamp(17rem, 22vw, 26.2rem)}
+}
+@media (max-width:1240px){
+  :root{--side:clamp(14.6rem, 20vw, 20rem); --asset:clamp(15.4rem, 22vw, 23.1rem)}
+}
+@media (max-width:1080px){
+  :root{--side:clamp(13.8rem, 22vw, 18.5rem); --asset:clamp(14.6rem, 24vw, 20rem)}
+  #tree{max-height:min(30vh,18.5rem)}
+}
+/* Совсем узко — инспектор уходит под кадр. */
+@media (max-width:620px){
+  #lvWrap,#glbWrap{flex-direction:column}
+  #cvLevel,#cvGlb{flex:1 1 55%;min-height:0}
+  .side{flex:0 0 auto;width:auto;max-width:none;max-height:45%;
+    border-left:none;border-top:1px solid var(--line)}
+  #logbox{height:5.4rem}
+}
+@media (max-height:620px){
+  #logbox{height:6.5rem}
+  #tree{max-height:24vh}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ========================================= справа: рабочая область -->
+  <main id="right">
+    <div class="topbar">
+      <div class="brand"><b>3GS Studio</b><span class="tag">three</span></div>
+      <div class="tabs">
+        <div class="tab on" data-tab="level">Уровень</div>
+        <div class="tab" data-tab="preview">Картинки</div>
+        <div class="tab" data-tab="glb">3D / GLB</div>
+        <div class="tab" data-tab="game">Игра</div>
+      </div>
+      <span id="gamepath" title="Каталог игры: чьи уровни и ассеты открыты">каталог: …</span>
+      <span id="viewInfo"></span>
+      <!-- Вердикт линтера формата. «Уровень создан» и «уровень работает» —
+           разные вещи, и вторая видна только прогоном. Уровень со ссылками на
+           несгенерированные файлы выглядит готовым, а кадр у него пустой. -->
+      <button id="lintBtn" class="lint" title="Проверка формата уровня">формат: —</button>
+      <!-- Масштаб интерфейса. Весь UI в rem, поэтому эти две кнопки меняют его
+           целиком. Рядом — текущий размер, он же кнопка «сбросить к текучему»
+           (двойной клик). Выбор запоминается в localStorage. -->
+      <span class="uiscale" title="Масштаб интерфейса (весь UI). Двойной клик по значению — вернуть автомат">
+        <button id="uiMinus" title="Мельче">A−</button>
+        <button id="uiLabel" class="uilabel" title="Сбросить к автомату">100%</button>
+        <button id="uiPlus" title="Крупнее">A+</button>
+      </span>
+      <button id="sideToggle" title="Свернуть боковую панель — кадр займёт всё окно (Ctrl+B)">Панель</button>
+    </div>
+
+    <div class="panes">
+
+      <!-- ------------------------------------------------ редактор уровня -->
+      <section class="pane on" data-pane="level">
+        <div id="lvWrap">
+          <div id="cvLevel"></div>
+          <div class="side">
+
+            <div class="sec">
+              <h4>Уровень <span class="mini" id="levelFileMini"></span></h4>
+              <div class="secbody">
+                <select id="levelSel" class="txt"></select>
+                <div id="editableWarn" class="warn" style="display:none">
+                  Уровень помечен <code>editable: false</code> — сохранение выключено:
+                  у части узлов нет поля <code>path</code>, адресовать их нечем.
+                </div>
+              </div>
+            </div>
+
+            <div class="sec">
+              <h4>Вид</h4>
+              <div class="tools">
+                <button id="mode2d" class="on">2D</button>
+                <button id="mode3d">3D</button>
+                <button id="zin" title="Приблизить">＋</button>
+                <button id="zout" title="Отдалить">－</button>
+                <button id="fit" title="Показать весь уровень">Fit</button>
+              </div>
+              <div class="tools">
+                <button id="toggleCol" title="Показать коллайдеры (AABB и профиль рельефа)">Коллайдеры</button>
+                <button id="togglePar" title="Показать слои параллакса">Параллакс</button>
+              </div>
+            </div>
+
+            <div class="sec">
+              <h4>Узлы <span class="mini">клик — выбрать, двойной — приблизить</span></h4>
+              <div class="secbody" style="padding-bottom:0">
+                <input id="treeFilter" class="txt" placeholder="фильтр по имени…">
+              </div>
+              <div id="tree"></div>
+              <div class="tools">
+                <button id="addBtn" title="Добавить копию выделенного узла по центру вида">＋ Добавить</button>
+                <button id="delBtn" class="danger" title="Удалить выделенный узел">Удалить</button>
+              </div>
+            </div>
+
+            <div class="sec">
+              <h4>Инспектор</h4>
+              <div class="secbody" id="insp"></div>
+            </div>
+
+            <div class="sec">
+              <h4>Слои</h4>
+              <div class="secbody" id="layers"></div>
+            </div>
+
+            <div class="sec">
+              <h4>Правки</h4>
+              <div class="tools">
+                <button id="undoBtn" title="Ctrl+Z">Отменить</button>
+                <button id="revBtn" class="danger">Сбросить всё</button>
+              </div>
+              <div class="tools">
+                <button id="saveBtn">Сохранить правки</button>
+                <button id="buildBtn">Пересобрать</button>
+              </div>
+              <div class="secbody">
+                <div class="hint">
+                  Правки живут в <code>&lt;level&gt;_edit.json</code> рядом с уровнем и накладываются
+                  поверх сборки: уровень может быть собран из таблиц арта, и правка «в нём»
+                  исчезла бы при первой же пересборке.
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- ------------------------------------------- превью картинок -->
+      <section class="pane" data-pane="preview">
+        <div id="previewWrap">
+          <div id="previewBig"></div>
+          <div id="previewInfo">Выберите картинку справа.</div>
+        </div>
+        <div id="assetPane">
+          <div id="assetFilterBar">
+            <input id="assetFilter" class="txt" placeholder="фильтр по пути…">
+            <span id="assetCount" class="dim"></span>
+          </div>
+          <div id="assetGrid"></div>
+        </div>
+      </section>
+
+      <!-- ------------------------------------------------ игра (страница целиком) -->
+      <!-- Открывает HTML-страницу игры как есть, в iframe. Студия не переписывает
+           её код: страница сама грузит свой importmap и ассеты относительно своего
+           адреса. Адрес задаётся в app.js (поле ввода + кнопка «Открыть»). -->
+      <section class="pane" data-pane="game">
+        <div id="gameBar" style="display:flex;gap:8px;align-items:center;padding:6px 8px">
+          <input id="gamePage" class="txt" value="ninja.html" placeholder="страница игры, например ninja.html">
+          <button id="gameOpen">Открыть</button>
+          <span id="gameInfo" class="dim"></span>
+        </div>
+        <iframe id="gameFrame" title="Игра" style="flex:1;width:100%;border:0;background:#000"></iframe>
+      </section>
+
+      <!-- ------------------------------------------------ 3D просмотрщик -->
+      <section class="pane" data-pane="glb">
+        <div id="glbWrap">
+          <div id="cvGlb"></div>
+          <div class="side">
+            <div class="sec">
+              <h4>Файл</h4>
+              <div class="secbody">
+                <input type="file" id="glbFile" accept=".glb,.gltf" class="txt">
+                <div class="hint">Модели репозитория — в <code>assets/3d/</code> (40–130 МБ).</div>
+              </div>
+            </div>
+            <div class="sec">
+              <h4>Сводка</h4>
+              <div class="secbody" id="glbMeta"><div class="dim">Модель не загружена.</div></div>
+            </div>
+            <div class="sec">
+              <h4>Сетки и оверлеи</h4>
+              <div class="secbody ovr">
+                <label><input type="checkbox" id="bboxGrid" checked> габарит (AABB)</label>
+                <label><input type="checkbox" id="grid"> мировая сетка</label>
+                <label><input type="checkbox" id="axes"> оси X/Y/Z</label>
+                <label><input type="checkbox" id="wire"> каркас</label>
+                <label><input type="checkbox" id="normals"> нормали</label>
+                <label><input type="checkbox" id="vcol"> цвет вершин</label>
+              </div>
+              <div class="tools"><button id="glbReset">Кадрировать</button></div>
+            </div>
+            <div class="sec">
+              <h4>Доступные GLB</h4>
+              <div class="secbody" id="glbList"><div class="dim">…</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <div id="logbox"><h4>Журнал</h4><div id="log"></div></div>
+  </main>
+</div>
+
+<script type="module" src="./studio/app.js"></script>
+</body>
+</html>
