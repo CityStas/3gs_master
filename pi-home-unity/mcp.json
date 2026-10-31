@@ -3,7 +3,10 @@
   "mcpServers": {
     "unity-rag": {
       "command": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\.venv\\Scripts\\python.exe",
-      "args": ["-m", "unimaster.mcp.rag_mcp_server"],
+      "args": [
+        "-m",
+        "unimaster.mcp.rag_mcp_server"
+      ],
       "cwd": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\unity",
       "exposure": "direct",
       "timeout": 300,
@@ -11,19 +14,28 @@
     },
     "unity-project": {
       "command": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\.venv\\Scripts\\python.exe",
-      "args": ["-m", "unimaster.mcp.project_mcp_server"],
+      "args": [
+        "-m",
+        "unimaster.mcp.project_mcp_server"
+      ],
       "cwd": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\unity",
+      "env": {
+        "UNIM_HOME": "F:\\Pets\\Projects\\local_tools\\3GS_Master/unity"
+      },
       "exposure": "direct",
       "timeout": 900,
-      "description": "Unity project tools: read/write C# and assets, validate (lint or full compile), run an editor method, read the live console. Project root comes from data\\active_project.txt (written by agent.cmd); a batch gate needs the editor at UNITY_EDITOR."
+      "description": "Unity project tools: read/write C# and assets, validate (lint or full compile), run an editor method, read the live console. Project root comes from data\\active_project.txt; a batch gate needs the editor at UNITY_EDITOR."
     },
     "assets": {
       "command": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\.venv\\Scripts\\python.exe",
-      "args": ["-m", "threejs.mcp.assets_mcp_server"],
+      "args": [
+        "-m",
+        "threejs.mcp.assets_mcp_server"
+      ],
       "cwd": "F:\\Pets\\Projects\\local_tools\\3GS_Master",
       "exposure": "direct",
       "timeout": 7200,
-      "description": "Local asset generation, the first tier of ASSET-POLICY: text-to-image (z-image-turbo :8687), background removal, image-to-3D (Pixal3D/TRELLIS.2 via ComfyUI :8188), whole-pack runs. Tools: asset_image, asset_edit, asset_remove_bg, asset_to_3d, asset_character, asset_generate_pack, assets_status. The 7200 s timeout covers a pack of several 3D models - a legitimately long silence."
+      "description": "Local asset generation, the first tier of ASSET-POLICY: text-to-image (z-image-turbo :8687), background removal, image-to-3D (Pixal3D/TRELLIS.2 via ComfyUI :8188), whole-pack runs. Tools: asset_image, asset_edit, asset_remove_bg, asset_to_3d, asset_character, asset_generate_pack, assets_status. The 7200 s timeout covers a pack of several 3D models - a legitimately long silence. For Roblox: generated images are decals/UI, generated meshes are imported through Studio's Asset Manager."
     }
   }
 }

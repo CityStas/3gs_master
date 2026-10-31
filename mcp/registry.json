@@ -1,0 +1,183 @@
+{
+  "$comment": [
+    "ONE source of truth for every MCP server of 3GS_Master.",
+    "Render it into the pi profiles and into WorkBuddy with:  gs mcp-sync --apply",
+    "Never hand-edit pi-home-*/mcp.json or ~/.workbuddy-ai/mcp.json for these servers -",
+    "the next sync overwrites them. Add a server HERE and it appears in both clients.",
+    "",
+    "engines: which pi profile gets the server (threejs | godot | unity | roblox | any).",
+    "workbuddy.enabled: whether WorkBuddy loads it by default. WorkBuddy has no per-engine",
+    "gating - every enabled server is loaded in every session - so engine-specific *project*",
+    "servers (which need an active project) are enabled and the RAG ones too (they are cheap",
+    "and a WorkBuddy session is not scoped to one engine), while servers that need a running",
+    "workbuddy.enabled: whether WorkBuddy loads it by default. WorkBuddy has no per-engine gating - every enabled server is loaded in every session - so the RAG servers are enabled everywhere and engine-specific *project* servers are enabled too (they answer for whatever data/active_project.txt names). No server gets the active project through an env var: that snapshot goes stale the moment the user switches projects, and every stack already resolves the pointer file itself."
+  ],
+  "placeholders": {
+    "{repo}": "repository root",
+    "{python}": "the shared venv interpreter (.venv/Scripts/python.exe)",
+    "{studio_mcp}": "StudioMCP.exe of the installed Roblox Studio"
+  },
+  "servers": {
+    "threejs-rag": {
+      "command": "{python}",
+      "args": [
+        "-m",
+        "threejs.mcp.rag_mcp_server"
+      ],
+      "cwd": "{repo}",
+      "timeout": 300,
+      "exposure": "direct",
+      "engines": [
+        "threejs"
+      ],
+      "description": "Three.js knowledge base: hybrid search (dense + BM25, RRF-fused) over the pinned r186 API reference, the r186 source tree with JSDoc, addon sources, cookbook, rules and anti-patterns, plus whatever Three.js project is indexed as source=project.",
+      "workbuddy": {
+        "enabled": false
+      }
+    },
+    "godot-rag": {
+      "command": "{python}",
+      "args": [
+        "-m",
+        "gdmaster.mcp.rag_mcp_server"
+      ],
+      "cwd": "{repo}/godot",
+      "timeout": 300,
+      "exposure": "direct",
+      "engines": [
+        "godot"
+      ],
+      "description": "Godot 4.7 knowledge base: hybrid search (dense + BM25, RRF-fused) over the pinned official docs, cookbook, rules, anti-patterns, troubleshooting and external-asset notes, plus whatever Godot project is indexed as source=project. Tools: rag_search, rag_status.",
+      "workbuddy": {
+        "enabled": false
+      }
+    },
+    "godot": {
+      "command": "{python}",
+      "args": [
+        "-m",
+        "gdmaster.mcp.policy_gateway"
+      ],
+      "cwd": "{repo}/godot",
+      "env": {
+        "GDM_HOME": "{repo}/godot"
+      },
+      "timeout": 900,
+      "exposure": "direct",
+      "engines": [
+        "godot"
+      ],
+      "description": "Godot project tools (narrow on purpose): read/write GDScript, scene create/add/remove node, project settings, headless lint, run/play/stop, plus the Godot RAG. Paths are sandboxed to the active project.",
+      "workbuddy": {
+        "enabled": false
+      }
+    },
+    "unity-rag": {
+      "command": "{python}",
+      "args": [
+        "-m",
+        "unimaster.mcp.rag_mcp_server"
+      ],
+      "cwd": "{repo}/unity",
+      "timeout": 300,
+      "exposure": "direct",
+      "engines": [
+        "unity"
+      ],
+      "description": "Unity 6000.3 knowledge base: hybrid search (dense + BM25, RRF-fused) over the pinned Manual, Scripting API, cookbook, rules, anti-patterns and troubleshooting, plus whatever Unity project is indexed as source=project.",
+      "workbuddy": {
+        "enabled": false
+      }
+    },
+    "unity-project": {
+      "command": "{python}",
+      "args": [
+        "-m",
+        "unimaster.mcp.project_mcp_server"
+      ],
+      "cwd": "{repo}/unity",
+      "env": {
+        "UNIM_HOME": "{repo}/unity"
+      },
+      "timeout": 900,
+      "exposure": "direct",
+      "engines": [
+        "unity"
+      ],
+      "description": "Unity project tools: read/write C# and assets, validate (lint or full compile), run an editor method, read the live console. Project root comes from data\\active_project.txt; a batch gate needs the editor at UNITY_EDITOR.",
+      "workbuddy": {
+        "enabled": false
+      }
+    },
+    "rbx-rag": {
+      "command": "{python}",
+      "args": [
+        "-m",
+        "rbxmaster.mcp.rag_mcp_server"
+      ],
+      "cwd": "{repo}/roblox",
+      "timeout": 300,
+      "exposure": "direct",
+      "engines": [
+        "roblox"
+      ],
+      "description": "Roblox knowledge base: hybrid search (dense + BM25, RRF-fused) over the Creator Hub guides, the Engine API Reference (one chunk per class member, with Security/Thread Safety tags), the Open Cloud reference, the curated Russian starter kit, the cookbook, troubleshooting and anti-patterns, plus the active project's Luau as source=project. Tools: rbx_rag_search, rbx_rag_status.",
+      "workbuddy": {
+        "enabled": true
+      }
+    },
+    "rbx-project": {
+      "command": "{python}",
+      "args": [
+        "-m",
+        "rbxmaster.mcp.project_mcp_server"
+      ],
+      "cwd": "{repo}/roblox",
+      "timeout": 600,
+      "exposure": "direct",
+      "engines": [
+        "roblox"
+      ],
+      "description": "Roblox project tools on disk: project info, list/read/write/edit files (sandboxed to the project root, timestamped backups), Luau search, Luau lint (unbalanced end, deprecated globals, Instance.new parent, method case, server-only services in a client script), place inspection (.rbxlx -> services, class counts, scripts), Studio status and open_place. The live DataModel is the Studio MCP server's job, not this one.",
+      "workbuddy": {
+        "enabled": true
+      }
+    },
+    "roblox-studio": {
+      "command": "cmd.exe",
+      "args": [
+        "/c",
+        "%LOCALAPPDATA%\\Roblox\\mcp.bat"
+      ],
+      "timeout": 600,
+      "exposure": "direct",
+      "engines": [
+        "roblox"
+      ],
+      "description": "The built-in Roblox Studio MCP server (StudioMCP.exe, started by %LOCALAPPDATA%\\Roblox\\mcp.bat over stdio - the exact launcher from create.roblox.com/docs/studio/mcp). It is the ONLY way to touch a live DataModel: script_read / multi_edit / script_search / script_grep, generate_mesh / generate_material / generate_procedural_model / wait_job_finished, search_asset / insert_asset / upload_image / store_image, search_game_tree / inspect_instance / subagent, execute_luau (Edit/Client/Server), get_studio_state / start_stop_play / get_console_output / screen_capture, character_navigation / user_keyboard_input / user_mouse_input, http_get / skill, and list_roblox_studios. Every call takes a studio_id - get it from list_roblox_studios, which matters when several Studio windows are open. Reports 0 tools until Studio is open with 'Enable Studio as MCP server' on (Assistant -> ... -> Manage MCP Servers); that is not a broken config.",
+      "workbuddy": {
+        "enabled": true
+      }
+    },
+    "assets": {
+      "command": "{python}",
+      "args": [
+        "-m",
+        "threejs.mcp.assets_mcp_server"
+      ],
+      "cwd": "{repo}",
+      "timeout": 7200,
+      "exposure": "direct",
+      "engines": [
+        "threejs",
+        "godot",
+        "unity",
+        "roblox"
+      ],
+      "description": "Local asset generation, the first tier of ASSET-POLICY: text-to-image (z-image-turbo :8687), background removal, image-to-3D (Pixal3D/TRELLIS.2 via ComfyUI :8188), whole-pack runs. Tools: asset_image, asset_edit, asset_remove_bg, asset_to_3d, asset_character, asset_generate_pack, assets_status. The 7200 s timeout covers a pack of several 3D models - a legitimately long silence. For Roblox: generated images are decals/UI, generated meshes are imported through Studio's Asset Manager.",
+      "workbuddy": {
+        "enabled": true
+      }
+    }
+  }
+}

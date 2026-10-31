@@ -1,10 +1,10 @@
 # 3GS_Master
 
-Среда, в которой AI-агент делает игры для трёх движков - **Three.js**, **Godot 4** и
-**Unity 6**. RAG по документации каждого движка, MCP-серверы знаний и ассетов,
-генерация арта и 3D на одной видеокарте 8 ГБ.
+Среда, в которой AI-агент делает игры для четырёх движков - **Three.js**, **Godot 4**,
+**Unity 6** и **Roblox Studio (Luau)**. RAG по документации каждого движка, MCP-серверы
+знаний и ассетов, генерация арта и 3D на одной видеокарте 8 ГБ.
 
-![Три персонажа, сгенерированные локально](docs/preview.webp)
+![Четыре персонажа, сгенерированные локально](docs/preview.webp)
 
 По умолчанию агент работает на локальной модели; облачную можно подключить вместо
 неё или вести сессию сразу на двух.
@@ -39,6 +39,12 @@ dev.cmd my_game
 | Three.js | `{ "engine": "threejs", "version": "r186" }` | ничего, скелет ставит `cmd\newgame.cmd <имя>` |
 | Godot 4 | `{ "engine": "godot", "version": "4.7.2" }` | создать проект в Godot Project Manager в этой папке |
 | Unity 6 | `{ "engine": "unity", "version": "6000.3" }` | создать проект в Unity Hub или дать это агенту |
+| Roblox | `{ "engine": "roblox" }` | `gs roblox-fetch`, `gs roblox-index`, затем `gs roblox-open` |
+
+Для Roblox дополнительно нужны две вещи, которых нет у остальных движков: корпус
+документации скачивается отдельно (`gs roblox-fetch`, ~3600 страниц), а встроенный MCP
+Studio включается **внутри Studio** - Assistant → … → Manage MCP Servers → Enable
+Studio as MCP server.
 
 Дальше - `dev.cmd <имя>`. Инструменты движка появляются у агента только под проект
 с соответствующим `engine.json`.
@@ -50,6 +56,8 @@ dev.cmd my_game
 - [`ASSET-POLICY.md`](ASSET-POLICY.md) - откуда берутся ассеты
 - [`LEVEL-SCHEMA.md`](LEVEL-SCHEMA.md), [`STUDIO.md`](STUDIO.md) - уровни и студия (Three.js)
 - [`unity/README.md`](unity/README.md) - Unity-стек
+- [`roblox/README.md`](roblox/README.md) - Roblox-стек (Luau, Studio MCP, корпус)
+- [`mcp/registry.json`](mcp/registry.json) - единственное описание MCP-серверов для pi и WorkBuddy
 
 ## Что в репозитории, а что нет
 

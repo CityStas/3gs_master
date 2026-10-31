@@ -1,0 +1,41 @@
+{
+ "sources": {
+  "curated_kb": {
+   "found": 16,
+   "written": 0,
+   "skipped": 16
+  },
+  "engine_api": {
+   "found": 1210,
+   "written": 1207,
+   "skipped": 3,
+   "errors": [],
+   "error_count": 0
+  },
+  "official_docs": {
+   "url": "https://create.roblox.com/docs/llms-full.txt",
+   "found": 2323,
+   "written": 2323,
+   "skipped": 0,
+   "docs_updated": "2026-10-30T19:56:03Z"
+  },
+  "cloud_docs": {
+   "found": 114,
+   "written": 43,
+   "skipped": 71,
+   "errors": [],
+   "error_count": 0
+  }
+ },
+ "fetched_at": "2026-10-31T10:36:51Z",
+ "corpus_files": {
+  "official_docs": 2323,
+  "engine_api": 1210,
+  "cloud_docs": 114,
+  "curated_kb": 16,
+  "cookbook": 0,
+  "troubleshooting": 0,
+  "anti_patterns": 0
+ },
+ "docs_updated": "2026-10-30T19:56:03Z"
+}

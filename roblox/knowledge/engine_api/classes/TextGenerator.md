@@ -1,0 +1,303 @@
+---
+name: TextGenerator
+last_updated: 2026-10-30T19:55:53Z
+inherits:
+  - Instance
+  - Object
+type: class
+memory_category: Instances
+summary: "Gives access to a large language model for text generation."
+---
+
+# Class: TextGenerator
+
+> Gives access to a large language model for text generation.
+
+## Description
+
+A `TextGenerator` instance lets you use a large language model (LLM) to
+generate text based on a system prompt from you and a user prompt from the
+player. The most common use of the API is for creating interactive non-player
+characters (NPCs).
+
+For example, in a survival experience, your system prompt for a talking animal
+might be
+`"You are a very busy beaver. You end all statements by mentioning how you need to get back to work on your dam."`.
+Users could ask the beaver about water in the area, the size of a nearby
+forest, predators, etc.
+
+The novelty of LLM responses can help create unique, delightful moments for
+players, but using the API effectively requires a bit of creativity and
+tuning. System prompts can be very extensive, so don't hesitate to include a
+long string with lots of detail.
+
+#### Rate limits
+
+Requests are initially limited to 100 per minute, which scales up based on the
+number of concurrent users.
+
+## Code Samples
+
+**Generate Text**
+
+```lua
+local Workspace = game:GetService("Workspace")
+
+local textGenerator = Instance.new("TextGenerator")
+textGenerator.Parent = Workspace
+
+textGenerator.SystemPrompt = "You are a helpful NPC in a virtual world."
+textGenerator.Temperature = 0.8
+textGenerator.TopP = 0.6
+textGenerator.Seed = 7
+
+local function getResponse(userInput)
+	local request = {
+		UserPrompt = userInput,
+		MaxTokens = 50
+	}
+
+	local success, response = pcall(function()
+		return textGenerator:GenerateTextAsync(request)
+	end)
+
+	if success then
+		if response then
+			print("Generated Text: " .. response.GeneratedText)
+			print("Context Token: " .. response.ContextToken)
+			print("Model: " .. response.Model)
+			return response
+		end
+	else
+		warn("Text generation failed: " .. tostring(response))
+	end
+	return nil
+end
+
+getResponse("Tell me something cool.")
+```
+
+## Properties
+
+### Property: TextGenerator.Seed
+
+```json
+{
+  "type": "int",
+  "access": "ReadWrite",
+  "security": {
+    "read": "None",
+    "write": "None"
+  },
+  "serialization": {
+    "can_load": true,
+    "can_save": true
+  },
+  "thread_safety": "ReadSafe",
+  "category": "Data",
+  "capabilities": [
+    "Basic"
+  ]
+}
+```
+
+Sets a fixed seed for the random number generator, allowing reproducible
+responses in cases where the same input parameters are used across
+multiple requests. By setting the same seed value, you can obtain
+identical results for debugging, testing, or evaluation purposes. The
+value of `Seed` should be an integer. Non-integral values will be
+truncated. Default is `0`.
+
+### Property: TextGenerator.SystemPrompt
+
+```json
+{
+  "type": "string",
+  "access": "ReadWrite",
+  "security": {
+    "read": "None",
+    "write": "None"
+  },
+  "serialization": {
+    "can_load": true,
+    "can_save": true
+  },
+  "thread_safety": "ReadSafe",
+  "category": "Data",
+  "capabilities": [
+    "Basic"
+  ]
+}
+```
+
+Provides context to the model about its role, tone, or behavior during the
+conversation. This parameter can guide the model on how to respond,
+setting expectations like `"You are an assistant"` or
+`"Use a formal tone"`.
+
+### Property: TextGenerator.Temperature
+
+```json
+{
+  "type": "float",
+  "access": "ReadWrite",
+  "security": {
+    "read": "None",
+    "write": "None"
+  },
+  "serialization": {
+    "can_load": true,
+    "can_save": true
+  },
+  "thread_safety": "ReadSafe",
+  "category": "Data",
+  "capabilities": [
+    "Basic"
+  ]
+}
+```
+
+Controls the "creativity" or randomness of the model's responses. Values
+closer to `1` increase randomness, while values closer to `0` make the
+responses more focused and deterministic. Values outside the accepted
+range are clamped to the range of `[0.4, 1.0]`. Default is `0.7`.
+
+### Property: TextGenerator.TopP
+
+```json
+{
+  "type": "float",
+  "access": "ReadWrite",
+  "security": {
+    "read": "None",
+    "write": "None"
+  },
+  "serialization": {
+    "can_load": true,
+    "can_save": true
+  },
+  "thread_safety": "ReadSafe",
+  "category": "Data",
+  "capabilities": [
+    "Basic"
+  ]
+}
+```
+
+Helps the model narrow or expand the range of possible words to sample
+from while generating the next token. This setting narrows the token
+choices to only contain words that together make up a certain percentage
+of total likelihood (for example, 90%). A lower `TopP` means the model
+sticks to closer and more predictable choices, while a higher `TopP` opens
+the door to more diverse and creative responses. Values outside the
+accepted range are clamped to the range of `[0.5, 1.0]`. Default is `0.9`.
+
+## Methods
+
+### Method: TextGenerator:GenerateTextAsync
+
+**Signature:** `TextGenerator:GenerateTextAsync(request: Dictionary): Dictionary`
+
+This method returns text generated by an LLM based on the provided system
+and user prompts, as well as any other optional paramaters that have been
+set.
+
+The `request` argument for this method should be a dictionary with the
+following structure:
+
+| Key Name | Data Type | Description | Required |
+| --- | --- | --- | --- |
+| `UserPrompt` | string | Optional prompt from the user that initiates the chat. This could be a question, statement, or command that the user wants the model to respond to. | No |
+| `ContextToken` | string | Prompt history context token containing a summarization of the previous prompt requests and responses in a conversation up to the current request. If no token is provided, a new token is generated and returned in the response. Providing a previously generated context token restores the conversation state into the current request. | No |
+| `MaxTokens` | number | The maximum number of tokens in the response generated by the model. Expected to be an integer of at least 1. This limits the length of the response, preventing overly long or incomplete answers. Non-integral numbers are rounded to the nearest integer. | No |
+| `JsonSchema` | string | A JSON Schema formatted string that follows the specification at [json-schema.org](https://json-schema.org). When `JsonSchema` is provided, the model response will conform to the requested format, providing a structured output that can be parsed. | No |
+
+This method returns a dictionary with the following structure:
+
+| Key Name | Data Type | Description |
+| --- | --- | --- |
+| `GeneratedText` | string | The generated response. |
+| `ContextToken` | string | A token containing the summarization of a previously passed context token and the current generated response. This token can be passed into subsequent requests to maintain the state of the current conversation. Subsequent requests generate new tokens with updated conversation state. Extracting the token and providing it maintains the ongoing conversation context. |
+| `Model` | string | The model and version that generated the response. |
+
+*Yields · Security: None · Thread Safety: Unsafe · Capabilities: Basic*
+
+**Parameters:**
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `request` | `Dictionary` |  | A dictionary containing optional parameters for the text generation request. The currently supported parameters are `UserPrompt`, `ContextToken`, and `MaxTokens`. |
+
+**Returns:** `Dictionary` — A dictionary containing the generated response.
+
+## Inherited Members
+
+### From [Instance](/docs/reference/engine/classes/Instance.md)
+
+- **Property `Archivable`** (`boolean`): Determines if an Instance and its descendants can be cloned using
+- **Property `archivable`** (`boolean`):  *(deprecated, hidden)*
+- **Property `Capabilities`** (`SecurityCapabilities`): The set of capabilities allowed to be used for scripts inside this
+- **Property `IsInSandbox`** (`boolean`): Indicates whether the instance is inside a sandboxed container.
+- **Property `Name`** (`string`): A non-unique identifier of the Instance.
+- **Property `Parent`** (`Instance`): Determines the hierarchical parent of the Instance.
+- **Property `PredictionMode`** (`PredictionMode`): Reflects the client-side prediction mode applied to the instance under
+- **Property `RobloxLocked`** (`boolean`): A deprecated property that used to protect CoreGui objects. *(hidden)*
+- **Property `Sandboxed`** (`boolean`): When enabled, the instance can only access abilities in its `Capabilities`
+- **Property `UniqueId`** (`UniqueId`): A unique identifier for the instance.
+- **Method `AddTag(tag: string): ()`**: Applies a tag to the instance.
+- **Method `children(): Instances`**: Returns an array of the object's children. *(deprecated)*
+- **Method `ClearAllChildren(): ()`**: This method destroys all of an instance's children.
+- **Method `Clone(): Instance`**: Create a copy of an instance and all its descendants, ignoring instances
+- **Method `clone(): Instance`**:  *(deprecated)*
+- **Method `Destroy(): ()`**: Sets the Instance.Parent property to `nil`, locks the
+- **Method `destroy(): ()`**:  *(deprecated)*
+- **Method `FindFirstAncestor(name: string): Instance?`**: Returns the first ancestor of the Instance whose
+- **Method `FindFirstAncestorOfClass(className: string): Instance?`**: Returns the first ancestor of the Instance whose
+- **Method `FindFirstAncestorWhichIsA(className: string): Instance?`**: Returns the first ancestor of the Instance for whom
+- **Method `FindFirstChild(name: string, recursive?: boolean): Instance?`**: Returns the first child of the Instance found with the given name.
+- **Method `findFirstChild(name: string, recursive?: boolean): Instance`**:  *(deprecated)*
+- **Method `FindFirstChildOfClass(className: string): Instance?`**: Returns the first child of the Instance whose
+- **Method `FindFirstChildWhichIsA(className: string, recursive?: boolean): Instance?`**: Returns the first child of the Instance for whom
+- **Method `FindFirstDescendant(name: string): Instance?`**: Returns the first descendant found with the given Instance.Name.
+- **Method `GetActor(): Actor?`**: Returns the Actor associated with the Instance, if any.
+- **Method `GetAttribute(attribute: string): Variant`**: Returns the value which has been assigned to the given attribute name.
+- **Method `GetAttributeChangedSignal(attribute: string): RBXScriptSignal`**: Returns an event that fires when the given attribute changes.
+- **Method `GetAttributes(): Dictionary`**: Returns a dictionary of the instance's attributes.
+- **Method `GetChildren(): Instances`**: Returns an array containing all of the instance's children.
+- **Method `getChildren(): Instances`**:  *(deprecated)*
+- **Method `GetDebugId(scopeLength?: int): string`**: Returns a coded string of the debug ID used internally by Roblox.
+- **Method `GetDescendants(): Instances`**: Returns an array containing all of the descendants of the instance.
+- **Method `GetFullName(): string`**: Returns a string describing the instance's ancestry.
+- **Method `GetStyled(name: string, selector: string?): Variant`**: Returns the styled or explicitly modified value of the specified property,
+- **Method `GetStyledPropertyChangedSignal(property: string): RBXScriptSignal`**: Returns an event that fires when the given style property changes on the
+- **Method `GetTags(): Array`**: Gets an array of all tags applied to the instance.
+- **Method `HasTag(tag: string): boolean`**: Check whether the instance has a given tag.
+- **Method `IsAncestorOf(descendant: Instance): boolean`**: Returns true if an Instance is an ancestor of the given
+- **Method `IsDescendantOf(ancestor: Instance): boolean`**: Returns `true` if an Instance is a descendant of the given
+- **Method `isDescendantOf(ancestor: Instance): boolean`**:  *(deprecated)*
+- **Method `IsPropertyModified(property: string): boolean`**: Returns `true` if the value stored in the specified property is not equal
+- **Method `QueryDescendants(selector: string): Instances`**: Returns an array containing all descendants of the instance that match the
+- **Method `Remove(): ()`**: Sets the object's `Parent` to `nil`, and does the same for all its *(deprecated)*
+- **Method `remove(): ()`**:  *(deprecated)*
+- **Method `RemoveTag(tag: string): ()`**: Removes a tag from the instance.
+- **Method `ResetPropertyToDefault(property: string): ()`**: Resets a property to its default value.
+- **Method `SetAttribute(attribute: string, value: Variant): ()`**: Sets the attribute with the given name to the given value.
+- **Method `WaitForChild(childName: string, timeOut: double): Instance`**: Returns the child of the Instance with the given name. If the
+- **Event `AncestryChanged`**: Fires when the Instance.Parent property of this object or one of
+- **Event `AttributeChanged`**: Fires whenever an attribute is changed on the Instance.
+- **Event `ChildAdded`**: Fires after an object is parented to this Instance.
+- **Event `childAdded`**:  *(deprecated)*
+- **Event `ChildRemoved`**: Fires after a child is removed from this Instance.
+- **Event `DescendantAdded`**: Fires after a descendant is added to the Instance.
+- **Event `DescendantRemoving`**: Fires immediately before a descendant of the Instance is removed.
+- **Event `Destroying`**: Fires immediately before (or is deferred until after) the instance is
+- **Event `StyledPropertiesChanged`**: Fires whenever any style property is changed on the instance, including
+
+### From [Object](/docs/reference/engine/classes/Object.md)
+
+- **Property `ClassName`** (`string`): A read-only string representing the class this Object belongs to.
+- **Property `className`** (`string`):  *(deprecated)*
+- **Method `GetPropertyChangedSignal(property: string): RBXScriptSignal`**: Get an event that fires when a given property of the object changes.
+- **Method `IsA(className: string): boolean`**: Returns true if an object's class matches or inherits from a given class.
+- **Method `isA(className: string): boolean`**:  *(deprecated)*
+- **Event `Changed`**: Fires immediately after a property of the object changes, with some

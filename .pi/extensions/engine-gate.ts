@@ -2,7 +2,7 @@
  * Engine gate: exposes only the MCP servers of the engine the active project declares.
  *
  * The active project is read from data/active_project.txt (written by agent.cmd), and its
- * engine from <project>/engine.json. Three engines, three surfaces:
+ * engine from <project>/engine.json. Four engines, four surfaces:
  *
  *   threejs (default) - nothing is registered here. `threejs-rag` and `assets` come from
  *                       pi-home-three/mcp.json, which is the profile agent.cmd picks.
@@ -11,10 +11,16 @@
  *   unity             - MCP servers `unity-rag` and `unity-project` (unimaster stack), plus
  *                       `assets` pointed at <project>/Assets/Generated, plus `unity-editor`
  *                       (the official Unity MCP bridge) while the editor has the project open.
+ *   roblox            - nothing is registered here either: `rbx-rag`, `rbx-project`,
+ *                       `roblox-studio` (Studio's own MCP server) and `assets` all come from
+ *                       pi-home-roblox/mcp.json. What this gate adds is the *check* - the
+ *                       one failure mode of that profile is a Studio MCP server that is
+ *                       installed but has nothing to talk to, and it must be named on
+ *                       stderr instead of looking like a broken agent.
  *
  * Skills and the system prompt are NOT handled here: they live in the engine profile
- * (pi-home-three / pi-home-godot / pi-home-unity), chosen by agent.cmd via
- * PI_CODING_AGENT_DIR.
+ * (pi-home-three / pi-home-godot / pi-home-unity / pi-home-roblox), chosen by agent.cmd
+ * via PI_CODING_AGENT_DIR.
  *
  * Why an extension and not a prompt rule: a model reads "do not use godot_* tools" and
  * still sees them in its tool list. Registering the server only when it applies removes
@@ -82,7 +88,7 @@ const VENV_PY = process.env.UNITY_PYTHON ?? join(REPO, ".venv", "Scripts", "pyth
 const XLIFE_PROJECT = join(REPO, "projects", "research", "x_life");
 const XLIFE_SKILLS = join(REPO, "x_life_arch", "skills");
 
-type Engine = "godot" | "unity" | "threejs";
+type Engine = "godot" | "unity" | "roblox" | "threejs";
 
 function readEngine(projectDir: string): string | null {
   const file = join(projectDir, "engine.json");
@@ -155,6 +161,7 @@ function activeEngine(): { project: string | null; engine: Engine; stale: string
   const engine = path ? readEngine(path) : null;
   if (engine === "godot") return { project: path, engine: "godot", stale: null };
   if (engine === "unity") return { project: path, engine: "unity", stale: null };
+  if (engine === "roblox") return { project: path, engine: "roblox", stale: null };
   return { project: path, engine: "threejs", stale: null };
 }
 
@@ -315,6 +322,45 @@ async function registerUnity(pi: ExtensionApi, project: string | null): Promise<
   }
 }
 
+/**
+ * engine=roblox: everything comes from `pi-home-roblox/mcp.json` (rbx-rag, rbx-project,
+ * `roblox-studio`, assets), so this gate registers nothing. What it does is name the two
+ * failure modes that otherwise look like a broken agent:
+ *
+ *   1. the stack folder is missing -> the profile's servers will not start at all;
+ *   2. Studio's own MCP binary is missing -> `script_read` / `execute_luau` answer
+ *      "no studios connected" no matter what the user does in the editor.
+ *
+ * Studio's MCP server is a toggle INSIDE Studio (Assistant -> ... -> Manage MCP Servers),
+ * so a missing editor is a warning, never an error: the knowledge base still works.
+ */
+function registerRoblox(project: string | null): void {
+  const home = join(REPO, "roblox");
+  if (!existsSync(home) || !existsSync(join(home, "rbxmaster"))) {
+    process.stderr.write(
+      `[engine-gate] engine=roblox but the Roblox stack is missing (${home}). ` +
+        `rbx-rag / rbx-project are NOT available; the profile's mcp.json will fail to start them.\n`,
+    );
+    return;
+  }
+  const mcpBat = join(process.env.LOCALAPPDATA ?? "", "Roblox", "mcp.bat");
+  const studioMcp = process.env.ROBLOX_STUDIO_MCP ?? "";
+  if (!studioMcp && !existsSync(mcpBat)) {
+    process.stderr.write(
+      `[engine-gate] engine=roblox but Roblox Studio's MCP launcher was not found ` +
+        `(${mcpBat || "%LOCALAPPDATA%\\Roblox\\mcp.bat"}). The RAG and the file tools work; ` +
+        `the live-place tools (script_read, multi_edit, execute_luau) will not. ` +
+        `Install Roblox Studio, or set ROBLOX_STUDIO_MCP to StudioMCP.exe.\n`,
+    );
+  }
+  if (!project) {
+    process.stderr.write(
+      `[engine-gate] engine=roblox with no active project: rbx-project will answer ` +
+        `"data/active_project.txt is empty". Pass a project to agent.cmd, or use the RAG only.\n`,
+    );
+  }
+}
+
 export default function engineGate(pi: ExtensionApi): void {
   pi.on("session_start", async () => {
     const { project, engine, stale } = activeEngine();
@@ -330,6 +376,10 @@ export default function engineGate(pi: ExtensionApi): void {
     }
     if (engine === "unity") {
       await registerUnity(pi, project);
+      return;
+    }
+    if (engine === "roblox") {
+      registerRoblox(project);
       return;
     }
     // threejs: `threejs-rag` and `assets` come from pi-home-three/mcp.json.

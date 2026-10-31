@@ -1,0 +1,116 @@
+---
+title: "Post-processing effects"
+url: /docs/en-us/environment/post-processing-effects
+last_updated: 2026-10-30T19:55:43Z
+description: "Post-processing effects are customizable filters that quickly enrich the visuals of a game."
+---
+
+# Post-processing effects
+
+**Post-processing effects** are customizable filters that allow you to quickly enrich the visuals of your game. Using the post-processing effect objects in the `Class.Lighting` service or `Class.Camera`, you can:
+
+- Simulate a camera viewing a bright light and exaggerate its glow ([bloom](#bloom)).
+- Apply a Gaussian [blur](#blur) to the entirety of your game, or add a blur to parts of your game that aren't in focus ([depth‑of‑field](#depth-of-field)).
+- Enhance an environment's appearance to create a specific mood through hue ([color correction](#color-correction)).
+- Render a halo of light that moves with the sun ([sun rays](#sun-rays)).
+
+![Landscape with depth-of-field effect applied, simulating distance blur](../assets/lighting-and-effects/post-processing/DepthOfFieldEffect-With.jpg)_Landscape with depth-of-field effect applied, simulating distance blur_
+
+## Add post-processing effects
+
+When you add post-processing effects to the `Class.Lighting` service, they display to **all players** who enter the game. This is useful for effects that affect the global environment, such as [sun rays](#sun-rays).
+
+When you add post-processing effects to the `Class.Camera` object, they only display to a **specific player**. This is useful for effects that should only pertain to that player based on their actions, such as blurring the 3D world view when they have a UI menu open.
+
+To add post-processing effects to either the `Class.Lighting` service or `Class.Camera`:
+
+1. In the **Explorer** window, hover over the `Class.Lighting` service or `Class.Camera`, then click the ⊕ button. A contextual menu displays.
+2. From the menu, insert one or more of the following post-processing effects:
+  - **BloomEffect**
+  - **BlurEffect**
+  - **ColorCorrectionEffect**
+  - **DepthOfFieldEffect**
+  - **SunRaysEffect**
+  - **ColorGradingEffect**
+3. Depending on your Studio settings, some effects may not appear. To increase your rendering quality level:
+  1. Open [Studio Settings](/docs/en-us/studio/setup.md#customization).
+  2. In the left-side navigation, select **Rendering**, then the **Editor Quality Level** dropdown menu.
+  3. Set it to the highest level.
+
+## Bloom
+
+The `Class.BloomEffect` effect exaggerates lights within your game by simulating a camera viewing a bright light. When this effect has a high value, parts with light colors glow.
+
+#### Default
+
+![Game without any effects applied](../assets/lighting-and-effects/post-processing/BloomEffect-Without.jpg)
+
+#### Bloom Effect
+
+![Game with BloomEffect applied](../assets/lighting-and-effects/post-processing/BloomEffect-With.jpg)
+
+## Blur
+
+The `Class.BlurEffect` effect applies a Gaussian blur to the entirety of the 3D world view. You can use this effect to blur the background when a player has a menu open, allowing them to focus on the most important details.
+
+#### Default
+
+![Game without any effects applied](../assets/lighting-and-effects/post-processing/BlurEffect-Without.jpg)
+
+#### Blur Effect
+
+![Game with BlurEffect applied](../assets/lighting-and-effects/post-processing/BlurEffect-With.jpg)
+
+## Color correction
+
+The `Class.ColorCorrectionEffect` effect adjusts color properties to enhance an environment's appearance. You can also use this effect to provide player feedback, such as tinting the screen red when their character's health is low.
+
+The following list describes the primary `Class.ColorCorrectionEffect` properties:
+
+- `Class.ColorCorrectionEffect.Brightness|Brightness` — Sets the brightness of pixels.
+- `Class.ColorCorrectionEffect.Contrast|Contrast` — Sets the change in separation between dark and light colors.
+- `Class.ColorCorrectionEffect.Saturation|Saturation` — Sets the intensity of colors.
+- `Class.ColorCorrectionEffect.TintColor|TintColor` — Determines how much the RGB channels of pixels scale.
+
+#### Default
+
+![Game without any effects applied](../assets/lighting-and-effects/post-processing/ColorCorrectionEffect-Without.jpg)
+
+#### Color Correction Effect
+
+![Game with ColorCorrectionEffect applied](../assets/lighting-and-effects/post-processing/ColorCorrectionEffect-With.jpg)
+
+## Depth-of-field
+
+The `Class.DepthOfFieldEffect` effect blurs parts of your game that aren't in focus. You can use this effect to blur distant objects or to focus a player on specific parts of your game, such as an item in a shop.
+
+#### Default
+
+![Game without any effects applied](../assets/lighting-and-effects/post-processing/DepthOfFieldEffect-Without.jpg)
+
+#### Depth-of-Field Effect
+
+![Game with DepthOfFieldEffect applied](../assets/lighting-and-effects/post-processing/DepthOfFieldEffect-With.jpg)
+
+## Sun rays
+
+The `Class.SunRaysEffect` effect creates a halo of light with rays around the sun that move based on the `Class.Lighting.ClockTime|ClockTime` or `Class.Lighting.TimeOfDay|TimeOfDay` property. Objects between the player's camera and the sun shape this effect, allowing for realistic visuals of light and shadow.
+
+## Color grading
+
+The `Class.ColorGradingEffect` effect modifies how color values calculated by the renderer should be converted to the screen's color range, impacting the mood and appearance of your place.
+
+This effect's primary property is `Class.ColorGradingEffect.TonemapperPreset|TonemapperPreset`. The following values are available:
+
+- `Enum.TonemapperPreset.Default` — Sets the tone mapper to use the post‑2019 Roblox appearance which provides vivid colors and high contrasts.
+- `Enum.TonemapperPreset.Retro` — Sets the tone mapper to imitate the pre‑2019 Roblox appearance. Colors look less saturated and there's less contrast between them.
+
+If you wish to recreate a full pre‑2019 Roblox look for your game, experiment with `Enum.TonemapperPreset.Retro` and set the brightness of all lights to a maximum of `1.0`.
+
+#### Default
+
+![Game without any effects applied](../assets/lighting-and-effects/post-processing/ColorGrading-Default.jpg)
+
+#### Retro
+
+![Game with retro ColorGrading applied](../assets/lighting-and-effects/post-processing/ColorGrading-Retro.jpg)

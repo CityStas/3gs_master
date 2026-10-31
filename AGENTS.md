@@ -63,6 +63,51 @@
 затем открыть `/<файл>.html`. Двойной щелчок по файлу не сработает: браузеры запрещают
 ES-модули по `file://`, import map не разрешится, и страница останется пустой.
 
+## Четыре движка: чьи правила применяются
+
+Этот файл — правила **репозитория**. У каждого движка свой профиль агента, который
+`agent.cmd` выбирает по `engine.json` активного проекта:
+
+| `engine` в `engine.json` | Профиль | Системный промпт и скиллы |
+|---|---|---|
+| `threejs` (по умолчанию) | `pi-home-three` | этот файл + `pi-home-three/skills/` |
+| `godot` | `pi-home-godot` | `pi-home-godot/SYSTEM.md` + `skills/` |
+| `unity` | `pi-home-unity` | `pi-home-unity/SYSTEM.md` + `skills/` |
+| `roblox` | `pi-home-roblox` | `pi-home-roblox/SYSTEM.md` + `skills/` |
+
+Правила ниже (`level.json`, `web3d/`, студия, `check.cmd`) относятся **только к
+Three.js**. Для Roblox действуют:
+
+- **`pi-home-roblox/SYSTEM.md`** — границы клиент/сервер, типы скриптов, работа со
+  Studio MCP. Скиллы: `roblox-luau`, `roblox-script-architecture`,
+  `roblox-networking`, `roblox-datastore`, `roblox-studio-mcp`, `roblox-project`.
+- **База знаний** — `roblox/knowledge/` (гайды Creator Hub, Engine API Reference,
+  Open Cloud, курированный стартовый набор) + `roblox/data/sqlite/lexical.db`.
+  Поиск: `rbx_rag_search`; статус: `rbx_rag_status`.
+- **Два разных входа в проект, не путать.** `rbx_project_*` работает с **файлами на
+  диске** (Rojo-дерево, закрытый `.rbxlx`), а `roblox-studio` — это **встроенный MCP
+  Studio**, он видит живой DataModel. Правка открытого места файловыми инструментами
+  теряется при сохранении из Studio, и наоборот.
+- **Studio MCP включается в самой Studio** (Assistant → … → Manage MCP Servers →
+  Enable Studio as MCP server). Из репозитория это не настраивается.
+- **`.rbxl` — бинарный, без Studio не читается.** Для инспекции и индексации нужно
+  сохранить как `.rbxlx`.
+
+Команды (из `cmd.exe` пользователя; из bash агента — те же скрипты через
+`./.venv/Scripts/python.exe`):
+
+```cmd
+gs roblox-fetch     :: корпус: гайды + Engine API + Open Cloud + стартовый набор
+gs roblox-index     :: индекс; --vectors добирает эмбеддинги, --only <корпус>
+gs roblox-check <проект> [--json] [--errors-only]
+gs roblox-doctor    :: Studio, корпус, индекс, серверы моделей
+gs roblox-open [проект] [--empty]
+```
+
+**MCP-серверы описаны в одном месте — `mcp/registry.json`.** `gs mcp-sync --apply`
+разворачивает его в `pi-home-*/mcp.json` и в `~/.workbuddy-ai/mcp.json`; руками эти
+файлы не правятся, иначе профили снова разъедутся. `gs mcp-sync` без флага — dry run.
+
 ## Правила Three.js
 
 - Для Three.js API сначала доверяй current official docs и current project code.

@@ -3,7 +3,10 @@
   "mcpServers": {
     "godot-rag": {
       "command": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\.venv\\Scripts\\python.exe",
-      "args": ["-m", "gdmaster.mcp.rag_mcp_server"],
+      "args": [
+        "-m",
+        "gdmaster.mcp.rag_mcp_server"
+      ],
       "cwd": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\godot",
       "exposure": "direct",
       "timeout": 300,
@@ -11,19 +14,28 @@
     },
     "godot": {
       "command": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\.venv\\Scripts\\python.exe",
-      "args": ["-m", "gdmaster.mcp.godot_mcp_server"],
+      "args": [
+        "-m",
+        "gdmaster.mcp.policy_gateway"
+      ],
       "cwd": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\godot",
+      "env": {
+        "GDM_HOME": "F:\\Pets\\Projects\\local_tools\\3GS_Master/godot"
+      },
       "exposure": "direct",
-      "timeout": 600,
-      "description": "Godot project tools, deliberately narrow because a 9B degrades on a large tool surface: read/write GDScript, scene create/add/remove node, project settings, headless lint, run/play/stop. Every path is normalised and must stay inside the active project (data\\active_project.txt, written by agent.cmd); mutations go through headless SceneTree scripts, not text edits of .tscn."
+      "timeout": 900,
+      "description": "Godot project tools (narrow on purpose): read/write GDScript, scene create/add/remove node, project settings, headless lint, run/play/stop, plus the Godot RAG. Paths are sandboxed to the active project."
     },
     "assets": {
       "command": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\.venv\\Scripts\\python.exe",
-      "args": ["-m", "threejs.mcp.assets_mcp_server"],
+      "args": [
+        "-m",
+        "threejs.mcp.assets_mcp_server"
+      ],
       "cwd": "F:\\Pets\\Projects\\local_tools\\3GS_Master",
       "exposure": "direct",
       "timeout": 7200,
-      "description": "Local asset generation, the first tier of ASSET-POLICY: text-to-image (z-image-turbo :8687), background removal, image-to-3D (Pixal3D/TRELLIS.2 via ComfyUI :8188), whole-pack runs. Tools: asset_image, asset_edit, asset_remove_bg, asset_to_3d, asset_character, asset_generate_pack, assets_status. The 7200 s timeout covers a pack of several 3D models - a legitimately long silence."
+      "description": "Local asset generation, the first tier of ASSET-POLICY: text-to-image (z-image-turbo :8687), background removal, image-to-3D (Pixal3D/TRELLIS.2 via ComfyUI :8188), whole-pack runs. Tools: asset_image, asset_edit, asset_remove_bg, asset_to_3d, asset_character, asset_generate_pack, assets_status. The 7200 s timeout covers a pack of several 3D models - a legitimately long silence. For Roblox: generated images are decals/UI, generated meshes are imported through Studio's Asset Manager."
     }
   }
 }

@@ -1,0 +1,530 @@
+---
+name: "Locale Api v1"
+last_updated: 2026-10-30T19:56:08Z
+type: legacy
+api_base_url: "https://locale.roblox.com"
+versions: [v1]
+endpoints: 9
+auth: [cookie]
+---
+
+# Locale Api v1
+
+> **Warning:** Legacy APIs with cookie authentication can incorporate breaking changes without notice. We don't recommend them for production applications.
+
+**Base URL:** `https://locale.roblox.com`
+**Versions:** v1
+
+## Endpoints
+
+### GET `/v1/country-regions`
+
+Get list of country regions sorted by localized name
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `locale` | query | `string` | No |  |
+
+**Responses:**
+
+- `200`: OK → `Roblox.Locale.Api.CountryRegionListResponse`
+- `400`: 2: Invalid supported locale code.
+- `403`: 7: Feature is disabled
+
+**Response fields** (`Roblox.Locale.Api.CountryRegionListResponse`)
+
+See [Roblox.Locale.Api.CountryRegionListResponse](#roblox-locale-api-countryregionlistresponse) in Models.
+
+**Response example:**
+```json
+{
+  "countryRegionList": [
+    {
+      "code": "...",
+      "name": "...",
+      "displayName": "..."
+    }
+  ]
+}
+```
+
+**Error handling:** `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://locale.roblox.com/v1/country-regions"
+```
+
+### GET `/v1/locales`
+
+Get list of Supported locales with user locus information.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `displayValueLocale` | query | `string` | No |  |
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.WebAPI.Models.ApiArrayResponse[Roblox.Locale.Api.SupportedLocaleLocus]`
+- `403`: Feature is turned off temporary
+- `500`: Internal server error
+
+**Response fields** (`Roblox.Web.WebAPI.Models.ApiArrayResponse[Roblox.Locale.Api.SupportedLocaleLocus]`)
+
+See [Roblox.Web.WebAPI.Models.ApiArrayResponse[Roblox.Locale.Api.SupportedLocaleLocus]](#roblox-web-webapi-models-apiarrayresponse-roblox-locale-api-supportedlocalelocus-) in Models.
+
+**Response example:**
+```json
+{
+  "data": [
+    {
+      "locale": "...",
+      "isEnabledForFullExperience": "...",
+      "isEnabledForSignupAndLogin": "...",
+      "isEnabledForInGameUgc": "..."
+    }
+  ]
+}
+```
+
+**Error handling:** `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://locale.roblox.com/v1/locales"
+```
+
+### GET `/v1/locales/supported-locales`
+
+Get list of supported locales sorted by the Native Name property.
+
+**Responses:**
+
+- `200`: OK → `Roblox.Locale.Api.SupportedLocalesResponse`
+- `403`: Feature is turned off temporary
+- `500`: Internal server error
+
+**Response fields** (`Roblox.Locale.Api.SupportedLocalesResponse`)
+
+See [Roblox.Locale.Api.SupportedLocalesResponse](#roblox-locale-api-supportedlocalesresponse) in Models.
+
+**Response example:**
+```json
+{
+  "supportedLocales": [
+    {
+      "id": "...",
+      "locale": "...",
+      "name": "...",
+      "nativeName": "...",
+      "language": "..."
+    }
+  ]
+}
+```
+
+**Error handling:** `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://locale.roblox.com/v1/locales/supported-locales"
+```
+
+### GET `/v1/locales/supported-locales-for-creators`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `displayValueLocale` | query | `string` | No |  |
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.WebAPI.Models.ApiArrayResponse[Roblox.Locale.Api.SupportedLocaleLocus]`
+
+**Response fields** (`Roblox.Web.WebAPI.Models.ApiArrayResponse[Roblox.Locale.Api.SupportedLocaleLocus]`)
+
+See [Roblox.Web.WebAPI.Models.ApiArrayResponse[Roblox.Locale.Api.SupportedLocaleLocus]](#roblox-web-webapi-models-apiarrayresponse-roblox-locale-api-supportedlocalelocus-) in Models.
+
+**Response example:**
+```json
+{
+  "data": [
+    {
+      "locale": "...",
+      "isEnabledForFullExperience": "...",
+      "isEnabledForSignupAndLogin": "...",
+      "isEnabledForInGameUgc": "..."
+    }
+  ]
+}
+```
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://locale.roblox.com/v1/locales/supported-locales-for-creators"
+```
+
+### GET `/v1/locales/supported-locales-for-feature`
+
+Get list of Supported locales for a specific feature.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `featureName` | query | `string` | Yes |  |
+
+**Responses:**
+
+- `200`: OK → `Roblox.Locale.Api.SupportedLocalesResponse`
+- `500`: Internal server error
+
+**Response fields** (`Roblox.Locale.Api.SupportedLocalesResponse`)
+
+See [Roblox.Locale.Api.SupportedLocalesResponse](#roblox-locale-api-supportedlocalesresponse) in Models.
+
+**Response example:**
+```json
+{
+  "supportedLocales": [
+    {
+      "id": "...",
+      "locale": "...",
+      "name": "...",
+      "nativeName": "...",
+      "language": "..."
+    }
+  ]
+}
+```
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://locale.roblox.com/v1/locales/supported-locales-for-feature?featureName={VALUE}"
+```
+
+### GET `/v1/locales/user-locale`
+
+Gets user locale. If user is absent returns, locale from http request object.
+
+**Responses:**
+
+- `200`: OK → `Roblox.Locale.Api.UserLocaleResponse`
+- `500`: Internal server error
+
+**Response fields** (`Roblox.Locale.Api.UserLocaleResponse`)
+
+See [Roblox.Locale.Api.UserLocaleResponse](#roblox-locale-api-userlocaleresponse) in Models.
+
+**Response example:**
+```json
+{
+  "supportedLocale": {
+    "id": 0,
+    "locale": "string",
+    "name": "string",
+    "nativeName": "string",
+    "language": {
+      "id": "...",
+      "name": "...",
+      "nativeName": "...",
+      "languageCode": "...",
+      "isRightToLeft": "..."
+    }
+  },
+  "nativeLanguage": {
+    "id": 0,
+    "name": "string",
+    "nativeName": "string",
+    "languageCode": "string",
+    "isRightToLeft": false
+  }
+}
+```
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://locale.roblox.com/v1/locales/user-locale"
+```
+
+### GET `/v1/locales/user-localization-locus-supported-locales`
+
+Gets each of a user's localization locus supported locales. A localization locus supported locale is a page (or group of pages) that
+have been defined by the International team which need independent locale support.
+If the user is null we will attempt to return the locales appropriate for the user's device language.
+
+**Responses:**
+
+- `200`: OK → `Roblox.Locale.Api.UserLocalizationLocusLocalesResponse`
+- `500`: Internal server error
+
+**Response fields** (`Roblox.Locale.Api.UserLocalizationLocusLocalesResponse`)
+
+See [Roblox.Locale.Api.UserLocalizationLocusLocalesResponse](#roblox-locale-api-userlocalizationlocuslocalesresponse) in Models.
+
+**Response example:**
+```json
+{
+  "signupAndLogin": {
+    "id": 0,
+    "locale": "string",
+    "name": "string",
+    "nativeName": "string",
+    "language": {
+      "id": "...",
+      "name": "...",
+      "nativeName": "...",
+      "languageCode": "...",
+      "isRightToLeft": "..."
+    }
+  },
+  "generalExperience": {
+    "id": 0,
+    "locale": "string",
+    "name": "string",
+    "nativeName": "string",
+    "language": {
+      "id": "...",
+      "name": "...",
+      "nativeName": "...",
+      "languageCode": "...",
+      "isRightToLeft": "..."
+    }
+  },
+  "ugc": {
+    "id": 0,
+    "locale": "string",
+    "name": "string",
+    "nativeName": "string",
+    "language": {
+      "id": "...",
+      "name": "...",
+      "nativeName": "...",
+      "languageCode": "...",
+      "isRightToLeft": "..."
+    }
+  },
+  "showRobloxTranslations": false
+}
+```
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://locale.roblox.com/v1/locales/user-localization-locus-supported-locales"
+```
+
+### POST `/v1/locales/set-show-roblox-translations`
+
+Sets whether translations suggested by Roblox will be shown to the user.
+
+**Request Body:** `application/json` — Type: `Roblox.Locale.Api.SetShowRobloxTranslationsRequest`
+
+See [Roblox.Locale.Api.SetShowRobloxTranslationsRequest](#roblox-locale-api-setshowrobloxtranslationsrequest) in Models.
+
+**Request example:**
+```json
+{
+  "showRobloxTranslations": false
+}
+```
+
+**Responses:**
+
+- `200`: OK → `Roblox.Locale.Api.SuccessResponse`
+- `400`: Bad Request
+- `401`: Unauthorized 0: Authorization has been denied for this request.
+- `403`: Feature is turned off temporary 0: Token Validation Failed
+- `500`: Internal server error
+
+**Response fields** (`Roblox.Locale.Api.SuccessResponse`)
+
+See [Roblox.Locale.Api.SuccessResponse](#roblox-locale-api-successresponse) in Models.
+
+**Response example:**
+```json
+{
+  "success": false
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X POST -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://locale.roblox.com/v1/locales/set-show-roblox-translations" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "showRobloxTranslations": false
+}'
+```
+
+### POST `/v1/locales/set-user-supported-locale`
+
+Sets user's supported locale.
+Null supported locale will clear out user's supported locale (set users' supported locale to null)
+
+**Request Body:** `application/json` — Type: `Roblox.Locale.Api.SetSupportedLocaleForUserRequest`
+
+See [Roblox.Locale.Api.SetSupportedLocaleForUserRequest](#roblox-locale-api-setsupportedlocaleforuserrequest) in Models.
+
+**Request example:**
+```json
+{
+  "supportedLocaleCode": "string"
+}
+```
+
+**Responses:**
+
+- `200`: OK → `Roblox.Locale.Api.SuccessResponse`
+- `400`: Bad Request
+- `401`: Unauthorized 0: Authorization has been denied for this request.
+- `403`: Feature is turned off temporary 0: Token Validation Failed
+- `500`: Internal server error
+
+**Response fields** (`Roblox.Locale.Api.SuccessResponse`)
+
+See [Roblox.Locale.Api.SuccessResponse](#roblox-locale-api-successresponse) in Models.
+
+**Response example:**
+```json
+{
+  "success": false
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X POST -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://locale.roblox.com/v1/locales/set-user-supported-locale" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "supportedLocaleCode": "string"
+}'
+```
+
+## Models
+
+### Roblox.Locale.Api.CountryRegion
+
+Model for Country Regions
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `code` | `string` | No | code of country region |
+| `name` | `string` | No | native name of country region |
+| `displayName` | `string` | No | localized name of country region. Example "Afghanistan" |
+
+### Roblox.Locale.Api.CountryRegionListResponse
+
+Returns list of supported country/regions
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `countryRegionList` | `Roblox.Locale.Api.CountryRegion[]` | No | List of supported country/regions. Will be empty on error. |
+
+### Roblox.Locale.Api.Language
+
+Model for Language
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `id` | `integer` | No | id of language |
+| `name` | `string` | No | name of language |
+| `nativeName` | `string` | No | native name of language |
+| `languageCode` | `string` | No | language code of language |
+| `isRightToLeft` | `boolean` | No | whether or not the language is read right-to-left |
+
+### Roblox.Locale.Api.SetShowRobloxTranslationsRequest
+
+Request entity to set the ShowRobloxTranslations field for an account
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `showRobloxTranslations` | `boolean` | No | Value to set the ShowRobloxTranslations field to |
+
+### Roblox.Locale.Api.SetSupportedLocaleForUserRequest
+
+Request entity to set Supported Locale for user
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `supportedLocaleCode` | `string` | No | SupportedLocale code |
+
+### Roblox.Locale.Api.SuccessResponse
+
+Tells the operation is successful or not
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `success` | `boolean` | No | Returns true on success otherwise false |
+
+### Roblox.Locale.Api.SupportedLocale
+
+Model for Supported locale
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `id` | `integer` | No | id of supported locale |
+| `locale` | `string` | No | locale of supported locale. Example "en-us" |
+| `name` | `string` | No | Name of supported locale. |
+| `nativeName` | `string` | No | Name of supported locale in native language. Example "English" |
+| `language` | `Roblox.Locale.Api.Language` | No |  |
+
+### Roblox.Locale.Api.SupportedLocaleLocus
+
+Model for Supported locale with user locus information
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `locale` | `Roblox.Locale.Api.SupportedLocale` | No |  |
+| `isEnabledForFullExperience` | `boolean` | No | Is locale enabled for full experience |
+| `isEnabledForSignupAndLogin` | `boolean` | No | Is locale enabled for signup and login |
+| `isEnabledForInGameUgc` | `boolean` | No | Is locale enabled for in game ugc |
+
+### Roblox.Locale.Api.SupportedLocalesResponse
+
+Returns list of supported locales
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `supportedLocales` | `Roblox.Locale.Api.SupportedLocale[]` | No | List of supported locales. Will be empty on error. |
+
+### Roblox.Locale.Api.UserLocaleResponse
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `supportedLocale` | `Roblox.Locale.Api.SupportedLocale` | No |  |
+| `nativeLanguage` | `Roblox.Locale.Api.Language` | No |  |
+
+### Roblox.Locale.Api.UserLocalizationLocusLocalesResponse
+
+Returns available Roblox.Locale.Api.SupportedLocale models.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `signupAndLogin` | `Roblox.Locale.Api.SupportedLocale` | No |  |
+| `generalExperience` | `Roblox.Locale.Api.SupportedLocale` | No |  |
+| `ugc` | `Roblox.Locale.Api.SupportedLocale` | No |  |
+| `showRobloxTranslations` | `boolean` | No | Whether Roblox-suggested translations should be shown to the user. |
+
+### Roblox.Web.WebAPI.Models.ApiArrayResponse[Roblox.Locale.Api.SupportedLocaleLocus]
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `data` | `Roblox.Locale.Api.SupportedLocaleLocus[]` | No |  |

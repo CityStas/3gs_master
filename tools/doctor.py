@@ -217,6 +217,55 @@ def check_unity(quick: bool = False) -> list[tuple[str, str, str]]:
     return rows
 
 
+def check_roblox(quick: bool = False) -> list[tuple[str, str, str]]:
+    """The Roblox stack (`roblox/`) - a sibling of the other three, same servers.
+
+    Everything is `warn` when absent: a machine that only does Three.js must not fail
+    doctor because Roblox Studio was never installed. The one row that can be `FAIL` is a
+    corpus/index that exists but is empty, because that silently answers nothing.
+    """
+    rows = []
+    rbx_home = ROOT / "roblox"
+    if not rbx_home.is_dir():
+        rows.append((WARN, "roblox stack", f"{rbx_home} missing"))
+        return rows
+    try:
+        sys.path.insert(0, str(rbx_home))
+        from rbxmaster import config as rcfg  # noqa: PLC0415
+
+        rows.append((OK if rcfg.STUDIO_EXE else WARN, "roblox studio",
+                     str(rcfg.STUDIO_EXE) if rcfg.STUDIO_EXE else
+                     "not found - install Studio or set ROBLOX_STUDIO"))
+        rows.append((OK if rcfg.STUDIO_MCP else WARN, "studio mcp",
+                     str(rcfg.STUDIO_MCP) if rcfg.STUDIO_MCP else
+                     "StudioMCP.exe not found (needs a Studio build)"))
+        if quick:
+            rows.append((WARN, "roblox corpus", "not walked (quick mode)"))
+            rows.append((WARN, "roblox index", "not checked (quick mode)"))
+            return rows
+        stats = rcfg.corpus_stats()
+        corpus = sum(stats.values())
+        rows.append((OK if corpus > 1000 else WARN, "roblox corpus",
+                     f"{corpus} files  (fetch: gs roblox-fetch)"))
+        if rcfg.LEXICAL_DB.exists():
+            from rbxmaster.rag.store import IndexStore  # noqa: PLC0415
+
+            st = IndexStore().stats()
+            healthy = st["chunks"] > 500
+            rows.append((OK if healthy else WARN, "roblox index",
+                         f"{st['chunks']} chunks, {st['with_vectors']} vectors, "
+                         f"{rcfg.LEXICAL_DB.stat().st_size / 1048576:.1f} MB"))
+            if st["chunks"] and st["with_vectors"] < st["chunks"]:
+                rows.append((WARN, "roblox vectors",
+                             f"{st['chunks'] - st['with_vectors']} chunks without an "
+                             f"embedding - run: gs roblox-index --vectors"))
+        else:
+            rows.append((WARN, "roblox index", "missing - run: gs roblox-index"))
+    except Exception as e:  # noqa: BLE001
+        rows.append((WARN, "roblox stack", f"{type(e).__name__}: {e}"))
+    return rows
+
+
 def check_blender() -> list[tuple[str, str, str]]:
     """Blender is the DCC step the asset pipeline shells out to.
 
@@ -298,6 +347,7 @@ def main() -> int:
     if not quick:
         rows = rows + check_comfy() + check_blender() + check_agent_reach()
     rows = rows + check_unity(quick=quick)
+    rows = rows + check_roblox(quick=quick)
     fails = 0
     for mark, label, detail in rows:
         if mark == BAD:

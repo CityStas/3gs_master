@@ -9,7 +9,7 @@ cd /d "%GS_ROOT%"
 
 rem --- every file in tests\ that ends in _test.py or starts with test_ ---
 set "RC=0"
-for %%F in (tests\test_smoke.py tests\test_scheduler.py tests\test_asset_paths.py tests\test_project_paths.py tests\test_pagecheck.py tests\test_unity.py tests\test_rag_parity.py tests\test_level_autotest.py projects\research\x_life\tests\test_core.py projects\research\x_life\tests\test_modules.py projects\research\x_life\tests\test_life.py) do (
+for %%F in (tests\test_smoke.py tests\test_scheduler.py tests\test_asset_paths.py tests\test_project_paths.py tests\test_pagecheck.py tests\test_unity.py tests\test_roblox.py tests\test_rag_parity.py tests\test_level_autotest.py projects\research\x_life\tests\test_core.py projects\research\x_life\tests\test_modules.py projects\research\x_life\tests\test_life.py) do (
   echo.
   echo === %%F ===
   "%PY%" "%%F" %*

@@ -3,7 +3,10 @@
   "mcpServers": {
     "threejs-rag": {
       "command": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\.venv\\Scripts\\python.exe",
-      "args": ["-m", "threejs.mcp.rag_mcp_server"],
+      "args": [
+        "-m",
+        "threejs.mcp.rag_mcp_server"
+      ],
       "cwd": "F:\\Pets\\Projects\\local_tools\\3GS_Master",
       "exposure": "direct",
       "timeout": 300,
@@ -11,11 +14,14 @@
     },
     "assets": {
       "command": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\.venv\\Scripts\\python.exe",
-      "args": ["-m", "threejs.mcp.assets_mcp_server"],
+      "args": [
+        "-m",
+        "threejs.mcp.assets_mcp_server"
+      ],
       "cwd": "F:\\Pets\\Projects\\local_tools\\3GS_Master",
       "exposure": "direct",
       "timeout": 7200,
-      "description": "Local asset pipeline driven by the ComfyUI sidecar on 127.0.0.1:8188: text-to-image, background removal, image-to-3D (economy TripoSplat splat/mesh, high-quality Pixal3D/TRELLIS.2 mesh), plus listing and previewing what was produced. Every artefact is named from the request slug, never from a ComfyUI counter. `asset_generate_pack` runs a whole asset list in one serialised pass: the llama-server on :8080 is stopped so ComfyUI gets the whole 8 GB card, then restarted once the finished files are in the project. The 7200 s timeout is for that call - a pack of several 3D models is legitimately a long silence."
+      "description": "Local asset generation, the first tier of ASSET-POLICY: text-to-image (z-image-turbo :8687), background removal, image-to-3D (Pixal3D/TRELLIS.2 via ComfyUI :8188), whole-pack runs. Tools: asset_image, asset_edit, asset_remove_bg, asset_to_3d, asset_character, asset_generate_pack, assets_status. The 7200 s timeout covers a pack of several 3D models - a legitimately long silence. For Roblox: generated images are decals/UI, generated meshes are imported through Studio's Asset Manager."
     }
   }
 }

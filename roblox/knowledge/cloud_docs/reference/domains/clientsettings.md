@@ -1,0 +1,428 @@
+---
+name: "ClientSettings Api v2"
+last_updated: 2026-10-30T19:56:08Z
+type: legacy
+api_base_url: "https://clientsettings.roblox.com"
+versions: [v2, v1]
+endpoints: 10
+auth: [cookie]
+---
+
+# ClientSettings Api v2
+
+> **Warning:** Legacy APIs with cookie authentication can incorporate breaking changes without notice. We don't recommend them for production applications.
+
+**Base URL:** `https://clientsettings.roblox.com`
+**Versions:** v2, v1
+
+## V2
+
+### GET `/v2/android-binaries/{version}/channels/{channelName}`
+
+Retrieve the Android binary information for a given version and channel name.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `version` | path | `string` | Yes | The version string of the application. i.e. 2.660.392 |
+| `channelName` | path | `string` | Yes | The name of the channel. E.g. ZFlag, ZIntegration |
+
+**Responses:**
+
+- `200`: OK → `Roblox.ClientSettings.Api.Models.Response.AndroidBinaryResponse`
+
+**Response fields** (`Roblox.ClientSettings.Api.Models.Response.AndroidBinaryResponse`)
+
+See [Roblox.ClientSettings.Api.Models.Response.AndroidBinaryResponse](#roblox-clientsettings-api-models-response-androidbinaryresponse) in Models.
+
+**Response example:**
+```json
+{
+  "moduleName": "string",
+  "libraryNames": {
+    "engine": "string"
+  },
+  "supportsAndroidBinaries": false
+}
+```
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://clientsettings.roblox.com/v2/android-binaries/{VERSION}/channels/{CHANNELNAME}"
+```
+
+### GET `/v2/client-version/{binaryType}`
+
+Get client version information for specific binary type
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `binaryType` | path | `string` | Yes | Platform(WindowsPlayer, WindowsStudio, MacPlayer or MacStudio) for which we want the latest version |
+
+**Responses:**
+
+- `200`: OK → `Roblox.ClientSettings.Api.Models.Response.ClientVersionResponse`
+
+**Response fields** (`Roblox.ClientSettings.Api.Models.Response.ClientVersionResponse`)
+
+See [Roblox.ClientSettings.Api.Models.Response.ClientVersionResponse](#roblox-clientsettings-api-models-response-clientversionresponse) in Models.
+
+**Response example:**
+```json
+{
+  "version": "string",
+  "clientVersionUpload": "string",
+  "bootstrapperVersion": "string",
+  "nextClientVersionUpload": "string",
+  "nextClientVersion": "string",
+  "forceInstall": false
+}
+```
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://clientsettings.roblox.com/v2/client-version/{BINARYTYPE}"
+```
+
+### GET `/v2/client-version/{binaryType}/channel/{channelName}`
+
+Get client version information for specific binary type
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `binaryType` | path | `string` | Yes | Platform(WindowsPlayer, WindowsStudio, MacPlayer or MacStudio) for which we want the latest version |
+| `channelName` | path | `string` | Yes | Channel Name |
+
+**Responses:**
+
+- `200`: OK → `Roblox.ClientSettings.Api.Models.Response.ClientVersionResponse`
+- `401`: 5: Not authorized to perform this action.
+
+**Response fields** (`Roblox.ClientSettings.Api.Models.Response.ClientVersionResponse`)
+
+See [Roblox.ClientSettings.Api.Models.Response.ClientVersionResponse](#roblox-clientsettings-api-models-response-clientversionresponse) in Models.
+
+**Response example:**
+```json
+{
+  "version": "string",
+  "clientVersionUpload": "string",
+  "bootstrapperVersion": "string",
+  "nextClientVersionUpload": "string",
+  "nextClientVersion": "string",
+  "forceInstall": false
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://clientsettings.roblox.com/v2/client-version/{BINARYTYPE}/channel/{CHANNELNAME}"
+```
+
+### GET `/v2/compression-dictionaries`
+
+Returns a listing of all known compression dictionaries, including their SHA256 and creation date.
+This will be sorted by creation date, with the most recent dictionaries first.
+
+**Responses:**
+
+- `200`: OK
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://clientsettings.roblox.com/v2/compression-dictionaries"
+```
+
+### GET `/v2/compression-dictionaries/{dictionarySha256}`
+
+Returns the specified compression dictionary as a file download.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `dictionarySha256` | path | `string` | Yes | The SHA256 of the dictionary we wish to download. |
+
+**Responses:**
+
+- `200`: OK
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://clientsettings.roblox.com/v2/compression-dictionaries/{DICTIONARYSHA256}"
+```
+
+### GET `/v2/ota-version/{binaryType}`
+
+Get OTA information for a specific binary type with a given version on some channel.
+Returns empty list if no updates are found or channel/application with the given version does not exist in CVS.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `binaryType` | path | `string` | Yes | Binary type of the application to get info for |
+| `channel` | query | `string` | No | Channel name. If not provided, production is assumed. |
+| `version` | query | `string` | No | Application version |
+| `tag` | query | `string` | No | Tag to filter results by. Only applicable to non-studio application types. |
+| `name` | query | `string` | No | Name to filter results by. Only applicable to non-studio application types. |
+
+**Responses:**
+
+- `200`: OK → `Roblox.ClientSettings.Api.Models.Response.OtaVersionResponse[]`
+- `400`: 2: Invalid binaryType. 4: Invalid app version. 6: Missing or invalid channel. 7: Unsupported binaryType.
+- `401`: 5: Not authorized to perform this action.
+- `501`: 9: The requested tag is not implemented.
+
+**Response fields** (`Roblox.ClientSettings.Api.Models.Response.OtaVersionResponse[]`)
+
+See [Roblox.ClientSettings.Api.Models.Response.OtaVersionResponse](#roblox-clientsettings-api-models-response-otaversionresponse) in Models.
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://clientsettings.roblox.com/v2/ota-version/{BINARYTYPE}"
+```
+
+### GET `/v2/user-channel`
+
+Get channel name for currently logged in user
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `binaryType` | query | `string` | No |  |
+
+**Responses:**
+
+- `200`: OK → `Roblox.ClientSettings.Api.Models.Response.UserChannelResponse`
+
+**Response fields** (`Roblox.ClientSettings.Api.Models.Response.UserChannelResponse`)
+
+See [Roblox.ClientSettings.Api.Models.Response.UserChannelResponse](#roblox-clientsettings-api-models-response-userchannelresponse) in Models.
+
+**Response example:**
+```json
+{
+  "channelName": "string",
+  "channelAssignmentType": 0,
+  "token": "string",
+  "program": {
+    "name": "string",
+    "id": "string"
+  },
+  "isFlagOnly": false
+}
+```
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://clientsettings.roblox.com/v2/user-channel"
+```
+
+## Models
+
+### Roblox.ClientSettings.Api.Models.Response.AndroidBinaryLibraryNames
+
+Contains the names of the libraries in an Android Binary Module.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `engine` | `string` | No | Name of the engine library. |
+
+### Roblox.ClientSettings.Api.Models.Response.AndroidBinaryResponse
+
+Contains information about an Android Binary Module for a given channel.
+including its module name, the names of its libraries, and whether the channel supports Android binaries.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `moduleName` | `string` | No | The name of the Android Binary Module. |
+| `libraryNames` | `Roblox.ClientSettings.Api.Models.Response.AndroidBinaryLibraryNames` | Yes |  |
+| `supportsAndroidBinaries` | `boolean` | No | True if the channel supports android binaries. False otherwise. |
+
+### Roblox.ClientSettings.Api.Models.Response.BetaProgramInfo
+
+Beta program information included in the user channel response.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `name` | `string` | Yes | The display name of the beta program. |
+| `id` | `string` | Yes | The ID of the beta program. |
+
+### Roblox.ClientSettings.Api.Models.Response.ClientVersionResponse
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `version` | `string` | No |  |
+| `clientVersionUpload` | `string` | No |  |
+| `bootstrapperVersion` | `string` | No |  |
+| `nextClientVersionUpload` | `string` | No |  |
+| `nextClientVersion` | `string` | No |  |
+| `forceInstall` | `boolean` | No |  |
+
+### Roblox.ClientSettings.Api.Models.Response.OtaVersionResponse
+
+Response for endpoints returning ota information.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `name` | `string` | Yes | Ota library/plugin name |
+| `version` | `string` | Yes | Version number of asset |
+| `downloadUrl` | `string` | Yes | URL to download the ota asset |
+| `isStandalone` | `boolean` | No | Refers to whether the plugin is core to Studio functions, and is used to determine when it is loaded. |
+| `assetId` | `string` | No | The asset ID of the LuaApp OTA. |
+| `assetVersion` | `string` | No | The asset version of the LuaApp OTA. |
+| `maxAppVersion` | `string` | No | The maximum application version compatible with the LuaApp OTA. |
+| `tryoutName` | `string` | No | The name of the tryout for the LuaApp OTA. |
+| `localAssetURI` | `string` | No | The local asset URI for the LuaApp OTA. |
+| `isForcedUpdate` | `boolean` | No | Indicates whether the LuaApp OTA is a forced update. |
+| `appStorageResetId` | `string` | No | The application storage reset ID for the LuaApp OTA. |
+| `isDevelopmentConfig` | `boolean` | No | Indicates whether the LuaApp OTA is a development configuration. |
+| `assetsManifest` | `object` | No | Inlined assets manifest for the LuaApp OTA. |
+| `versionV2` | `integer` | No | VersionV2 of the OTA asset. |
+
+### Roblox.ClientSettings.Api.Models.Response.UserChannelResponse
+
+Response data object for getting a user's channel information.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `channelName` | `string` | No | Name of the channel. |
+| `channelAssignmentType` | `integer enum (6 values)` | No | How the user was bound to the channel. If the user is not assigned to any channel, this is omitted. ['None' = 0, 'PerMille' = 1, 'BoundToPrivateChannel' = 2, 'BoundToPublicChannel' = 3, 'OptedInToBetaProgramWithPrivateChannel' = 4, 'OptedInToBetaProgramWithPublicChannel' = 5] Values: 0, 1, 2, 3, 4, 5 |
+| `token` | `string` | No | JWT token. If the channel is not private, this is omitted. |
+| `program` | `Roblox.ClientSettings.Api.Models.Response.BetaProgramInfo` | No |  |
+| `isFlagOnly` | `boolean` | No | Whether the channel is flag-only. A flag-only channel uses production binaries. If the channel is not flag-only, this is omitted. |
+
+## V1
+
+### GET `/v1/client-version/{binaryType}`
+
+Get client version information for specific binary type
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `binaryType` | path | `string` | Yes | Platform(WindowsPlayer, WindowsStudio, MacPlayer or MacStudio) for which we want the latest version |
+
+**Responses:**
+
+- `200`: OK → `Roblox.ClientSettings.Api.Models.Response.ClientVersionResponse`
+
+**Response fields** (`Roblox.ClientSettings.Api.Models.Response.ClientVersionResponse`)
+
+See [Roblox.ClientSettings.Api.Models.Response.ClientVersionResponse](#roblox-clientsettings-api-models-response-clientversionresponse) in Models.
+
+**Response example:**
+```json
+{
+  "version": "string",
+  "clientVersionUpload": "string",
+  "bootstrapperVersion": "string",
+  "nextClientVersionUpload": "string",
+  "nextClientVersion": "string",
+  "forceInstall": false
+}
+```
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://clientsettings.roblox.com/v1/client-version/{BINARYTYPE}"
+```
+
+### GET `/v1/installer-cdns`
+
+Get information about which CDNs to use for installation.
+
+**Responses:**
+
+- `200`: OK
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://clientsettings.roblox.com/v1/installer-cdns"
+```
+
+### GET `/v1/mobile-client-version`
+
+Get mobile client version information based on app version parameter
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `appVersion` | query | `string` | Yes | AppiOSV2.13, AppVersioniOS2.0.1, etc |
+
+**Responses:**
+
+- `200`: OK → `Roblox.ClientSettings.Api.Models.Response.MobileClientVersionResponse`
+- `400`: 2: Invalid binaryType.
+
+**Response fields** (`Roblox.ClientSettings.Api.Models.Response.MobileClientVersionResponse`)
+
+See [Roblox.ClientSettings.Api.Models.Response.MobileClientVersionResponse](#roblox-clientsettings-api-models-response-mobileclientversionresponse) in Models.
+
+**Response example:**
+```json
+{
+  "activeVersion": "string",
+  "upgradeSource": "string",
+  "MD5Sum": "string",
+  "data": {
+    "UpgradeAction": "string"
+  }
+}
+```
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://clientsettings.roblox.com/v1/mobile-client-version?appVersion={VALUE}"
+```
+
+## Models
+
+### Roblox.ClientSettings.Api.Models.Response.ClientVersionResponse
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `version` | `string` | No |  |
+| `clientVersionUpload` | `string` | No |  |
+| `bootstrapperVersion` | `string` | No |  |
+| `nextClientVersionUpload` | `string` | No |  |
+| `nextClientVersion` | `string` | No |  |
+| `forceInstall` | `boolean` | No |  |
+
+### Roblox.ClientSettings.Api.Models.Response.MobileClientVersionResponse
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `activeVersion` | `string` | No |  |
+| `upgradeSource` | `string` | No |  |
+| `MD5Sum` | `string` | No |  |
+| `data` | `Roblox.ClientSettings.Api.Models.Response.MobileClientVersionResponseData` | No |  |
+
+### Roblox.ClientSettings.Api.Models.Response.MobileClientVersionResponseData
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `UpgradeAction` | `string` | No |  |

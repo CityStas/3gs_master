@@ -11,7 +11,8 @@ if not exist "%PY%" (
 )
 
 rem --- isolated pi config per engine. PI_CODING_AGENT_DIR is set further down, once the
-rem --- project's engine.json is known: pi-home-godot for engine=godot, pi-home-three otherwise.
+rem --- project's engine.json is known: pi-home-godot for engine=godot, pi-home-unity for
+rem --- unity, pi-home-roblox for roblox, pi-home-three otherwise.
 rem --- Each profile holds its own SYSTEM.md, skills/, mcp.json, models.json, settings.json.
 rem --- NOTE: PI_OFFLINE is deliberately NOT set - cloud providers need the network.
 set "PI_SKIP_VERSION_CHECK=1"
@@ -99,13 +100,15 @@ rem --- and .pi/extensions/engine-gate.ts reads the same file to pick the MCP su
 set "ENGINE=threejs"
 if defined PROJ "%PY%" -c "import json,os,sys;p=sys.argv[1];b=sys.argv[2];d=p if os.path.isabs(p) else os.path.join(b,p);print(json.load(open(os.path.join(d,'engine.json'),encoding='utf-8')).get('engine','threejs'))" "%PROJ%" "%GS_ROOT:~0,-1%" > "%TEMP%\gs_engine.txt" 2>nul
 if defined PROJ if not errorlevel 1 for /f "usebackq delims=" %%E in ("%TEMP%\gs_engine.txt") do set "ENGINE=%%E"
-rem --- choose the agent profile from the engine. Godot and Unity each get their own
+rem --- choose the agent profile from the engine. Godot, Unity and Roblox each get their own
 rem --- profile (SYSTEM.md, skills/, mcp.json, models.json); everything else (threejs, or
 rem --- no engine.json) gets the Three.js profile.
 if /i "%ENGINE%"=="godot" (
   set "PI_CODING_AGENT_DIR=%GS_ROOT%pi-home-godot"
 ) else if /i "%ENGINE%"=="unity" (
   set "PI_CODING_AGENT_DIR=%GS_ROOT%pi-home-unity"
+) else if /i "%ENGINE%"=="roblox" (
+  set "PI_CODING_AGENT_DIR=%GS_ROOT%pi-home-roblox"
 ) else (
   set "PI_CODING_AGENT_DIR=%GS_ROOT%pi-home-three"
 )

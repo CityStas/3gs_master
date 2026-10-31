@@ -1,0 +1,48 @@
+{
+  "autoEnableCodemode": false,
+  "mcpServers": {
+    "rbx-rag": {
+      "command": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\.venv\\Scripts\\python.exe",
+      "args": [
+        "-m",
+        "rbxmaster.mcp.rag_mcp_server"
+      ],
+      "cwd": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\roblox",
+      "exposure": "direct",
+      "timeout": 300,
+      "description": "Roblox knowledge base: hybrid search (dense + BM25, RRF-fused) over the Creator Hub guides, the Engine API Reference (one chunk per class member, with Security/Thread Safety tags), the Open Cloud reference, the curated Russian starter kit, the cookbook, troubleshooting and anti-patterns, plus the active project's Luau as source=project. Tools: rbx_rag_search, rbx_rag_status."
+    },
+    "rbx-project": {
+      "command": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\.venv\\Scripts\\python.exe",
+      "args": [
+        "-m",
+        "rbxmaster.mcp.project_mcp_server"
+      ],
+      "cwd": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\roblox",
+      "exposure": "direct",
+      "timeout": 600,
+      "description": "Roblox project tools on disk: project info, list/read/write/edit files (sandboxed to the project root, timestamped backups), Luau search, Luau lint (unbalanced end, deprecated globals, Instance.new parent, method case, server-only services in a client script), place inspection (.rbxlx -> services, class counts, scripts), Studio status and open_place. The live DataModel is the Studio MCP server's job, not this one."
+    },
+    "roblox-studio": {
+      "command": "cmd.exe",
+      "args": [
+        "/c",
+        "%LOCALAPPDATA%\\Roblox\\mcp.bat"
+      ],
+      "exposure": "direct",
+      "timeout": 600,
+      "description": "The built-in Roblox Studio MCP server (StudioMCP.exe, started by %LOCALAPPDATA%\\Roblox\\mcp.bat over stdio - the exact launcher from create.roblox.com/docs/studio/mcp). It is the ONLY way to touch a live DataModel: script_read / multi_edit / script_search / script_grep, generate_mesh / generate_material / generate_procedural_model / wait_job_finished, search_asset / insert_asset / upload_image / store_image, search_game_tree / inspect_instance / subagent, execute_luau (Edit/Client/Server), get_studio_state / start_stop_play / get_console_output / screen_capture, character_navigation / user_keyboard_input / user_mouse_input, http_get / skill, and list_roblox_studios. Every call takes a studio_id - get it from list_roblox_studios, which matters when several Studio windows are open. Reports 0 tools until Studio is open with 'Enable Studio as MCP server' on (Assistant -> ... -> Manage MCP Servers); that is not a broken config."
+    },
+    "assets": {
+      "command": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\.venv\\Scripts\\python.exe",
+      "args": [
+        "-m",
+        "threejs.mcp.assets_mcp_server"
+      ],
+      "cwd": "F:\\Pets\\Projects\\local_tools\\3GS_Master",
+      "exposure": "direct",
+      "timeout": 7200,
+      "description": "Local asset generation, the first tier of ASSET-POLICY: text-to-image (z-image-turbo :8687), background removal, image-to-3D (Pixal3D/TRELLIS.2 via ComfyUI :8188), whole-pack runs. Tools: asset_image, asset_edit, asset_remove_bg, asset_to_3d, asset_character, asset_generate_pack, assets_status. The 7200 s timeout covers a pack of several 3D models - a legitimately long silence. For Roblox: generated images are decals/UI, generated meshes are imported through Studio's Asset Manager."
+    }
+  }
+}

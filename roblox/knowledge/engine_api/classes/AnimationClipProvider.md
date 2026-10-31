@@ -1,0 +1,289 @@
+---
+name: AnimationClipProvider
+last_updated: 2026-10-30T19:55:51Z
+inherits:
+  - Instance
+  - Object
+type: class
+memory_category: Animation
+tags:
+  - NotCreatable
+  - Service
+  - NotReplicated
+summary: "Provides functions to load and preview AnimationClips."
+---
+
+# Class: AnimationClipProvider
+
+> Provides functions to load and preview [AnimationClips](/docs/reference/engine/classes/AnimationClip.md).
+
+## Description
+
+Provides functions to load and preview [AnimationClips](/docs/reference/engine/classes/AnimationClip.md).
+It includes a number of functions that are useful when working with an
+[Animation](/docs/reference/engine/classes/Animation.md).
+
+The [AnimationClipProvider](/docs/reference/engine/classes/AnimationClipProvider.md) replaces the deprecated
+[KeyframeSequenceProvider](/docs/reference/engine/classes/KeyframeSequenceProvider.md) that was used to download `KeyframeSequences`
+by content ID.
+
+The AnimationClipProvider has a number of uses.
+
+- Download the [AnimationClip](/docs/reference/engine/classes/AnimationClip.md) associated with an animation content ID
+  from the Roblox website, regardless of the underlying type of
+  [AnimationClip](/docs/reference/engine/classes/AnimationClip.md) ([KeyframeSequence](/docs/reference/engine/classes/KeyframeSequence.md) or [CurveAnimation](/docs/reference/engine/classes/CurveAnimation.md)).
+- Generate a temporary ID to locally preview an animation.
+- Fetch the content IDs of animations owned by a particular user.
+
+## Methods
+
+### Method: AnimationClipProvider:GetAnimationClipAsync
+
+**Signature:** `AnimationClipProvider:GetAnimationClipAsync(assetId: ContentId): AnimationClip`
+
+Fetches an [AnimationClip](/docs/reference/engine/classes/AnimationClip.md) based on the specified assetId. The
+assetId must correspond to an animation asset in Roblox. The function will
+yield until the [AnimationClip](/docs/reference/engine/classes/AnimationClip.md) is loaded from the website and
+should be wrapped in a `pcall`.
+
+*Yields · Security: None · Thread Safety: Unsafe · Capabilities: Animation*
+
+**Parameters:**
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `assetId` | `ContentId` |  | The content ID of the animation. |
+
+**Returns:** `AnimationClip` — The [AnimationClip](/docs/reference/engine/classes/AnimationClip.md) found.
+
+### Method: AnimationClipProvider:GetAnimationsAsync
+
+**Signature:** `AnimationClipProvider:GetAnimationsAsync(userId: User): Instance`
+
+This function returns an [InventoryPages](/docs/reference/engine/classes/InventoryPages.md) object which can be used
+to iterate over animations owned by a specific user.
+
+This function has a number of potential uses, such as allowing users to
+browse and import animations into a custom animation plugin.
+
+*Yields · Security: None · Thread Safety: Unsafe · Capabilities: Animation*
+
+**Parameters:**
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `userId` | `User` |  | The user ID of the user. |
+
+**Returns:** `Instance` — An [InventoryPages](/docs/reference/engine/classes/InventoryPages.md) of animations.
+
+### Method: AnimationClipProvider:GetClipEvaluatorAsync
+
+**Signature:** `AnimationClipProvider:GetClipEvaluatorAsync(assetId: ContentId): ClipEvaluator`
+
+Fetches the [AnimationClip](/docs/reference/engine/classes/AnimationClip.md) at the specified `assetId` and returns a
+`ClipEvaluator` that wraps it. A `ClipEvaluator` samples the clip at an
+arbitrary time to produce an animation pose, so you can read animation
+data directly instead of playing it back through an [Animator](/docs/reference/engine/classes/Animator.md).
+
+The `assetId` must be an animation asset on Roblox. Yields until the clip
+is loaded and should be wrapped in a `pcall`. Loads through the same path
+as
+[GetAnimationClipAsync](/docs/reference/engine/classes/AnimationClipProvider.md),
+at the local player animation priority.
+
+*Yields · Security: None · Thread Safety: Unsafe · Capabilities: Animation*
+
+**Parameters:**
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `assetId` | `ContentId` |  | The content ID of the animation to load. |
+
+**Returns:** `ClipEvaluator` — A `ClipEvaluator` that can sample the loaded [AnimationClip](/docs/reference/engine/classes/AnimationClip.md).
+
+### Method: AnimationClipProvider:RegisterActiveAnimationClip
+
+**Signature:** `AnimationClipProvider:RegisterActiveAnimationClip(animationClip: AnimationClip): ContentId`
+
+Generates a temporary asset ID from a [AnimationClip](/docs/reference/engine/classes/AnimationClip.md) that can be
+used for localized testing of an animation. This performs the same
+function as
+[RegisterAnimationClip()](/docs/reference/engine/classes/AnimationClipProvider.md)
+but generates an `active://` URL instead of a hash. The generated ID can
+be used as an [AnimationId](/docs/reference/engine/classes/Animation.md) property for
+testing.
+
+The asset ID generated by this function is temporary and cannot be used
+outside of Studio. Developers wishing to generate an asset ID that can be
+used online should upload the [AnimationClip](/docs/reference/engine/classes/AnimationClip.md) to Roblox.
+
+*Security: None · Thread Safety: Unsafe · Capabilities: Animation*
+
+**Parameters:**
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `animationClip` | `AnimationClip` |  | The [AnimationClip](/docs/reference/engine/classes/AnimationClip.md) to be used. |
+
+**Returns:** `ContentId` — A temporary asset ID generated for localized animation playback.
+
+### Method: AnimationClipProvider:RegisterAnimationClip
+
+**Signature:** `AnimationClipProvider:RegisterAnimationClip(animationClip: AnimationClip): ContentId`
+
+Generates a temporary asset ID from a [AnimationClip](/docs/reference/engine/classes/AnimationClip.md) that can be
+used for localized testing of an animation.
+
+This function performs the same function to
+[RegisterActiveAnimationClip](/docs/reference/engine/classes/AnimationClipProvider.md)
+yet generates a hash instead of an `active://` URL.
+
+The ID generated can be used for the [Animation.AnimationId](/docs/reference/engine/classes/Animation.md)
+property to test animations.
+
+The asset ID generated by this function is temporary and cannot be used
+outside of Studio. Developers wishing to generate an asset ID that can be
+used online should upload the [AnimationClip](/docs/reference/engine/classes/AnimationClip.md) to Roblox.
+
+*Security: None · Thread Safety: Unsafe · Capabilities: Animation*
+
+**Parameters:**
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `animationClip` | `AnimationClip` |  | The [AnimationClip](/docs/reference/engine/classes/AnimationClip.md) to be used. |
+
+**Returns:** `ContentId` — A temporary asset ID generated for localized animation playback.
+
+### Method: AnimationClipProvider:GetAnimationClip
+
+**Signature:** `AnimationClipProvider:GetAnimationClip(assetId: ContentId): AnimationClip`
+
+> **Deprecated:** This function is deprecated and can lead to the game freezing until the animation is loaded. Developers are recommended to use `GetAnimationClipAsync` instead.
+
+Returns a [AnimationClip](/docs/reference/engine/classes/AnimationClip.md) from a given asset URL.
+
+*Security: PluginSecurity · Thread Safety: Unsafe · Capabilities: Animation*
+
+**Parameters:**
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `assetId` | `ContentId` |  | The content ID of the animation. |
+
+**Returns:** `AnimationClip` — The [AnimationClip](/docs/reference/engine/classes/AnimationClip.md) found.
+
+### Method: AnimationClipProvider:GetAnimationClipById
+
+**Signature:** `AnimationClipProvider:GetAnimationClipById(assetId: int64, useCache: boolean): AnimationClip`
+
+> **Deprecated:** This function is deprecated and can lead to the game freezing until the animation is loaded. Developers are recommended to use `GetAnimationClipAsync` instead.
+
+Returns a [AnimationClip](/docs/reference/engine/classes/AnimationClip.md) from the supplied assetId. Can optionally
+cache to reduce unnecessary loading freezes.
+
+*Security: PluginSecurity · Thread Safety: Unsafe · Capabilities: Animation*
+
+**Parameters:**
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `assetId` | `int64` |  | The content ID of the animation. |
+| `useCache` | `boolean` |  | True if a cached version can be returned. |
+
+**Returns:** `AnimationClip` — The [AnimationClip](/docs/reference/engine/classes/AnimationClip.md) found.
+
+### Method: AnimationClipProvider:GetAnimations
+
+**Signature:** `AnimationClipProvider:GetAnimations(userId: User): Instance`
+
+This function returns an [InventoryPages](/docs/reference/engine/classes/InventoryPages.md) object which can be used
+to iterate over animations owned by a specific user. It yields until the
+first page of results is loaded from the website. The `userId` must be a
+positive number; otherwise the call errors.
+
+This function is deprecated. Use
+[GetAnimationsAsync](/docs/reference/engine/classes/AnimationClipProvider.md)
+instead, which behaves identically.
+
+*Yields · Security: None · Thread Safety: Unsafe · Capabilities: Animation*
+
+**Parameters:**
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `userId` | `User` |  | The user ID of the user. |
+
+**Returns:** `Instance` — An [InventoryPages](/docs/reference/engine/classes/InventoryPages.md) of animations.
+
+## Inherited Members
+
+### From [Instance](/docs/reference/engine/classes/Instance.md)
+
+- **Property `Archivable`** (`boolean`): Determines if an Instance and its descendants can be cloned using
+- **Property `archivable`** (`boolean`):  *(deprecated, hidden)*
+- **Property `Capabilities`** (`SecurityCapabilities`): The set of capabilities allowed to be used for scripts inside this
+- **Property `IsInSandbox`** (`boolean`): Indicates whether the instance is inside a sandboxed container.
+- **Property `Name`** (`string`): A non-unique identifier of the Instance.
+- **Property `Parent`** (`Instance`): Determines the hierarchical parent of the Instance.
+- **Property `PredictionMode`** (`PredictionMode`): Reflects the client-side prediction mode applied to the instance under
+- **Property `RobloxLocked`** (`boolean`): A deprecated property that used to protect CoreGui objects. *(hidden)*
+- **Property `Sandboxed`** (`boolean`): When enabled, the instance can only access abilities in its `Capabilities`
+- **Property `UniqueId`** (`UniqueId`): A unique identifier for the instance.
+- **Method `AddTag(tag: string): ()`**: Applies a tag to the instance.
+- **Method `children(): Instances`**: Returns an array of the object's children. *(deprecated)*
+- **Method `ClearAllChildren(): ()`**: This method destroys all of an instance's children.
+- **Method `Clone(): Instance`**: Create a copy of an instance and all its descendants, ignoring instances
+- **Method `clone(): Instance`**:  *(deprecated)*
+- **Method `Destroy(): ()`**: Sets the Instance.Parent property to `nil`, locks the
+- **Method `destroy(): ()`**:  *(deprecated)*
+- **Method `FindFirstAncestor(name: string): Instance?`**: Returns the first ancestor of the Instance whose
+- **Method `FindFirstAncestorOfClass(className: string): Instance?`**: Returns the first ancestor of the Instance whose
+- **Method `FindFirstAncestorWhichIsA(className: string): Instance?`**: Returns the first ancestor of the Instance for whom
+- **Method `FindFirstChild(name: string, recursive?: boolean): Instance?`**: Returns the first child of the Instance found with the given name.
+- **Method `findFirstChild(name: string, recursive?: boolean): Instance`**:  *(deprecated)*
+- **Method `FindFirstChildOfClass(className: string): Instance?`**: Returns the first child of the Instance whose
+- **Method `FindFirstChildWhichIsA(className: string, recursive?: boolean): Instance?`**: Returns the first child of the Instance for whom
+- **Method `FindFirstDescendant(name: string): Instance?`**: Returns the first descendant found with the given Instance.Name.
+- **Method `GetActor(): Actor?`**: Returns the Actor associated with the Instance, if any.
+- **Method `GetAttribute(attribute: string): Variant`**: Returns the value which has been assigned to the given attribute name.
+- **Method `GetAttributeChangedSignal(attribute: string): RBXScriptSignal`**: Returns an event that fires when the given attribute changes.
+- **Method `GetAttributes(): Dictionary`**: Returns a dictionary of the instance's attributes.
+- **Method `GetChildren(): Instances`**: Returns an array containing all of the instance's children.
+- **Method `getChildren(): Instances`**:  *(deprecated)*
+- **Method `GetDebugId(scopeLength?: int): string`**: Returns a coded string of the debug ID used internally by Roblox.
+- **Method `GetDescendants(): Instances`**: Returns an array containing all of the descendants of the instance.
+- **Method `GetFullName(): string`**: Returns a string describing the instance's ancestry.
+- **Method `GetStyled(name: string, selector: string?): Variant`**: Returns the styled or explicitly modified value of the specified property,
+- **Method `GetStyledPropertyChangedSignal(property: string): RBXScriptSignal`**: Returns an event that fires when the given style property changes on the
+- **Method `GetTags(): Array`**: Gets an array of all tags applied to the instance.
+- **Method `HasTag(tag: string): boolean`**: Check whether the instance has a given tag.
+- **Method `IsAncestorOf(descendant: Instance): boolean`**: Returns true if an Instance is an ancestor of the given
+- **Method `IsDescendantOf(ancestor: Instance): boolean`**: Returns `true` if an Instance is a descendant of the given
+- **Method `isDescendantOf(ancestor: Instance): boolean`**:  *(deprecated)*
+- **Method `IsPropertyModified(property: string): boolean`**: Returns `true` if the value stored in the specified property is not equal
+- **Method `QueryDescendants(selector: string): Instances`**: Returns an array containing all descendants of the instance that match the
+- **Method `Remove(): ()`**: Sets the object's `Parent` to `nil`, and does the same for all its *(deprecated)*
+- **Method `remove(): ()`**:  *(deprecated)*
+- **Method `RemoveTag(tag: string): ()`**: Removes a tag from the instance.
+- **Method `ResetPropertyToDefault(property: string): ()`**: Resets a property to its default value.
+- **Method `SetAttribute(attribute: string, value: Variant): ()`**: Sets the attribute with the given name to the given value.
+- **Method `WaitForChild(childName: string, timeOut: double): Instance`**: Returns the child of the Instance with the given name. If the
+- **Event `AncestryChanged`**: Fires when the Instance.Parent property of this object or one of
+- **Event `AttributeChanged`**: Fires whenever an attribute is changed on the Instance.
+- **Event `ChildAdded`**: Fires after an object is parented to this Instance.
+- **Event `childAdded`**:  *(deprecated)*
+- **Event `ChildRemoved`**: Fires after a child is removed from this Instance.
+- **Event `DescendantAdded`**: Fires after a descendant is added to the Instance.
+- **Event `DescendantRemoving`**: Fires immediately before a descendant of the Instance is removed.
+- **Event `Destroying`**: Fires immediately before (or is deferred until after) the instance is
+- **Event `StyledPropertiesChanged`**: Fires whenever any style property is changed on the instance, including
+
+### From [Object](/docs/reference/engine/classes/Object.md)
+
+- **Property `ClassName`** (`string`): A read-only string representing the class this Object belongs to.
+- **Property `className`** (`string`):  *(deprecated)*
+- **Method `GetPropertyChangedSignal(property: string): RBXScriptSignal`**: Get an event that fires when a given property of the object changes.
+- **Method `IsA(className: string): boolean`**: Returns true if an object's class matches or inherits from a given class.
+- **Method `isA(className: string): boolean`**:  *(deprecated)*
+- **Event `Changed`**: Fires immediately after a property of the object changes, with some

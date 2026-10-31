@@ -1,0 +1,601 @@
+---
+name: "Badges Api v1"
+last_updated: 2026-10-30T19:56:08Z
+type: legacy
+api_base_url: "https://badges.roblox.com"
+versions: [v1]
+endpoints: 11
+auth: [cookie]
+---
+
+# Badges Api v1
+
+> **Warning:** Legacy APIs with cookie authentication can incorporate breaking changes without notice. We don't recommend them for production applications.
+
+**Base URL:** `https://badges.roblox.com`
+**Versions:** v1
+
+## Endpoints
+
+### GET `/v1/badges/{badgeId}`
+
+Gets badge information by the badge Id.
+
+Returns display fields, award statistics, and owning universe for a single badge.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `badgeId` | path | `integer (int64)` | Yes | The badge Id. |
+
+**Responses:**
+
+- `200`: OK → `Roblox.Badges.Api.BadgeResponse`
+- `404`: 1: Badge is invalid or does not exist. 3: The game is invalid or does not exist.
+
+**Response fields** (`Roblox.Badges.Api.BadgeResponse`)
+
+See [Roblox.Badges.Api.BadgeResponse](#roblox-badges-api-badgeresponse) in Models.
+
+**Response example:**
+```json
+{
+  "id": 0,
+  "name": "string",
+  "description": "string",
+  "displayName": "string",
+  "displayDescription": "string",
+  "enabled": false
+}
+```
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://badges.roblox.com/v1/badges/{BADGEID}"
+```
+
+### PATCH `/v1/badges/{badgeId}`
+
+Updates badge configuration.
+
+Managers may change enabled state, name, and description when authorized for the badge.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `badgeId` | path | `integer (int64)` | Yes | The badge Id. |
+
+**Request Body:** `application/json` — Type: `Roblox.Badges.Api.UpdateBadgeRequest`
+
+See [Roblox.Badges.Api.UpdateBadgeRequest](#roblox-badges-api-updatebadgerequest) in Models.
+
+**Request example:**
+```json
+{
+  "name": "string",
+  "description": "string",
+  "enabled": false
+}
+```
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.WebAPI.ApiEmptyResponseModel`
+- `400`: 6: Text moderated. 14: Invalid badge name. 15: Invalid badge description.
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed 2: You do not have permission to manage this badge.
+- `404`: 1: Badge is invalid or does not exist. 3: The game is invalid or does not exist.
+
+**Response fields** (`Roblox.Web.WebAPI.ApiEmptyResponseModel`)
+
+See [Roblox.Web.WebAPI.ApiEmptyResponseModel](#roblox-web-webapi-apiemptyresponsemodel) in Models.
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X PATCH -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://badges.roblox.com/v1/badges/{BADGEID}" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "name": "string",
+  "description": "string",
+  "enabled": false
+}'
+```
+
+### GET `/v1/badges/metadata`
+
+Gets metadata about the badges system.
+
+Returns creation price and field length limits. Callers use this before creating or editing badges.
+
+**Responses:**
+
+- `200`: OK → `Roblox.Badges.Api.BadgeMetadataResponse`
+
+**Response fields** (`Roblox.Badges.Api.BadgeMetadataResponse`)
+
+See [Roblox.Badges.Api.BadgeMetadataResponse](#roblox-badges-api-badgemetadataresponse) in Models.
+
+**Response example:**
+```json
+{
+  "badgeCreationPrice": 0,
+  "maxBadgeNameLength": 0,
+  "maxBadgeDescriptionLength": 0,
+  "defaultBadgeIconImageId": 0
+}
+```
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://badges.roblox.com/v1/badges/metadata"
+```
+
+### GET `/v1/universes/{universeId}/badges`
+
+Gets badges by their awarding game.
+
+Lists badges created under the universe's root place, with paging and optional sort.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `universeId` | path | `integer (int64)` | Yes | The universe Id. |
+| `sortBy` | query | `string` | No | The key to sort badges by. Valid values: `Rank`, `DateCreated` |
+| `limit` | query | `integer (int32)` | No | The number of results per request. Valid values: `10`, `25`, `50`, `100` |
+| `cursor` | query | `string` | No | The paging cursor for the previous or next page. |
+| `sortOrder` | query | `string` | No | The order the results are sorted in. Valid values: `Asc`, `Desc` |
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.WebAPI.Models.ApiPageResponse[Roblox.Badges.Api.BadgeResponse]`
+- `400`: 26: The pagination cursor is invalid or incompatible with the current request.
+- `404`: 3: The game is invalid or does not exist.
+
+**Response fields** (`Roblox.Web.WebAPI.Models.ApiPageResponse[Roblox.Badges.Api.BadgeResponse]`)
+
+See [Roblox.Web.WebAPI.Models.ApiPageResponse[Roblox.Badges.Api.BadgeResponse]](#roblox-web-webapi-models-apipageresponse-roblox-badges-api-badgeresponse-) in Models.
+
+**Response example:**
+```json
+{
+  "previousPageCursor": "string",
+  "nextPageCursor": "string",
+  "data": [
+    {
+      "id": "...",
+      "name": "...",
+      "description": "...",
+      "displayName": "...",
+      "displayDescription": "...",
+      "enabled": "..."
+    }
+  ]
+}
+```
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://badges.roblox.com/v1/universes/{UNIVERSEID}/badges"
+```
+
+### POST `/v1/universes/{universeId}/badges`
+
+Creates a new badge.
+
+Charges the selected payment source and creates the badge under the universe's root place.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `universeId` | path | `integer (int64)` | Yes | The ID of the universe to create the badge for. |
+| `name` | formData | `string` | No | The badge name. |
+| `description` | formData | `string` | No | The badge description. |
+| `paymentSourceType` | formData | `integer (int32)` | No | Whether or not to pay for the badge with user funds, or group funds. Valid values: `1`, `2` |
+| `files` | formData | `file` | No | The badge icon. Optional: when omitted and a curated default badge icon is configured on the service, the badge is created with that default icon. When provided, exactly one file must be supplied. |
+| `expectedCost` | formData | `integer (int64)` | No | User expected cost of a badge. |
+| `isActive` | formData | `boolean` | No | Whether or not the badge should be created in the active state. |
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.Responses.Badges.BadgeResponseV2`
+- `400`: 11: The badge icon is invalid. 14: Invalid badge name. 15: Invalid badge description. 16: Payment source is invalid. 18: Expected badge cost is different from the actual badge cost.
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed 6: Text moderated. 12: You do not have permission to manage this game's badges. 17: Insufficient funds.
+- `404`: 3: The game is invalid or does not exist.
+- `429`: 13: Too many requests, try again later.
+
+**Response fields** (`Roblox.Web.Responses.Badges.BadgeResponseV2`)
+
+See [Roblox.Web.Responses.Badges.BadgeResponseV2](#roblox-web-responses-badges-badgeresponsev2) in Models.
+
+**Response example:**
+```json
+{
+  "id": 0,
+  "name": "string",
+  "description": "string",
+  "displayName": "string",
+  "displayDescription": "string",
+  "enabled": false
+}
+```
+
+**Error handling:** `429`: Retry with exponential backoff (start at 1s). `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X POST -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://badges.roblox.com/v1/universes/{UNIVERSEID}/badges"
+```
+
+### GET `/v1/universes/{universeId}/free-badges-quota`
+
+Gets the number of free badges left for the current UTC day by their awarding game.
+
+Reflects daily free-creation allowance for the universe when the feature is enabled.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `universeId` | path | `integer (int64)` | Yes | The universe Id. |
+
+**Responses:**
+
+- `200`: OK → `integer`
+- `404`: 3: The game is invalid or does not exist.
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://badges.roblox.com/v1/universes/{UNIVERSEID}/free-badges-quota"
+```
+
+### GET `/v1/users/{userId}/badges`
+
+Gets a list of badges a user has been awarded.
+
+Respects inventory privacy settings when evaluating which awarded badges are visible.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `userId` | path | `integer (int64)` | Yes | The user Id. |
+| `limit` | query | `integer (int32)` | No | The number of results per request. Valid values: `10`, `25`, `50`, `100` |
+| `cursor` | query | `string` | No | The paging cursor for the previous or next page. |
+| `sortOrder` | query | `string` | No | The order the results are sorted in. Valid values: `Asc`, `Desc` |
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.WebAPI.Models.ApiPageResponse[Roblox.Badges.Api.GetBadgesByUserResponse]`
+- `404`: 4: User is invalid or does not exist.
+
+**Response fields** (`Roblox.Web.WebAPI.Models.ApiPageResponse[Roblox.Badges.Api.GetBadgesByUserResponse]`)
+
+See [Roblox.Web.WebAPI.Models.ApiPageResponse[Roblox.Badges.Api.GetBadgesByUserResponse]](#roblox-web-webapi-models-apipageresponse-roblox-badges-api-getbadgesbyuserresponse-) in Models.
+
+**Response example:**
+```json
+{
+  "previousPageCursor": "string",
+  "nextPageCursor": "string",
+  "data": [
+    {
+      "creator": "...",
+      "id": "...",
+      "name": "...",
+      "description": "...",
+      "displayName": "...",
+      "displayDescription": "..."
+    }
+  ]
+}
+```
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://badges.roblox.com/v1/users/{USERID}/badges"
+```
+
+### GET `/v1/users/{userId}/badges/{badgeId}/awarded-date`
+
+Gets timestamp for when a single badge was awarded to a user.
+
+Returns 204 when the user has not been awarded the badge or the badge is filtered from view.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `userId` | path | `integer (int64)` | Yes | User id. |
+| `badgeId` | path | `integer (int64)` | Yes | Badge id. |
+
+**Responses:**
+
+- `200`: OK
+- `404`: 4: User is invalid or does not exist.
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://badges.roblox.com/v1/users/{USERID}/badges/{BADGEID}/awarded-date"
+```
+
+### GET `/v1/users/{userId}/badges/awarded-dates`
+
+Gets timestamps for when badges were awarded to a user.
+
+Batch form of awarded-date lookup with a maximum number of badge ids per request.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `userId` | path | `integer (int64)` | Yes | The user Id. |
+| `badgeIds` | query | `array` | Yes | The CSV of badge Ids. |
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.WebAPI.Models.ApiArrayResponse[Roblox.Badges.Api.BadgeAwardResponse]`
+- `400`: 5: Too many badge Ids.
+- `404`: 4: User is invalid or does not exist.
+
+**Response fields** (`Roblox.Web.WebAPI.Models.ApiArrayResponse[Roblox.Badges.Api.BadgeAwardResponse]`)
+
+See [Roblox.Web.WebAPI.Models.ApiArrayResponse[Roblox.Badges.Api.BadgeAwardResponse]](#roblox-web-webapi-models-apiarrayresponse-roblox-badges-api-badgeawardresponse-) in Models.
+
+**Response example:**
+```json
+{
+  "data": [
+    {
+      "badgeId": "...",
+      "awardedDate": "..."
+    }
+  ]
+}
+```
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://badges.roblox.com/v1/users/{USERID}/badges/awarded-dates?badgeIds={VALUE}"
+```
+
+### POST `/v1/badges/{badgeId}/icon`
+
+Overwrites a badge icon with a new one.
+
+Accepts a moderated image upload and updates the badge's icon asset.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `badgeId` | path | `integer (int64)` | Yes | The badge Id. |
+| `Files` | formData | `file` | No |  |
+
+**Responses:**
+
+- `200`: OK → `Roblox.Badges.Api.IconUploadResponse`
+- `400`: 6: Text moderated. 22: Icon file is not present in the request.
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed 2: You do not have permission to manage this badge.
+- `404`: 1: Badge is invalid or does not exist.
+- `429`: 13: Too many requests, try again later.
+
+**Response fields** (`Roblox.Badges.Api.IconUploadResponse`)
+
+See [Roblox.Badges.Api.IconUploadResponse](#roblox-badges-api-iconuploadresponse) in Models.
+
+**Response example:**
+```json
+{
+  "targetId": 0
+}
+```
+
+**Error handling:** `429`: Retry with exponential backoff (start at 1s). `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X POST -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://badges.roblox.com/v1/badges/{BADGEID}/icon"
+```
+
+### DELETE `/v1/user/badges/{badgeId}`
+
+Removes a badge from the authenticated user.
+
+Revokes the caller's own awarded badge instance when the badge exists on their account.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `badgeId` | path | `integer (int64)` | Yes | The badge Id. |
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.WebAPI.ApiEmptyResponseModel`
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed
+- `404`: 1: Badge is invalid or does not exist.
+
+**Response fields** (`Roblox.Web.WebAPI.ApiEmptyResponseModel`)
+
+See [Roblox.Web.WebAPI.ApiEmptyResponseModel](#roblox-web-webapi-apiemptyresponsemodel) in Models.
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X DELETE -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://badges.roblox.com/v1/user/badges/{BADGEID}"
+```
+
+## Models
+
+### Roblox.Badges.Api.BadgeAwardResponse
+
+The result of being awarded a badge.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `badgeId` | `integer` | No | The badge Id. |
+| `awardedDate` | `string` | No | When the badge was awarded. |
+
+### Roblox.Badges.Api.BadgeCreatorResponse
+
+Represents information about the badge creator. (Creator of the place that awarded the badge)
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `id` | `integer` | No | The creator ID |
+| `name` | `string` | No | The name of the creator |
+| `type` | `string` | No | The type of the creator |
+
+### Roblox.Badges.Api.BadgeMetadataResponse
+
+Metadata about badges.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `badgeCreationPrice` | `integer` | No | The cost in Robux for creating a new badge. |
+| `maxBadgeNameLength` | `integer` | No | The max length for a badge name. |
+| `maxBadgeDescriptionLength` | `integer` | No | The max length for a badge description. |
+| `defaultBadgeIconImageId` | `integer` | No | The asset ID of the curated default badge icon used when a badge is created without an uploaded icon file, or `0` when the default badge icon feature is disabled. |
+
+### Roblox.Badges.Api.BadgeResponse
+
+A response containing badge information.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `id` | `integer` | No | The badge Id. |
+| `name` | `string` | No | The name of the badge. |
+| `description` | `string` | No | The badge description. |
+| `displayName` | `string` | No | The localized name of the badge. |
+| `displayDescription` | `string` | No | The localized badge description. |
+| `enabled` | `boolean` | No | Whether or not the badge is enabled. |
+| `iconImageId` | `integer` | No | The badge icon asset Id. |
+| `displayIconImageId` | `integer` | No | The localized badge icon asset Id. |
+| `created` | `string` | No | When the badge was created. |
+| `updated` | `string` | No | When the badge was updated. |
+| `statistics` | `Roblox.Web.Responses.Badges.BadgeAwardStatisticsResponse` | No |  |
+| `awardingUniverse` | `Roblox.Badges.Api.UniverseResponse` | No |  |
+
+### Roblox.Badges.Api.GetBadgesByUserResponse
+
+Response for the GetBadgesByUser endpoint.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `creator` | `Roblox.Badges.Api.BadgeCreatorResponse` | No |  |
+| `id` | `integer` | No |  |
+| `name` | `string` | No |  |
+| `description` | `string` | No |  |
+| `displayName` | `string` | No |  |
+| `displayDescription` | `string` | No |  |
+| `enabled` | `boolean` | No |  |
+| `iconImageId` | `integer` | No |  |
+| `displayIconImageId` | `integer` | No |  |
+| `awarder` | `Roblox.Web.Responses.RelatedEntityTypeResponse[Roblox.Platform.Badges.BadgeAwarderType]` | No |  |
+| `statistics` | `Roblox.Web.Responses.Badges.BadgeAwardStatisticsResponse` | No |  |
+| `created` | `string` | No |  |
+| `updated` | `string` | No |  |
+
+### Roblox.Badges.Api.IconUploadResponse
+
+Badge icon upload response.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `targetId` | `integer` | No | The asset id of the uploaded icon. |
+
+### Roblox.Badges.Api.UniverseResponse
+
+A response containing universe information.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `id` | `integer` | No | The universe Id. |
+| `name` | `string` | No | The universe name. |
+| `rootPlaceId` | `integer` | No | The description of the universe. |
+
+### Roblox.Badges.Api.UpdateBadgeRequest
+
+A request model used for updating badge information.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `name` | `string` | No | The new badge name. |
+| `description` | `string` | No | The new badge description. |
+| `enabled` | `boolean` | No | The new enabled state of the badge. |
+
+### Roblox.Web.Responses.Badges.BadgeAwardStatisticsResponse
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `pastDayAwardedCount` | `integer` | No |  |
+| `awardedCount` | `integer` | No |  |
+| `winRatePercentage` | `number` | No |  |
+
+### Roblox.Web.Responses.Badges.BadgeResponseV2
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `id` | `integer` | No |  |
+| `name` | `string` | No |  |
+| `description` | `string` | No |  |
+| `displayName` | `string` | No |  |
+| `displayDescription` | `string` | No |  |
+| `enabled` | `boolean` | No |  |
+| `iconImageId` | `integer` | No |  |
+| `displayIconImageId` | `integer` | No |  |
+| `awarder` | `Roblox.Web.Responses.RelatedEntityTypeResponse[Roblox.Platform.Badges.BadgeAwarderType]` | No |  |
+| `statistics` | `Roblox.Web.Responses.Badges.BadgeAwardStatisticsResponse` | No |  |
+| `created` | `string` | No |  |
+| `updated` | `string` | No |  |
+
+### Roblox.Web.Responses.RelatedEntityTypeResponse[Roblox.Platform.Badges.BadgeAwarderType]
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `id` | `integer` | No |  |
+| `type` | `1` | No | ['Place' = 1] |
+| `name` | `string` | No |  |
+
+### Roblox.Web.WebAPI.Models.ApiArrayResponse[Roblox.Badges.Api.BadgeAwardResponse]
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `data` | `Roblox.Badges.Api.BadgeAwardResponse[]` | No |  |
+
+### Roblox.Web.WebAPI.Models.ApiPageResponse[Roblox.Badges.Api.BadgeResponse]
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `previousPageCursor` | `string` | No |  |
+| `nextPageCursor` | `string` | No |  |
+| `data` | `Roblox.Badges.Api.BadgeResponse[]` | No |  |
+
+### Roblox.Web.WebAPI.Models.ApiPageResponse[Roblox.Badges.Api.GetBadgesByUserResponse]
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `previousPageCursor` | `string` | No |  |
+| `nextPageCursor` | `string` | No |  |
+| `data` | `Roblox.Badges.Api.GetBadgesByUserResponse[]` | No |  |

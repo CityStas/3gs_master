@@ -1,0 +1,8 @@
+{
+  "name": "CleanPlace",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": { "$path": "src/ServerScriptService" },
+    "ReplicatedStorage": { "$path": "src/ReplicatedStorage" }
+  }
+}

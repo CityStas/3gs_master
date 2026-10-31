@@ -1,0 +1,1314 @@
+---
+name: "LocalizationTables Api v1"
+last_updated: 2026-10-30T19:56:08Z
+type: legacy
+api_base_url: "https://localizationtables.roblox.com"
+versions: [v1]
+endpoints: 18
+auth: [cookie]
+---
+
+# LocalizationTables Api v1
+
+> **Warning:** Legacy APIs with cookie authentication can incorporate breaking changes without notice. We don't recommend them for production applications.
+
+**Base URL:** `https://localizationtables.roblox.com`
+**Versions:** v1
+
+## Endpoints
+
+### GET `/v1/autolocalization/metadata`
+
+Metadata for AutoLocalization Configuration
+
+**Responses:**
+
+- `200`: OK → `Roblox.LocalizationTables.Api.AutoLocalizationMetadataResponse`
+- `401`: 0: Authorization has been denied for this request.
+
+**Response fields** (`Roblox.LocalizationTables.Api.AutoLocalizationMetadataResponse`)
+
+See [Roblox.LocalizationTables.Api.AutoLocalizationMetadataResponse](#roblox-localizationtables-api-autolocalizationmetadataresponse) in Models.
+
+**Response example:**
+```json
+{
+  "isReactVersionEnabledForAutoLocalizationSettings": false,
+  "isTabbedUIEnabledForConfigureLocalizationPage": false,
+  "isAutomaticTranslationToggleUIEnabled": false,
+  "isAutomaticTranslationQuotaUIEnabled": false
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://localizationtables.roblox.com/v1/autolocalization/metadata"
+```
+
+### GET `/v1/localization-table/limits`
+
+Get limits for translation table entries operations
+
+**Responses:**
+
+- `200`: OK → `Roblox.LocalizationTables.Api.GetLimitsResponse`
+- `401`: 0: Authorization has been denied for this request.
+
+**Response fields** (`Roblox.LocalizationTables.Api.GetLimitsResponse`)
+
+See [Roblox.LocalizationTables.Api.GetLimitsResponse](#roblox-localizationtables-api-getlimitsresponse) in Models.
+
+**Response example:**
+```json
+{
+  "entryOperationLimits": {
+    "maxContextLength": 0,
+    "maxKeyLength": 0,
+    "maxSourceLength": 0,
+    "maxExampleLength": 0,
+    "maxGameLocationPathLength": 0
+  },
+  "tableOperationLimits": {
+    "maxEntriesPerUpdate": 0
+  }
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://localizationtables.roblox.com/v1/localization-table/limits"
+```
+
+### GET `/v1/localization-table/metadata`
+
+Get metadata for localization UI
+
+**Responses:**
+
+- `200`: OK → `Roblox.LocalizationTables.Api.LocalizationTablesMetadataResponse`
+
+**Response fields** (`Roblox.LocalizationTables.Api.LocalizationTablesMetadataResponse`)
+
+See [Roblox.LocalizationTables.Api.LocalizationTablesMetadataResponse](#roblox-localizationtables-api-localizationtablesmetadataresponse) in Models.
+
+**Response example:**
+```json
+{
+  "isBulkUploadFeatureEnabled": false,
+  "isCsvDownloadEnabled": false,
+  "isAccessToTranslationMetaDataEnabled": false,
+  "isTranslationManagementRedirectionEnabled": false,
+  "isUntranslatedFilterEnabled": false,
+  "isAutomaticTranslationFilterEnabled": false
+}
+```
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://localizationtables.roblox.com/v1/localization-table/metadata"
+```
+
+### GET `/v1/localization-table/tables/{assetId}`
+
+Get table information by the assetId of the table.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `assetId` | path | `integer (int64)` | Yes | The asset id associated with the table. |
+
+**Responses:**
+
+- `200`: OK → `Roblox.LocalizationTables.Api.GetTableResponse`
+- `400`: 12: Invalid asset id.
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 2: You do not have permission to get this table.
+
+**Response fields** (`Roblox.LocalizationTables.Api.GetTableResponse`)
+
+See [Roblox.LocalizationTables.Api.GetTableResponse](#roblox-localizationtables-api-gettableresponse) in Models.
+
+**Response example:**
+```json
+{
+  "id": "string",
+  "name": "string",
+  "ownerType": "User",
+  "ownerId": 0,
+  "assetId": 0
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://localizationtables.roblox.com/v1/localization-table/tables/{ASSETID}"
+```
+
+### GET `/v1/localization-table/tables/{tableId}`
+
+Get table information by the id of the table.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `tableId` | path | `string (uuid)` | Yes |  |
+
+**Responses:**
+
+- `200`: OK → `Roblox.LocalizationTables.Api.GetTableResponse`
+- `400`: 3: Invalid table id.
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 2: You do not have permission to get this table.
+
+**Response fields** (`Roblox.LocalizationTables.Api.GetTableResponse`)
+
+See [Roblox.LocalizationTables.Api.GetTableResponse](#roblox-localizationtables-api-gettableresponse) in Models.
+
+**Response example:**
+```json
+{
+  "id": "string",
+  "name": "string",
+  "ownerType": "User",
+  "ownerId": 0,
+  "assetId": 0
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://localizationtables.roblox.com/v1/localization-table/tables/{TABLEID}"
+```
+
+### PATCH `/v1/localization-table/tables/{tableId}`
+
+Updates the tables contents based on what is provided.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `tableId` | path | `string (uuid)` | Yes | The table guid for the table to update. |
+| `gameId` | query | `integer (int64)` | No | The game id. |
+
+**Request Body:** `application/json` — Type: `Roblox.LocalizationTables.Api.UpdateTableContentsRequest`
+
+See [Roblox.LocalizationTables.Api.UpdateTableContentsRequest](#roblox-localizationtables-api-updatetablecontentsrequest) in Models.
+
+**Request example:**
+```json
+{
+  "name": "string",
+  "entries": [
+    {
+      "identifier": "...",
+      "metadata": "...",
+      "translations": "...",
+      "delete": "..."
+    }
+  ]
+}
+```
+
+**Responses:**
+
+- `200`: OK → `Roblox.LocalizationTables.Api.UpdateTableContentsResponse`
+- `400`: 3: Invalid table id. 4: Table does not exist. 10: Maximum entries exceeded. Please keep the number of entries per request below the maximum. 13: Request body can't be null 14: Invalid game id
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed 6: You do not have permission to create this table.
+- `503`: 17: Feature is disabled
+
+**Response fields** (`Roblox.LocalizationTables.Api.UpdateTableContentsResponse`)
+
+See [Roblox.LocalizationTables.Api.UpdateTableContentsResponse](#roblox-localizationtables-api-updatetablecontentsresponse) in Models.
+
+**Response example:**
+```json
+{
+  "failedEntriesAndTranslations": [
+    {
+      "error": "...",
+      "identifier": "...",
+      "metadata": "...",
+      "translations": "...",
+      "createdTime": "..."
+    }
+  ],
+  "modifiedEntriesAndTranslations": [
+    {
+      "identifier": "...",
+      "translations": "..."
+    }
+  ]
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X PATCH -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://localizationtables.roblox.com/v1/localization-table/tables/{TABLEID}" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "name": "string",
+  "entries": [
+    {
+      "identifier": "...",
+      "metadata": "...",
+      "translations": "...",
+      "delete": "..."
+    }
+  ]
+}'
+```
+
+### GET `/v1/localization-table/tables/{tableId}/asset-entries`
+
+Gets a page of asset (image) entries for the specified table, along with the table's
+per-locale asset translations.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `tableId` | path | `string (uuid)` | Yes | The table id. |
+| `cursor` | query | `string` | No | The source asset id to start after. If null, starts from the first page. A null cursor in the response means there are no more entries. |
+| `gameId` | query | `integer (int64)` | No | The universe id that owns the table. |
+
+**Responses:**
+
+- `200`: OK → `Roblox.LocalizationTables.Api.GetTableAssetEntriesPagedResponse`
+- `400`: 3: Invalid table id. 14: Invalid game id 25: Invalid cursor
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 2: You do not have permission to get this table.
+
+**Response fields** (`Roblox.LocalizationTables.Api.GetTableAssetEntriesPagedResponse`)
+
+See [Roblox.LocalizationTables.Api.GetTableAssetEntriesPagedResponse](#roblox-localizationtables-api-gettableassetentriespagedresponse) in Models.
+
+**Response example:**
+```json
+{
+  "previousPageCursor": "string",
+  "nextPageCursor": "string",
+  "data": [
+    {
+      "sourceAssetId": "...",
+      "assetType": "...",
+      "assetClass": "...",
+      "assetProp": "...",
+      "translations": "...",
+      "creator": "..."
+    }
+  ]
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://localizationtables.roblox.com/v1/localization-table/tables/{TABLEID}/asset-entries"
+```
+
+### GET `/v1/localization-table/tables/{tableId}/entries`
+
+Gets a batch of entries for a table.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `tableId` | path | `string (uuid)` | Yes |  |
+| `cursor` | query | `string` | No | If null, there are no more entries in the table and you've reached the last page. |
+| `gameId` | query | `integer (int64)` | No |  |
+| `entryFormat` | query | `string` | No | Valid values: `Invalid`, `Legacy`, `Icu` |
+
+**Responses:**
+
+- `200`: OK → `Roblox.LocalizationTables.Api.GetTableEntriesPagedResponse`
+- `400`: 3: Invalid table id. 14: Invalid game id
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 2: You do not have permission to get this table.
+
+**Response fields** (`Roblox.LocalizationTables.Api.GetTableEntriesPagedResponse`)
+
+See [Roblox.LocalizationTables.Api.GetTableEntriesPagedResponse](#roblox-localizationtables-api-gettableentriespagedresponse) in Models.
+
+**Response example:**
+```json
+{
+  "previousPageCursor": "string",
+  "nextPageCursor": "string",
+  "data": [
+    {
+      "identifier": "...",
+      "metadata": "...",
+      "translations": "...",
+      "createdTime": "..."
+    }
+  ]
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://localizationtables.roblox.com/v1/localization-table/tables/{TABLEID}/entries"
+```
+
+### GET `/v1/localization-table/tables/{tableId}/entry-count`
+
+Gets the number of entries in the specified table
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `tableId` | path | `string (uuid)` | Yes | The table id |
+| `gameId` | query | `integer (int64)` | No | The game id |
+| `entryFormat` | query | `string` | No | Valid values: `Invalid`, `Legacy`, `Icu` |
+
+**Responses:**
+
+- `200`: OK → `Roblox.LocalizationTables.Api.GetTableEntryCountResponse`
+- `400`: 3: Invalid table id. 14: Invalid game id
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 2: You do not have permission to get this table.
+
+**Response fields** (`Roblox.LocalizationTables.Api.GetTableEntryCountResponse`)
+
+See [Roblox.LocalizationTables.Api.GetTableEntryCountResponse](#roblox-localizationtables-api-gettableentrycountresponse) in Models.
+
+**Response example:**
+```json
+{
+  "id": "string",
+  "entryCount": 0
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://localizationtables.roblox.com/v1/localization-table/tables/{TABLEID}/entry-count"
+```
+
+### POST `/v1/auto-localization-table/games/{gameId}/assets-generation-request`
+
+Generates localization asset of a game.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `gameId` | path | `integer (int64)` | Yes | The game id. |
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.WebAPI.ApiEmptyResponseModel`
+- `400`: 3: Invalid table id. 14: Invalid game id 29: You do not have permission to generate asset for this table. 32: LocalizationTable is not available for the game. 34: Actor provided is invalid
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed
+- `429`: 24: Too many attempts.Please try again later.
+
+**Response fields** (`Roblox.Web.WebAPI.ApiEmptyResponseModel`)
+
+See [Roblox.Web.WebAPI.ApiEmptyResponseModel](#roblox-web-webapi-apiemptyresponsemodel) in Models.
+
+**Error handling:** `429`: Retry with exponential backoff (start at 1s). `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X POST -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://localizationtables.roblox.com/v1/auto-localization-table/games/{GAMEID}/assets-generation-request"
+```
+
+### POST `/v1/auto-localization-table/games/{gameId}/auto-scrape-cleanup-request`
+
+Enqueues an event to flush the auto scraped entries which doesn't have translations.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `gameId` | path | `integer (int64)` | Yes | The id of the game. |
+
+**Request Body:** `application/json` — Type: `Roblox.LocalizationTables.Api.RaiseEventForAutoScrapedEntriesCleanupRequest`
+
+See [Roblox.LocalizationTables.Api.RaiseEventForAutoScrapedEntriesCleanupRequest](#roblox-localizationtables-api-raiseeventforautoscrapedentriescleanuprequest) in Models.
+
+**Request example:**
+```json
+{
+  "maxAgeForFlush": "string"
+}
+```
+
+**Responses:**
+
+- `200`: OK → `object`
+- `400`: 14: Invalid game id 31: You do not have permission to flush auto scraped entries asset for this game. 32: LocalizationTable is not available for the game. 34: Actor provided is invalid
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed
+- `429`: 33: Too many attempts to flush the game.Please try again later.
+
+**Error handling:** `429`: Retry with exponential backoff (start at 1s). `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X POST -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://localizationtables.roblox.com/v1/auto-localization-table/games/{GAMEID}/auto-scrape-cleanup-request" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "maxAgeForFlush": "string"
+}'
+```
+
+### POST `/v1/autolocalization/games/{gameId}/autolocalizationtable`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `gameId` | path | `integer (int64)` | Yes |  |
+
+**Responses:**
+
+- `200`: OK → `Roblox.LocalizationTables.Api.GameAutolocalizationInformationResponse`
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed
+
+**Response fields** (`Roblox.LocalizationTables.Api.GameAutolocalizationInformationResponse`)
+
+See [Roblox.LocalizationTables.Api.GameAutolocalizationInformationResponse](#roblox-localizationtables-api-gameautolocalizationinformationresponse) in Models.
+
+**Response example:**
+```json
+{
+  "isAutolocalizationEnabled": false,
+  "isAutomaticEntriesSettingEnabled": false,
+  "isAutomaticEntriesDeletionEnabled": false,
+  "shouldUseLocalizationTable": false,
+  "autoLocalizationTableId": "string",
+  "sourceLanguage": "string"
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X POST -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://localizationtables.roblox.com/v1/autolocalization/games/{GAMEID}/autolocalizationtable"
+```
+
+### PATCH `/v1/autolocalization/games/{gameId}/autolocalizationtable`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `gameId` | path | `integer (int64)` | Yes |  |
+
+**Request Body:** `application/json` — Type: `Roblox.LocalizationTables.Api.SetAutolocalizationTableForGameRequest`
+
+See [Roblox.LocalizationTables.Api.SetAutolocalizationTableForGameRequest](#roblox-localizationtables-api-setautolocalizationtableforgamerequest) in Models.
+
+**Request example:**
+```json
+{
+  "tableId": "string"
+}
+```
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.WebAPI.ApiEmptyResponseModel`
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed
+
+**Response fields** (`Roblox.Web.WebAPI.ApiEmptyResponseModel`)
+
+See [Roblox.Web.WebAPI.ApiEmptyResponseModel](#roblox-web-webapi-apiemptyresponsemodel) in Models.
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X PATCH -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://localizationtables.roblox.com/v1/autolocalization/games/{GAMEID}/autolocalizationtable" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "tableId": "string"
+}'
+```
+
+### POST `/v1/localization-table/tables`
+
+Creates a Localization Table with the given data.
+Note that this endpoint simply creates a table and does not associate it with any universe, so if intending to use this to create tables usable in experience more setup will be needed to grant those experiences access.
+
+**Request Body:** `application/json` — Type: `Roblox.LocalizationTables.Api.CreateTableRequest`
+
+See [Roblox.LocalizationTables.Api.CreateTableRequest](#roblox-localizationtables-api-createtablerequest) in Models.
+
+**Request example:**
+```json
+{
+  "name": "string",
+  "ownerType": "User",
+  "ownerId": 0
+}
+```
+
+**Responses:**
+
+- `200`: OK → `Roblox.LocalizationTables.Api.CreateTableResponse`
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed 2: You do not have permission to get this table.
+
+**Response fields** (`Roblox.LocalizationTables.Api.CreateTableResponse`)
+
+See [Roblox.LocalizationTables.Api.CreateTableResponse](#roblox-localizationtables-api-createtableresponse) in Models.
+
+**Response example:**
+```json
+{
+  "id": "string",
+  "assetId": 0
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X POST -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://localizationtables.roblox.com/v1/localization-table/tables" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "name": "string",
+  "ownerType": "User",
+  "ownerId": 0
+}'
+```
+
+### POST `/v1/localization-table/tables/{tableId}/entries/translation-feedback`
+
+Gets the translation feedback for each entry passed in.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `tableId` | path | `string (uuid)` | Yes | The entries' tableId. |
+| `gameId` | query | `integer (int64)` | No | The game id. |
+
+**Request Body:** `application/json` — Type: `Roblox.LocalizationTables.Api.GetTableEntriesTranslationFeedbackRequest`
+
+See [Roblox.LocalizationTables.Api.GetTableEntriesTranslationFeedbackRequest](#roblox-localizationtables-api-gettableentriestranslationfeedbackrequest) in Models.
+
+**Request example:**
+```json
+{
+  "sourceLocale": "string",
+  "entries": [
+    {
+      "translation": "...",
+      "key": "...",
+      "context": "...",
+      "source": "...",
+      "entryFormat": "..."
+    }
+  ]
+}
+```
+
+**Responses:**
+
+- `200`: OK → `Roblox.LocalizationTables.Api.GetTableEntriesTranslationFeedbackResponse`
+- `400`: 3: Invalid table id. 13: Request body can't be null 14: Invalid game id 16: Entries can't be null or empty 35: The entries provided are invalid 37: Invalid locale code. 38: Invalid entry identifier.
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed 2: You do not have permission to get this table.
+- `429`: 24: Too many attempts.Please try again later.
+- `503`: 17: Feature is disabled
+
+**Response fields** (`Roblox.LocalizationTables.Api.GetTableEntriesTranslationFeedbackResponse`)
+
+See [Roblox.LocalizationTables.Api.GetTableEntriesTranslationFeedbackResponse](#roblox-localizationtables-api-gettableentriestranslationfeedbackresponse) in Models.
+
+**Response example:**
+```json
+{
+  "tableId": "string",
+  "entries": [
+    {
+      "identifier": "...",
+      "feedbackCount": "...",
+      "playerSuggestionText": "...",
+      "reasons": "...",
+      "robloxSuggestionText": "..."
+    }
+  ]
+}
+```
+
+**Error handling:** `429`: Retry with exponential backoff (start at 1s). `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X POST -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://localizationtables.roblox.com/v1/localization-table/tables/{TABLEID}/entries/translation-feedback" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "sourceLocale": "string",
+  "entries": [
+    {
+      "translation": "...",
+      "key": "...",
+      "context": "...",
+      "source": "...",
+      "entryFormat": "..."
+    }
+  ]
+}'
+```
+
+### POST `/v1/localization-table/tables/{tableId}/entries/translation-history`
+
+Gets the translation history for each entry passed in.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `tableId` | path | `string (uuid)` | Yes | The entries' tableId. |
+| `gameId` | query | `integer (int64)` | No | The game id. |
+
+**Request Body:** `application/json` — Type: `Roblox.LocalizationTables.Api.GetTableEntriesTranslationHistoryRequest`
+
+See [Roblox.LocalizationTables.Api.GetTableEntriesTranslationHistoryRequest](#roblox-localizationtables-api-gettableentriestranslationhistoryrequest) in Models.
+
+**Request example:**
+```json
+{
+  "locale": "string",
+  "entries": [
+    {
+      "cursor": "...",
+      "identifier": "...",
+      "count": "...",
+      "sortOrder": "..."
+    }
+  ],
+  "sourceType": "Invalid"
+}
+```
+
+**Responses:**
+
+- `200`: OK → `Roblox.LocalizationTables.Api.GetTableEntriesTranslationHistoryResponse`
+- `400`: 3: Invalid table id. 13: Request body can't be null 14: Invalid game id 16: Entries can't be null or empty 35: The entries provided are invalid 37: Invalid locale code. 38: Invalid entry identifier. 39: Count should be at least 1. 45: Invalid exclusive start id.
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed 2: You do not have permission to get this table.
+- `429`: 24: Too many attempts.Please try again later.
+- `503`: 17: Feature is disabled
+
+**Response fields** (`Roblox.LocalizationTables.Api.GetTableEntriesTranslationHistoryResponse`)
+
+See [Roblox.LocalizationTables.Api.GetTableEntriesTranslationHistoryResponse](#roblox-localizationtables-api-gettableentriestranslationhistoryresponse) in Models.
+
+**Response example:**
+```json
+{
+  "tableId": "string",
+  "locale": "string",
+  "entries": [
+    {
+      "identifier": "...",
+      "history": "...",
+      "nextCursor": "..."
+    }
+  ],
+  "failedEntries": [
+    {
+      "identifier": "...",
+      "count": "...",
+      "error": "..."
+    }
+  ]
+}
+```
+
+**Error handling:** `429`: Retry with exponential backoff (start at 1s). `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X POST -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://localizationtables.roblox.com/v1/localization-table/tables/{TABLEID}/entries/translation-history" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "locale": "string",
+  "entries": [
+    {
+      "cursor": "...",
+      "identifier": "...",
+      "count": "...",
+      "sortOrder": "..."
+    }
+  ],
+  "sourceType": "Invalid"
+}'
+```
+
+### PATCH `/v1/auto-localization-table/games/{gameId}/ingestion`
+
+Ingests entries for auto localization. Needs to be an authorized user.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `gameId` | path | `integer (int64)` | Yes | The game id. |
+
+**Request Body:** `application/json` — Type: `Roblox.LocalizationTables.Api.IngestAutoScrapedContentForGameRequest`
+
+See [Roblox.LocalizationTables.Api.IngestAutoScrapedContentForGameRequest](#roblox-localizationtables-api-ingestautoscrapedcontentforgamerequest) in Models.
+
+**Request example:**
+```json
+{
+  "entries": [
+    {
+      "context": "...",
+      "source": "...",
+      "screenshot": "...",
+      "meta": "..."
+    }
+  ],
+  "metadata": {
+    "placeInformation": {
+      "placeId": "...",
+      "placeVersionNumber": "..."
+    }
+  }
+}
+```
+
+**Responses:**
+
+- `200`: OK → `object`
+- `400`: 10: Maximum entries exceeded. Please keep the number of entries per request below the maximum. 13: Request body can't be null 16: Entries can't be null or empty 34: Actor provided is invalid
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed
+- `503`: 17: Feature is disabled
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X PATCH -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://localizationtables.roblox.com/v1/auto-localization-table/games/{GAMEID}/ingestion" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "entries": [
+    {
+      "context": "...",
+      "source": "...",
+      "screenshot": "...",
+      "meta": "..."
+    }
+  ],
+  "metadata": {
+    "placeInformation": {
+      "placeId": "...",
+      "placeVersionNumber": "..."
+    }
+  }
+}'
+```
+
+### PATCH `/v1/autolocalization/games/{gameId}/settings`
+
+Sets a game's auto-localization related settings
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `gameId` | path | `integer (int64)` | Yes | The id of the game. |
+
+**Request Body:** `application/json` — Type: `Roblox.LocalizationTables.Api.SetAutolocalizationSettingsForGameRequest`
+
+See [Roblox.LocalizationTables.Api.SetAutolocalizationSettingsForGameRequest](#roblox-localizationtables-api-setautolocalizationsettingsforgamerequest) in Models.
+
+**Request example:**
+```json
+{
+  "isAutolocalizationEnabled": false,
+  "isAutomaticEntriesSettingEnabled": false,
+  "isAutomaticEntriesDeletionsEnabled": false,
+  "shouldUseLocalizationTable": false,
+  "shouldUseImageLocalizationTable": false,
+  "isAutoLocalizationForImageEnabled": false
+}
+```
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.WebAPI.ApiEmptyResponseModel`
+- `400`: 14: Invalid game id 61: IsAutomaticEntriesSettingEnabled can only be enabled if IsAutolocalizationEnabled is also enabled.
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed 18: You do not have permission to manage this game
+- `503`: 17: Feature is disabled
+
+**Response fields** (`Roblox.Web.WebAPI.ApiEmptyResponseModel`)
+
+See [Roblox.Web.WebAPI.ApiEmptyResponseModel](#roblox-web-webapi-apiemptyresponsemodel) in Models.
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X PATCH -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://localizationtables.roblox.com/v1/autolocalization/games/{GAMEID}/settings" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "isAutolocalizationEnabled": false,
+  "isAutomaticEntriesSettingEnabled": false,
+  "isAutomaticEntriesDeletionsEnabled": false,
+  "shouldUseLocalizationTable": false,
+  "shouldUseImageLocalizationTable": false,
+  "isAutoLocalizationForImageEnabled": false
+}'
+```
+
+## Models
+
+### Roblox.InGameContentTables.Client.GameLocation
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `path` | `string` | No |  |
+
+### Roblox.LocalizationTables.Api.AssetEntry
+
+A source asset (image) entry in a localization table, along with its per-locale asset
+translations. Unlike Roblox.LocalizationTables.Api.Entry, an asset entry is identified by its source asset
+id and has no key/context/source; each translation's Roblox.LocalizationTables.Api.Translation.TranslationText
+holds the translated asset id.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `sourceAssetId` | `integer` | No |  |
+| `assetType` | `integer` | No |  |
+| `assetClass` | `integer` | No |  |
+| `assetProp` | `integer` | No |  |
+| `translations` | `Roblox.LocalizationTables.Api.Translation[]` | No |  |
+| `creator` | `Roblox.LocalizationTables.Api.Translator` | No |  |
+| `gameLocations` | `Roblox.InGameContentTables.Client.GameLocation[]` | No |  |
+| `createdTime` | `string` | No |  |
+
+### Roblox.LocalizationTables.Api.AutoLocalizationMetadataResponse
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `isReactVersionEnabledForAutoLocalizationSettings` | `boolean` | No | Is React Implementation of AutoLocalization Settings Enabled |
+| `isTabbedUIEnabledForConfigureLocalizationPage` | `boolean` | No | Is Tabbed UI Enabled for Configure Localization Page |
+| `isAutomaticTranslationToggleUIEnabled` | `boolean` | No | Is Toggle UI Enabled for Automatic Translations |
+| `isAutomaticTranslationQuotaUIEnabled` | `boolean` | No | Is Quota UI Enabled for Automatic Translations |
+
+### Roblox.LocalizationTables.Api.AutoScrapeEntry
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `context` | `string` | No |  |
+| `source` | `string` | No |  |
+| `screenshot` | `string` | No |  |
+| `meta` | `Roblox.LocalizationTables.Api.AutoScrapeEntryMetadata` | No |  |
+
+### Roblox.LocalizationTables.Api.AutoScrapeEntryMetadata
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `text` | `string` | No |  |
+| `userId` | `integer` | No |  |
+| `osPlatform` | `string` | No |  |
+| `sessionId` | `string` | No |  |
+| `matchedEntry` | `Roblox.LocalizationTables.Api.MatchedEntry` | No |  |
+
+### Roblox.LocalizationTables.Api.CreateTableRequest
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `name` | `string` | No |  |
+| `ownerType` | `User \| Group` | No |  |
+| `ownerId` | `integer` | No |  |
+
+### Roblox.LocalizationTables.Api.CreateTableResponse
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `id` | `string` | No |  |
+| `assetId` | `integer` | No |  |
+
+### Roblox.LocalizationTables.Api.CursorEntryIdentifier
+
+A model that contains an entry identifier and an associated cursor for paged lookups.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `cursor` | `string` | No | The location to begin our query. |
+| `identifier` | `Roblox.LocalizationTables.Api.EntryIdentifier` | No |  |
+| `count` | `integer` | No | The translation history count to get. |
+| `sortOrder` | `Asc \| Desc` | No | In which order the data is sorted. |
+
+### Roblox.LocalizationTables.Api.Entry
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `identifier` | `Roblox.LocalizationTables.Api.EntryIdentifier` | No |  |
+| `metadata` | `Roblox.LocalizationTables.Api.EntryMetadata` | No |  |
+| `translations` | `Roblox.LocalizationTables.Api.Translation[]` | No |  |
+| `createdTime` | `string` | No |  |
+
+### Roblox.LocalizationTables.Api.EntryIdentifier
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `key` | `string` | No |  |
+| `context` | `string` | No |  |
+| `source` | `string` | No |  |
+| `entryFormat` | `Invalid \| Legacy \| Icu` | No |  |
+
+### Roblox.LocalizationTables.Api.EntryIdentifierWithTranslation
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `translation` | `Roblox.LocalizationTables.Api.Translation` | No |  |
+| `key` | `string` | No |  |
+| `context` | `string` | No |  |
+| `source` | `string` | No |  |
+| `entryFormat` | `Invalid \| Legacy \| Icu` | No |  |
+
+### Roblox.LocalizationTables.Api.EntryMetadata
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `example` | `string` | No |  |
+| `gameLocations` | `Roblox.InGameContentTables.Client.GameLocation[]` | No |  |
+| `entryFormat` | `Invalid \| Legacy \| Icu` | No |  |
+
+### Roblox.LocalizationTables.Api.EntryOperationLimits
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `maxContextLength` | `integer` | No | Maximum character limit for entry context |
+| `maxKeyLength` | `integer` | No | Maximum character limit for entry key |
+| `maxSourceLength` | `integer` | No | Maximum character limit for entry source text |
+| `maxExampleLength` | `integer` | No | Maximum character limit for entry example |
+| `maxGameLocationPathLength` | `integer` | No | Maximum character limit for game location path |
+
+### Roblox.LocalizationTables.Api.EntryTranslationFeedback
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `identifier` | `Roblox.LocalizationTables.Api.EntryIdentifierWithTranslation` | No |  |
+| `feedbackCount` | `integer` | No | The number of unique reporters that send feedback to the given entry identifier. |
+| `playerSuggestionText` | `string[]` | No | A set of player translation suggestion in text for the given entry identifier. |
+| `reasons` | `None \| Untranslated \| Inaccurate \| SpellingOrGrammar \| Inappropriate[]` | No | A set of translation feedback reasons for the given entry identifier. |
+| `robloxSuggestionText` | `string` | No | Roblox translation suggestion in text for the given entry identifier. |
+
+### Roblox.LocalizationTables.Api.EntryTranslationHistoryPaged
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `identifier` | `Roblox.LocalizationTables.Api.EntryIdentifier` | No |  |
+| `history` | `Roblox.LocalizationTables.Api.TranslationHistory[]` | No | A batch of TranslationHistory for the given entry identifier. |
+| `nextCursor` | `string` | No | The cursor to send up on the next request if more history data is required. |
+
+### Roblox.LocalizationTables.Api.Error
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `errorCode` | `integer` | No |  |
+| `errorMessage` | `string` | No |  |
+
+### Roblox.LocalizationTables.Api.FailedEntry
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `error` | `Roblox.LocalizationTables.Api.Error` | No |  |
+| `identifier` | `Roblox.LocalizationTables.Api.EntryIdentifier` | No |  |
+| `metadata` | `Roblox.LocalizationTables.Api.EntryMetadata` | No |  |
+| `translations` | `Roblox.LocalizationTables.Api.Translation[]` | No |  |
+| `createdTime` | `string` | No |  |
+
+### Roblox.LocalizationTables.Api.FailedEntryTranslationHistoryPaged
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `identifier` | `Roblox.LocalizationTables.Api.EntryIdentifier` | No |  |
+| `count` | `integer` | No |  |
+| `error` | `Roblox.LocalizationTables.Api.Error` | No |  |
+
+### Roblox.LocalizationTables.Api.GameAutolocalizationInformationResponse
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `isAutolocalizationEnabled` | `boolean` | No |  |
+| `isAutomaticEntriesSettingEnabled` | `boolean` | No |  |
+| `isAutomaticEntriesDeletionEnabled` | `boolean` | No |  |
+| `shouldUseLocalizationTable` | `boolean` | No |  |
+| `autoLocalizationTableId` | `string` | No |  |
+| `sourceLanguage` | `string` | No |  |
+| `assetId` | `integer` | No |  |
+| `shouldUseImageLocalizationTable` | `boolean` | No |  |
+| `isAutoLocalizationForImageEnabled` | `boolean` | No |  |
+
+### Roblox.LocalizationTables.Api.GetLimitsResponse
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `entryOperationLimits` | `Roblox.LocalizationTables.Api.EntryOperationLimits` | No |  |
+| `tableOperationLimits` | `Roblox.LocalizationTables.Api.TableOperationLimits` | No |  |
+
+### Roblox.LocalizationTables.Api.GetTableAssetEntriesPagedResponse
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `previousPageCursor` | `string` | No |  |
+| `nextPageCursor` | `string` | No |  |
+| `data` | `Roblox.LocalizationTables.Api.AssetEntry[]` | No |  |
+
+### Roblox.LocalizationTables.Api.GetTableEntriesPagedResponse
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `previousPageCursor` | `string` | No |  |
+| `nextPageCursor` | `string` | No |  |
+| `data` | `Roblox.LocalizationTables.Api.Entry[]` | No |  |
+
+### Roblox.LocalizationTables.Api.GetTableEntriesTranslationFeedbackRequest
+
+A request model for GetTableEntriesTranslationFeedback.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `sourceLocale` | `string` | No | locale code of source language, we only accept language code at the moment. |
+| `entries` | `Roblox.LocalizationTables.Api.EntryIdentifierWithTranslation[]` | No | entry identifier |
+
+### Roblox.LocalizationTables.Api.GetTableEntriesTranslationFeedbackResponse
+
+A response model for GetTableEntriesTranslationFeedback.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `tableId` | `string` | No | The entries' tableId. |
+| `entries` | `Roblox.LocalizationTables.Api.EntryTranslationFeedback[]` | No | The entries with their identifier, translation feedback details. |
+
+### Roblox.LocalizationTables.Api.GetTableEntriesTranslationHistoryRequest
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `locale` | `string` | No |  |
+| `entries` | `Roblox.LocalizationTables.Api.CursorEntryIdentifier[]` | No |  |
+| `sourceType` | `Invalid \| Text \| AssetImage` | No |  |
+
+### Roblox.LocalizationTables.Api.GetTableEntriesTranslationHistoryResponse
+
+A response model for GetTableEntriesTranslationHistory.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `tableId` | `string` | No | The entries' tableId. |
+| `locale` | `string` | No | The locale of the translations. |
+| `entries` | `Roblox.LocalizationTables.Api.EntryTranslationHistoryPaged[]` | No | The entries with their identifier, translation history, and next cursor. |
+| `failedEntries` | `Roblox.LocalizationTables.Api.FailedEntryTranslationHistoryPaged[]` | No | The failed entries. |
+
+### Roblox.LocalizationTables.Api.GetTableEntryCountResponse
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `id` | `string` | No |  |
+| `entryCount` | `integer` | No |  |
+
+### Roblox.LocalizationTables.Api.GetTableResponse
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `id` | `string` | No |  |
+| `name` | `string` | No |  |
+| `ownerType` | `User \| Group` | No | Enum for valid OwnerTypes. |
+| `ownerId` | `integer` | No |  |
+| `assetId` | `integer` | No |  |
+
+### Roblox.LocalizationTables.Api.IngestAutoScrapedContentForGameRequest
+
+An ingest content request to IngestAutoScrapedContentForGame.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `entries` | `Roblox.LocalizationTables.Api.AutoScrapeEntry[]` | No | The entries of an ingest content request. |
+| `metadata` | `Roblox.LocalizationTables.Api.IngestContentMetadata` | No |  |
+
+### Roblox.LocalizationTables.Api.IngestContentMetadata
+
+The metadata of an ingest content request.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `placeInformation` | `Roblox.LocalizationTables.Api.IngestContentMetadataPlaceInformation` | No |  |
+
+### Roblox.LocalizationTables.Api.IngestContentMetadataPlaceInformation
+
+The place information metadata of an ingest content request.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `placeId` | `integer` | No | The place id of an ingest content request. |
+| `placeVersionNumber` | `integer` | No | The place version number of an ingest content request. |
+
+### Roblox.LocalizationTables.Api.LocalizationTablesMetadataResponse
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `isBulkUploadFeatureEnabled` | `boolean` | No | Is bulk upload feature enabled |
+| `isCsvDownloadEnabled` | `boolean` | No | Is CSV download feature enabled |
+| `isAccessToTranslationMetaDataEnabled` | `boolean` | No | Is access to translation metadata feature enabled |
+| `isTranslationManagementRedirectionEnabled` | `boolean` | No | Is access to translation metadata feature enabled |
+| `isUntranslatedFilterEnabled` | `boolean` | No | Is untranslated filter on UI is enabled |
+| `isAutomaticTranslationFilterEnabled` | `boolean` | No | Is filter for automatic translations on UI is enabled |
+
+### Roblox.LocalizationTables.Api.MatchedEntry
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `source` | `string` | No |  |
+| `matchedParamIndex` | `integer` | No |  |
+
+### Roblox.LocalizationTables.Api.ModifiedEntry
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `identifier` | `Roblox.LocalizationTables.Api.EntryIdentifier` | No |  |
+| `translations` | `Roblox.LocalizationTables.Api.Translation[]` | No |  |
+
+### Roblox.LocalizationTables.Api.PatchEntry
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `identifier` | `Roblox.LocalizationTables.Api.EntryIdentifier` | No |  |
+| `metadata` | `Roblox.LocalizationTables.Api.EntryMetadata` | No |  |
+| `translations` | `Roblox.LocalizationTables.Api.PatchTranslation[]` | No |  |
+| `delete` | `boolean` | No |  |
+
+### Roblox.LocalizationTables.Api.PatchTranslation
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `locale` | `string` | No |  |
+| `translationText` | `string` | No |  |
+| `delete` | `boolean` | No |  |
+| `changeAgent` | `Roblox.Localizationtables.Localizationtables.V1.ChangeAgent` | No |  |
+| `updatedTime` | `string` | No |  |
+
+### Roblox.LocalizationTables.Api.RaiseEventForAutoScrapedEntriesCleanupRequest
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `maxAgeForFlush` | `string` | No | The time range to remove entries from. Following ISO 8601 Durations format |
+
+### Roblox.LocalizationTables.Api.SetAutolocalizationSettingsForGameRequest
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `isAutolocalizationEnabled` | `boolean` | No |  |
+| `isAutomaticEntriesSettingEnabled` | `boolean` | No |  |
+| `isAutomaticEntriesDeletionsEnabled` | `boolean` | No |  |
+| `shouldUseLocalizationTable` | `boolean` | No |  |
+| `shouldUseImageLocalizationTable` | `boolean` | No |  |
+| `isAutoLocalizationForImageEnabled` | `boolean` | No |  |
+
+### Roblox.LocalizationTables.Api.SetAutolocalizationTableForGameRequest
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `tableId` | `string` | No |  |
+
+### Roblox.LocalizationTables.Api.TableOperationLimits
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `maxEntriesPerUpdate` | `integer` | No | Maximum number of entries for a patch request |
+
+### Roblox.LocalizationTables.Api.Translation
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `locale` | `string` | No |  |
+| `translationText` | `string` | No |  |
+| `translator` | `Roblox.LocalizationTables.Api.Translator` | No |  |
+| `updatedTime` | `string` | No |  |
+| `feedbackCount` | `integer` | No |  |
+
+### Roblox.LocalizationTables.Api.TranslationHistory
+
+A model containing a translation, translator, and translation time.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `translationText` | `string` | No | The translation provided by the translator. |
+| `translator` | `Roblox.LocalizationTables.Api.Translator` | No |  |
+| `created` | `string` | No | The time the translation was provided. |
+
+### Roblox.LocalizationTables.Api.Translator
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `id` | `integer` | No |  |
+| `agentType` | `User \| Automation` | No | ['User' = 0, 'Automation' = 1] |
+
+### Roblox.LocalizationTables.Api.UpdateTableContentsRequest
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `name` | `string` | No |  |
+| `entries` | `Roblox.LocalizationTables.Api.PatchEntry[]` | No |  |
+
+### Roblox.LocalizationTables.Api.UpdateTableContentsResponse
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `failedEntriesAndTranslations` | `Roblox.LocalizationTables.Api.FailedEntry[]` | No |  |
+| `modifiedEntriesAndTranslations` | `Roblox.LocalizationTables.Api.ModifiedEntry[]` | No |  |
+
+### Roblox.Localizationtables.Localizationtables.V1.ChangeAgent
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `ChangeAgentType` | `Invalid \| User \| Automation \| Default` | No | ['Invalid' = 0, 'User' = 1, 'Automation' = 2, 'Default' = 3] |
+| `Id` | `string` | No |  |
+| `OptionalIdCase` | `None \| Id` | No | ['None' = 0, 'Id' = 2] |

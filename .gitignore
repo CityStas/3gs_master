@@ -18,15 +18,25 @@ __pycache__/
 data/sqlite/
 data/gen-staging/
 data/gen-status.json
+data/gen.lock
 godot/data/
 unity/data/
 unity/knowledge/
+# roblox/data - то, что качает `gs roblox-fetch` (~3600 страниц) и из чего
+# собирается индексируемый корпус roblox/knowledge. Сам корпус - в git.
+roblox/data/
+
+# --- сгенерированные ассеты -------------------------------------------
+# Куда generate.py складывает кадры (out в плане) - это результат прогона,
+# а не исходники. Сами планы лежат в projects/ и тоже не версионируются.
+games/
 
 # --- пользовательские проекты и логи -----------------------------------
 projects/
 logs/
 godot/logs/
 unity/logs/
+roblox/logs/
 *.log
 
 # --- сессии агента и креды --------------------------------------------

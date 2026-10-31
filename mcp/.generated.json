@@ -1,0 +1,33 @@
+{
+  "pi-home-three": [
+    "assets",
+    "threejs-rag"
+  ],
+  "pi-home-godot": [
+    "assets",
+    "godot",
+    "godot-rag"
+  ],
+  "pi-home-unity": [
+    "assets",
+    "unity-project",
+    "unity-rag"
+  ],
+  "pi-home-roblox": [
+    "assets",
+    "rbx-project",
+    "rbx-rag",
+    "roblox-studio"
+  ],
+  "workbuddy": [
+    "assets",
+    "godot",
+    "godot-rag",
+    "rbx-project",
+    "rbx-rag",
+    "roblox-studio",
+    "threejs-rag",
+    "unity-project",
+    "unity-rag"
+  ]
+}

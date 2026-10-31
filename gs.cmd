@@ -46,6 +46,12 @@ if /i "%SUB%"=="unity-fetch" set "T=cmd\unity-fetch.cmd"
 if /i "%SUB%"=="unity-index" set "T=cmd\unity-index.cmd"
 if /i "%SUB%"=="unity-check" set "T=cmd\unity-check.cmd"
 if /i "%SUB%"=="unity-doctor" set "T=cmd\unity-doctor.cmd"
+if /i "%SUB%"=="roblox-fetch" set "T=cmd\roblox-fetch.cmd"
+if /i "%SUB%"=="roblox-index" set "T=cmd\roblox-index.cmd"
+if /i "%SUB%"=="roblox-check" set "T=cmd\roblox-check.cmd"
+if /i "%SUB%"=="roblox-doctor" set "T=cmd\roblox-doctor.cmd"
+if /i "%SUB%"=="roblox-open" set "T=cmd\roblox-open.cmd"
+if /i "%SUB%"=="mcp-sync" set "T=cmd\mcp-sync.cmd"
 if /i "%SUB%"=="help"    goto :usage
 if /i "%SUB%"=="-h"      goto :usage
 if /i "%SUB%"=="--help"  goto :usage
@@ -87,6 +93,15 @@ echo   unity-fetch   fetch the Unity docs corpus   [--with-source]
 echo   unity-index   build the Unity RAG index
 echo   unity-check   lint (+ optional --compile) a Unity project
 echo   unity-doctor  Unity stack environment check
+echo.
+echo   roblox-fetch  fetch the Roblox corpus ^(guides + Engine API + Open Cloud + KB^)
+echo   roblox-index  build the Roblox RAG index   [--vectors^|--only^|--force]
+echo   roblox-check  lint a Roblox project's Luau   ^<project^> [--json^|--errors-only]
+echo   roblox-doctor Roblox stack environment check ^(Studio, corpus, index^)
+echo   roblox-open   open Roblox Studio on a place   [project] [--empty]
+echo.
+echo   mcp-sync      render mcp\registry.json into the pi profiles and WorkBuddy
+echo                 ^(dry run; --apply writes, --print ^<engine^> dumps one^)
 echo.
 echo Day-to-day launchers (up/agent/resume/studio) live in the repo root;
 echo the rest live in cmd\ - `gs` is just a front door to both.

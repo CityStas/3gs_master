@@ -1,0 +1,197 @@
+---
+name: "Ads Api v1"
+last_updated: 2026-10-30T19:56:08Z
+type: legacy
+api_base_url: "https://ads.roblox.com"
+versions: [v1]
+endpoints: 4
+auth: [cookie]
+---
+
+# Ads Api v1
+
+> **Warning:** Legacy APIs with cookie authentication can incorporate breaking changes without notice. We don't recommend them for production applications.
+
+**Base URL:** `https://ads.roblox.com`
+**Versions:** v1
+
+## Endpoints
+
+### GET `/v1/sponsored-pages`
+
+Retrieves sponsored pages to serve to a user on a specific device type in a specific country.
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.WebAPI.Models.ApiArrayResponse[Roblox.Ads.Api.Models.Response.SponsoredPageResponse]`
+- `401`: 0: Authorization has been denied for this request.
+
+**Response fields** (`Roblox.Web.WebAPI.Models.ApiArrayResponse[Roblox.Ads.Api.Models.Response.SponsoredPageResponse]`)
+
+See [Roblox.Web.WebAPI.Models.ApiArrayResponse[Roblox.Ads.Api.Models.Response.SponsoredPageResponse]](#roblox-web-webapi-models-apiarrayresponse-roblox-ads-api-models-response-sponsoredpageresponse-) in Models.
+
+**Response example:**
+```json
+{
+  "data": [
+    {
+      "name": "...",
+      "title": "...",
+      "logoImageUrl": "...",
+      "pageType": "...",
+      "pagePath": "..."
+    }
+  ]
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://ads.roblox.com/v1/sponsored-pages"
+```
+
+### GET `/v1/sponsored/catalog-assets/{targetId}/create`
+
+Returns the asset information for creating a new sponsored campaign.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `targetId` | path | `integer (int64)` | Yes | The target of the campaign |
+
+**Responses:**
+
+- `200`: OK → `Roblox.Ads.Api.Models.Response.CreateSponsoredItemCampaignResponse`
+- `401`: 0: Authorization has been denied for this request.
+
+**Response fields** (`Roblox.Ads.Api.Models.Response.CreateSponsoredItemCampaignResponse`)
+
+See [Roblox.Ads.Api.Models.Response.CreateSponsoredItemCampaignResponse](#roblox-ads-api-models-response-createsponsoreditemcampaignresponse) in Models.
+
+**Response example:**
+```json
+{
+  "creatorTargetId": 0,
+  "creatorType": "string",
+  "creatorName": "string"
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://ads.roblox.com/v1/sponsored/catalog-assets/{TARGETID}/create"
+```
+
+### POST `/v1/ads-tracking/click`
+
+Records an ad click.
+
+**Request Body:** `application/json` — Type: `Roblox.Ads.Api.RecordClickRequest`
+
+See [Roblox.Ads.Api.RecordClickRequest](#roblox-ads-api-recordclickrequest) in Models.
+
+**Request example:**
+```json
+{
+  "encryptedAdTrackingData": "string",
+  "campaignTargetType": 0,
+  "placementLocation": 1
+}
+```
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.WebAPI.ApiEmptyResponseModel`
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed
+
+**Response fields** (`Roblox.Web.WebAPI.ApiEmptyResponseModel`)
+
+See [Roblox.Web.WebAPI.ApiEmptyResponseModel](#roblox-web-webapi-apiemptyresponsemodel) in Models.
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X POST -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://ads.roblox.com/v1/ads-tracking/click" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "encryptedAdTrackingData": "string",
+  "campaignTargetType": 0,
+  "placementLocation": 1
+}'
+```
+
+### POST `/v1/sponsored-games/click`
+
+Records clicks for sponsored games.
+
+**Request Body:** `application/json` — Type: `string`
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.WebAPI.ApiEmptyResponseModel`
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed
+
+**Response fields** (`Roblox.Web.WebAPI.ApiEmptyResponseModel`)
+
+See [Roblox.Web.WebAPI.ApiEmptyResponseModel](#roblox-web-webapi-apiemptyresponsemodel) in Models.
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X POST -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://ads.roblox.com/v1/sponsored-games/click" \
+  -H "Content-Type: application/json" \
+  -d '"string"'
+```
+
+## Models
+
+### Roblox.Ads.Api.Models.Response.CreateSponsoredItemCampaignResponse
+
+The response model for serving a sponsored game.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `creatorTargetId` | `integer` | No | Id of the universe that is being sponsored. |
+| `creatorType` | `string` | No | Type of the creator. |
+| `creatorName` | `string` | No | Name of the creator. |
+
+### Roblox.Ads.Api.Models.Response.SponsoredPageResponse
+
+The response model for serving a sponsored game.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `name` | `string` | No | The name of the sponsored page. |
+| `title` | `string` | No | The title of the sponsored page. |
+| `logoImageUrl` | `string` | No | The logo image hash of the sponsored page. |
+| `pageType` | `0 \| 1` | No | The type of the sponsored page. ['Event' = 0, 'Sponsored' = 1] |
+| `pagePath` | `string` | No | The path of the sponsored page. |
+
+### Roblox.Ads.Api.RecordClickRequest
+
+A request model for an ad click.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `encryptedAdTrackingData` | `string` | No | The encrypted tracking data |
+| `campaignTargetType` | `0 \| 1 \| 2 \| 3` | No | The campaign target type ['Undefined' = 0, 'Universe' = 1, 'Asset' = 2, 'ImmersiveAd' = 3] |
+| `placementLocation` | `integer enum (8 values)` | No | The placement location ['Undefined' = 1, 'GameSort' = 2, 'AvatarShop' = 4, 'ItemDetails' = 8, 'HomePage' = 16, 'Billboard300x250' = 32, 'Billboard600x300' = 64, 'Billboard300x600' = 128] Values: 1, 2, 4, 8, 16, 32, 64, 128 |
+
+### Roblox.Web.WebAPI.Models.ApiArrayResponse[Roblox.Ads.Api.Models.Response.SponsoredPageResponse]
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `data` | `Roblox.Ads.Api.Models.Response.SponsoredPageResponse[]` | No |  |

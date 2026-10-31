@@ -1,0 +1,16 @@
+<roblox version="4">
+  <Item class="Workspace" referent="0">
+    <Properties><string name="Name">Workspace</string></Properties>
+    <Item class="Part" referent="1">
+      <Properties><string name="Name">Floor</string><bool name="Anchored">true</bool></Properties>
+    </Item>
+  </Item>
+  <Item class="ServerScriptService" referent="2">
+    <Properties><string name="Name">ServerScriptService</string></Properties>
+    <Item class="Script" referent="3">
+      <Properties><string name="Name">Bootstrap</string><ProtectedString name="Source">local Players = game:GetService("Players")
+print("hi")
+return nil</ProtectedString></Properties>
+    </Item>
+  </Item>
+</roblox>

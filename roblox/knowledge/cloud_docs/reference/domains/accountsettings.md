@@ -1,0 +1,710 @@
+---
+name: "AccountSettings Api v1"
+last_updated: 2026-10-30T19:56:08Z
+type: legacy
+api_base_url: "https://accountsettings.roblox.com"
+versions: [v1]
+endpoints: 15
+auth: [cookie]
+---
+
+# AccountSettings Api v1
+
+> **Warning:** Legacy APIs with cookie authentication can incorporate breaking changes without notice. We don't recommend them for production applications.
+
+**Base URL:** `https://accountsettings.roblox.com`
+**Versions:** v1
+
+## Endpoints
+
+### GET `/v1/account/settings/account-country`
+
+Get a user's current account country setting.
+
+**Responses:**
+
+- `200`: OK → `Roblox.AccountSettings.Api.Models.Response.AccountCountrySettingsResponse`
+- `401`: 0: Authorization has been denied for this request.
+
+**Response fields** (`Roblox.AccountSettings.Api.Models.Response.AccountCountrySettingsResponse`)
+
+See [Roblox.AccountSettings.Api.Models.Response.AccountCountrySettingsResponse](#roblox-accountsettings-api-models-response-accountcountrysettingsresponse) in Models.
+
+**Response example:**
+```json
+{
+  "value": {
+    "countryName": "string",
+    "subdivisionIso": "string",
+    "localizedSubdivision": "string",
+    "localizedName": "string",
+    "countryId": 0
+  }
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://accountsettings.roblox.com/v1/account/settings/account-country"
+```
+
+### POST `/v1/account/settings/account-country`
+
+Updates the user's account country.
+
+**Request Body:** `application/json` — Type: `Roblox.AccountSettings.Api.UpdateAccountCountryRequest`
+
+See [Roblox.AccountSettings.Api.UpdateAccountCountryRequest](#roblox-accountsettings-api-updateaccountcountryrequest) in Models.
+
+**Request example:**
+```json
+{
+  "targetCountryId": 0
+}
+```
+
+**Responses:**
+
+- `200`: OK → `Roblox.AccountSettings.Api.Models.Response.UpdateAccountCountryResponse`
+- `400`: 1: InvalidRequest
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed 2: OperationNotPermitted
+- `404`: 2: OperationNotPermitted
+- `500`: 0: Unknown
+
+**Response fields** (`Roblox.AccountSettings.Api.Models.Response.UpdateAccountCountryResponse`)
+
+See [Roblox.AccountSettings.Api.Models.Response.UpdateAccountCountryResponse](#roblox-accountsettings-api-models-response-updateaccountcountryresponse) in Models.
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X POST -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://accountsettings.roblox.com/v1/account/settings/account-country" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "targetCountryId": 0
+}'
+```
+
+### GET `/v1/account/settings/metadata`
+
+Returns metadata used by the account settings page
+
+**Responses:**
+
+- `200`: OK → `Roblox.AccountSettings.Api.Models.AccountsSettingsMetadataModel`
+- `401`: 0: Authorization has been denied for this request.
+
+**Response fields** (`Roblox.AccountSettings.Api.Models.AccountsSettingsMetadataModel`)
+
+See [Roblox.AccountSettings.Api.Models.AccountsSettingsMetadataModel](#roblox-accountsettings-api-models-accountssettingsmetadatamodel) in Models.
+
+**Response example:**
+```json
+{
+  "IsAccountsRestrictionsSpamBugFixEnabled": false,
+  "MaximumParentalControlsMonthlySpendLimitInUSD": 0,
+  "IsParentalMonthlyLimitInUIEnabled": false,
+  "IsParentalNotificationSettingsInUIEnabled": false,
+  "IsContentControlsEnabled": false
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://accountsettings.roblox.com/v1/account/settings/metadata"
+```
+
+### GET `/v1/email`
+
+Gets the authenticated user's email address and verified status
+
+**Responses:**
+
+- `200`: OK → `Roblox.AccountSettings.Api.EmailResponse`
+- `401`: 0: Authorization has been denied for this request.
+
+**Response fields** (`Roblox.AccountSettings.Api.EmailResponse`)
+
+See [Roblox.AccountSettings.Api.EmailResponse](#roblox-accountsettings-api-emailresponse) in Models.
+
+**Response example:**
+```json
+{
+  "emailAddress": "string",
+  "verified": false,
+  "canBypassPasswordForEmailUpdate": false
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://accountsettings.roblox.com/v1/email"
+```
+
+### POST `/v1/email`
+
+Updates the authenticated user's email address
+
+**Request Body:** `application/json` — Type: `Roblox.AccountSettings.Api.UpdateEmailRequest`
+
+See [Roblox.AccountSettings.Api.UpdateEmailRequest](#roblox-accountsettings-api-updateemailrequest) in Models.
+
+**Request example:**
+```json
+{
+  "password": "string",
+  "emailAddress": "string",
+  "skipVerificationEmail": false,
+  "isAdsAccount": false
+}
+```
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.WebAPI.ApiEmptyResponseModel`
+- `400`: 8: Password is incorrect. 9: Invalid email address.
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed 2: This feature is currently disabled. Please try again later. 3: There are too many accounts associated with this email address. 11: You must be on the Corporate network to log in.
+- `409`: 4: This is already the current email.
+- `429`: 6: Too many attempts to update email. Please try again later. 7: Too many attempts to send verification email. Please try again later.
+- `503`: 2: This feature is currently disabled. Please try again later.
+
+**Response fields** (`Roblox.Web.WebAPI.ApiEmptyResponseModel`)
+
+See [Roblox.Web.WebAPI.ApiEmptyResponseModel](#roblox-web-webapi-apiemptyresponsemodel) in Models.
+
+**Error handling:** `429`: Retry with exponential backoff (start at 1s). `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X POST -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://accountsettings.roblox.com/v1/email" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "password": "string",
+  "emailAddress": "string",
+  "skipVerificationEmail": false,
+  "isAdsAccount": false
+}'
+```
+
+### PATCH `/v1/email`
+
+Updates the authenticated user's email address
+
+**Request Body:** `application/json` — Type: `Roblox.AccountSettings.Api.UpdateEmailRequest`
+
+See [Roblox.AccountSettings.Api.UpdateEmailRequest](#roblox-accountsettings-api-updateemailrequest) in Models.
+
+**Request example:**
+```json
+{
+  "password": "string",
+  "emailAddress": "string",
+  "skipVerificationEmail": false,
+  "isAdsAccount": false
+}
+```
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.WebAPI.ApiEmptyResponseModel`
+- `400`: 8: Password is incorrect. 9: Invalid email address.
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed 2: This feature is currently disabled. Please try again later. 3: There are too many accounts associated with this email address. 11: You must be on the Corporate network to log in.
+- `409`: 4: This is already the current email.
+- `429`: 6: Too many attempts to update email. Please try again later. 7: Too many attempts to send verification email. Please try again later.
+- `503`: 2: This feature is currently disabled. Please try again later.
+
+**Response fields** (`Roblox.Web.WebAPI.ApiEmptyResponseModel`)
+
+See [Roblox.Web.WebAPI.ApiEmptyResponseModel](#roblox-web-webapi-apiemptyresponsemodel) in Models.
+
+**Error handling:** `429`: Retry with exponential backoff (start at 1s). `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X PATCH -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://accountsettings.roblox.com/v1/email" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "password": "string",
+  "emailAddress": "string",
+  "skipVerificationEmail": false,
+  "isAdsAccount": false
+}'
+```
+
+### GET `/v1/emails`
+
+Gets the authenticated user's verified email and pending (unverified) email if one exists
+
+**Responses:**
+
+- `200`: OK → `Roblox.AccountSettings.Api.CurrentEmailsResponse`
+- `401`: 0: Authorization has been denied for this request.
+
+**Response fields** (`Roblox.AccountSettings.Api.CurrentEmailsResponse`)
+
+See [Roblox.AccountSettings.Api.CurrentEmailsResponse](#roblox-accountsettings-api-currentemailsresponse) in Models.
+
+**Response example:**
+```json
+{
+  "verifiedEmail": "string",
+  "pendingEmail": "string"
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://accountsettings.roblox.com/v1/emails"
+```
+
+### GET `/v1/themes/{consumerType}/{consumerId}`
+
+returns the theme type for a specific consumer.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `consumerType` | path | `integer (int32)` | Yes | The consumer type Valid values: `1` |
+| `consumerId` | path | `string` | Yes | The consumer's theme configuration to get. If the consumerType is User always return the AuthenticatedUser's theme type. |
+
+**Responses:**
+
+- `200`: OK → `Roblox.AccountSettings.Api.ThemeConfigurationResponse`
+- `400`: 3: Invalid consumer type.
+- `401`: 0: Authorization has been denied for this request.
+
+**Response fields** (`Roblox.AccountSettings.Api.ThemeConfigurationResponse`)
+
+See [Roblox.AccountSettings.Api.ThemeConfigurationResponse](#roblox-accountsettings-api-themeconfigurationresponse) in Models.
+
+**Response example:**
+```json
+{
+  "themeType": "string"
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://accountsettings.roblox.com/v1/themes/{CONSUMERTYPE}/{CONSUMERID}"
+```
+
+### PATCH `/v1/themes/{consumerType}/{consumerId}`
+
+Modify the theme type for consumer.
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|-----|------|----------|-------------|
+| `consumerType` | path | `integer (int32)` | Yes | The consumer type Valid values: `1` |
+| `consumerId` | path | `integer (int64)` | Yes | The consumer's theme configuration to modify. If the consumerType is User always modify the AuthenticatedUser's theme type. |
+
+**Request Body:** `application/json` — Type: `Roblox.AccountSettings.Api.ThemeConfigurationRequest`
+
+See [Roblox.AccountSettings.Api.ThemeConfigurationRequest](#roblox-accountsettings-api-themeconfigurationrequest) in Models.
+
+**Request example:**
+```json
+{
+  "themeType": "string"
+}
+```
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.WebAPI.ApiEmptyResponseModel`
+- `400`: 2: Invalid theme type.
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed
+
+**Response fields** (`Roblox.Web.WebAPI.ApiEmptyResponseModel`)
+
+See [Roblox.Web.WebAPI.ApiEmptyResponseModel](#roblox-web-webapi-apiemptyresponsemodel) in Models.
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X PATCH -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://accountsettings.roblox.com/v1/themes/{CONSUMERTYPE}/{CONSUMERID}" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "themeType": "string"
+}'
+```
+
+### GET `/v1/themes/types`
+
+returns all the enabled theme types.
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.WebAPI.Models.ApiArrayResponse[System.String]`
+
+**Response fields** (`Roblox.Web.WebAPI.Models.ApiArrayResponse[System.String]`)
+
+See [Roblox.Web.WebAPI.Models.ApiArrayResponse[System.String]](#roblox-web-webapi-models-apiarrayresponse-system-string-) in Models.
+
+**Response example:**
+```json
+{
+  "data": [
+    "string"
+  ]
+}
+```
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://accountsettings.roblox.com/v1/themes/types"
+```
+
+### GET `/v1/trade-privacy`
+
+Get a user's trade privacy setting
+
+**Responses:**
+
+- `200`: OK → `Roblox.AccountSettings.Api.TradePrivacyResponse`
+- `401`: 0: Authorization has been denied for this request.
+
+**Response fields** (`Roblox.AccountSettings.Api.TradePrivacyResponse`)
+
+See [Roblox.AccountSettings.Api.TradePrivacyResponse](#roblox-accountsettings-api-tradeprivacyresponse) in Models.
+
+**Response example:**
+```json
+{
+  "tradePrivacy": "string"
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://accountsettings.roblox.com/v1/trade-privacy"
+```
+
+### POST `/v1/trade-privacy`
+
+Updates a user's trade privacy setting
+
+**Request Body:** `application/json` — Type: `Roblox.AccountSettings.Api.UpdateTradePrivacyRequest`
+
+See [Roblox.AccountSettings.Api.UpdateTradePrivacyRequest](#roblox-accountsettings-api-updatetradeprivacyrequest) in Models.
+
+**Request example:**
+```json
+{
+  "tradePrivacy": 0
+}
+```
+
+**Responses:**
+
+- `200`: OK → `Roblox.AccountSettings.Api.TradePrivacyUpdateResponse`
+- `400`: Roblox.AccountSettings.Api.ResponseEnums.TradeSettingsErrors.InvalidTradePrivacy
+- `401`: 0: Authorization has been denied for this request.
+- `403`: Roblox.AccountSettings.Api.ResponseEnums.TradeSettingsErrors.AccountLocked             OR             Roblox.AccountSettings.Api.ResponseEnums.TradeSettingsErrors.UserCannotTrade 0: Token Validation Failed
+
+**Response fields** (`Roblox.AccountSettings.Api.TradePrivacyUpdateResponse`)
+
+See [Roblox.AccountSettings.Api.TradePrivacyUpdateResponse](#roblox-accountsettings-api-tradeprivacyupdateresponse) in Models.
+
+**Response example:**
+```json
+{
+  "tradePrivacy": 0,
+  "inventoryPrivacy": 1,
+  "privacySettingResponse": 0
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X POST -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://accountsettings.roblox.com/v1/trade-privacy" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "tradePrivacy": 0
+}'
+```
+
+### GET `/v1/trade-value`
+
+Get a user's trade quality filter setting
+
+**Responses:**
+
+- `200`: OK → `Roblox.AccountSettings.Api.TradeValueResponse`
+- `401`: 0: Authorization has been denied for this request.
+
+**Response fields** (`Roblox.AccountSettings.Api.TradeValueResponse`)
+
+See [Roblox.AccountSettings.Api.TradeValueResponse](#roblox-accountsettings-api-tradevalueresponse) in Models.
+
+**Response example:**
+```json
+{
+  "tradeValue": "string"
+}
+```
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. 
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://accountsettings.roblox.com/v1/trade-value"
+```
+
+### POST `/v1/trade-value`
+
+Updates a user's trade quality filter setting
+
+**Request Body:** `application/json` — Type: `Roblox.AccountSettings.Api.TradeValueRequest`
+
+See [Roblox.AccountSettings.Api.TradeValueRequest](#roblox-accountsettings-api-tradevaluerequest) in Models.
+
+**Request example:**
+```json
+{
+  "tradeValue": 0
+}
+```
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.WebAPI.ApiEmptyResponseModel`
+- `400`: Roblox.AccountSettings.Api.ResponseEnums.TradeSettingsErrors.InvalidTradeValue
+- `401`: 0: Authorization has been denied for this request.
+- `403`: Roblox.AccountSettings.Api.ResponseEnums.TradeSettingsErrors.AccountLocked             OR             Roblox.AccountSettings.Api.ResponseEnums.TradeSettingsErrors.UserCannotTrade 0: Token Validation Failed
+
+**Response fields** (`Roblox.Web.WebAPI.ApiEmptyResponseModel`)
+
+See [Roblox.Web.WebAPI.ApiEmptyResponseModel](#roblox-web-webapi-apiemptyresponsemodel) in Models.
+
+**Error handling:** `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X POST -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://accountsettings.roblox.com/v1/trade-value" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "tradeValue": 0
+}'
+```
+
+### POST `/v1/email/verify`
+
+Send verify email to the authenticated user's email address
+
+**Request Body:** `application/json` — Type: `Roblox.AccountSettings.Api.SendVerifyEmailRequest`
+
+See [Roblox.AccountSettings.Api.SendVerifyEmailRequest](#roblox-accountsettings-api-sendverifyemailrequest) in Models.
+
+**Request example:**
+```json
+{
+  "freeItem": false,
+  "isAdsAccount": false
+}
+```
+
+**Responses:**
+
+- `200`: OK → `Roblox.Web.WebAPI.ApiEmptyResponseModel`
+- `400`: 10: No email address is associated with the account.
+- `401`: 0: Authorization has been denied for this request.
+- `403`: 0: Token Validation Failed 2: This feature is currently disabled. Please try again later. 11: You must be on the Corporate network to log in.
+- `409`: 5: The email is already verified.
+- `429`: 7: Too many attempts to send verification email. Please try again later.
+- `503`: 2: This feature is currently disabled. Please try again later.
+
+**Response fields** (`Roblox.Web.WebAPI.ApiEmptyResponseModel`)
+
+See [Roblox.Web.WebAPI.ApiEmptyResponseModel](#roblox-web-webapi-apiemptyresponsemodel) in Models.
+
+**Error handling:** `429`: Retry with exponential backoff (start at 1s). `401`: Check that your API key/token is valid and not expired. `403`: Verify your API key has the required scopes listed above. 
+
+**Example:**
+```bash
+curl -X POST -H "Authorization: Bearer $ROBLOX_ACCESS_TOKEN" \
+  "https://accountsettings.roblox.com/v1/email/verify" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "freeItem": false,
+  "isAdsAccount": false
+}'
+```
+
+## Models
+
+### Roblox.AccountSettings.Api.CurrentEmailsResponse
+
+Response model for getting the user's verified and pending email addresses
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `verifiedEmail` | `string` | No | The user's most recent verified email address (masked) |
+| `pendingEmail` | `string` | No | The user's pending (unverified) email address if one exists (masked) |
+
+### Roblox.AccountSettings.Api.EmailResponse
+
+Response model for getting the user's email address and verified status
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `emailAddress` | `string` | No | The masked and formatted email address |
+| `verified` | `boolean` | No | The verified status of the email |
+| `canBypassPasswordForEmailUpdate` | `boolean` | No | Whether password is required for updating email |
+
+### Roblox.AccountSettings.Api.Models.AccountsSettingsMetadataModel
+
+A model containing website metadata for avatars
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `IsAccountsRestrictionsSpamBugFixEnabled` | `boolean` | No | Whether or not account restrictions spam bug fix is enabled |
+| `MaximumParentalControlsMonthlySpendLimitInUSD` | `integer` | No | The max amount a user can enter as their monthly spending limit in USD |
+| `IsParentalMonthlyLimitInUIEnabled` | `boolean` | No | Enables/disables the section in the account parental controls page where you can set the monthly spend limit |
+| `IsParentalNotificationSettingsInUIEnabled` | `boolean` | No | Enables/disables the section in the account parental controls page where you can set the parental notifications settings |
+| `IsContentControlsEnabled` | `boolean` | No | Enables/disables the section in the account parental controls page where you can set the content control settings |
+
+### Roblox.AccountSettings.Api.Models.Response.AccountCountrySettingsResponse
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `value` | `Roblox.AccountSettings.Api.Models.Response.UserAccountCountry` | No |  |
+
+### Roblox.AccountSettings.Api.Models.Response.UserAccountCountry
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `countryName` | `string` | No |  |
+| `subdivisionIso` | `string` | No |  |
+| `localizedSubdivision` | `string` | No |  |
+| `localizedName` | `string` | No |  |
+| `countryId` | `integer` | No |  |
+
+### Roblox.AccountSettings.Api.SendVerifyEmailRequest
+
+Request model for sending a verify email request
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `freeItem` | `boolean` | No | Whether the user will see messaging that they received a free item after verifying their email |
+| `isAdsAccount` | `boolean` | No | Whether the request is coming from ads site |
+
+### Roblox.AccountSettings.Api.ThemeConfigurationRequest
+
+Response model for get user's theme type
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `themeType` | `string` | No | theme Type |
+
+### Roblox.AccountSettings.Api.ThemeConfigurationResponse
+
+Response model for get user's theme type
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `themeType` | `string` | No | theme Type |
+
+### Roblox.AccountSettings.Api.TradePrivacyResponse
+
+Response model for getting the user's trade privacy settings
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `tradePrivacy` | `string` | No | The current trade privacy setting for the current user |
+
+### Roblox.AccountSettings.Api.TradePrivacyUpdateResponse
+
+Response model for updating the user's trade privacy settings
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `tradePrivacy` | `integer enum (8 values)` | No | The trade privacy setting after updating ['Undefined' = 0, 'Disabled' = 1, 'NoOne' = 2, 'Friends' = 3, 'TopFriends' = 4, 'Following' = 5, 'Followers' = 6, 'All' = 7] Values: 0, 1, 2, 3, 4, 5, 6, 7 |
+| `inventoryPrivacy` | `integer enum (6 values)` | No | The inventory privacy setting after updating ['NoOne' = 1, 'Friends' = 2, 'FriendsAndFollowing' = 3, 'FriendsFollowingAndFollowers' = 4, 'AllAuthenticatedUsers' = 5, 'AllUsers' = 6] Values: 1, 2, 3, 4, 5, 6 |
+| `privacySettingResponse` | `0 \| 1` | No | The response state after updating trade privacy ['Success' = 0, 'Conflict' = 1] |
+
+### Roblox.AccountSettings.Api.TradeValueRequest
+
+Request model for trade value setting update
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `tradeValue` | `0 \| 1 \| 2 \| 3 \| 4` | No | The desired trade value setting for the active user ['Undefined' = 0, 'None' = 1, 'Low' = 2, 'Medium' = 3, 'High' = 4] |
+
+### Roblox.AccountSettings.Api.TradeValueResponse
+
+Response model for getting the user's trade value settings
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `tradeValue` | `string` | No | The current trade value setting for the current user |
+
+### Roblox.AccountSettings.Api.UpdateAccountCountryRequest
+
+Request Model for updating a user's account country
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `targetCountryId` | `integer` | No | The targetCountryId |
+
+### Roblox.AccountSettings.Api.UpdateEmailRequest
+
+Request model for updating an email
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `password` | `string` | No | The user's password. |
+| `emailAddress` | `string` | No | The new email address to set. |
+| `skipVerificationEmail` | `boolean` | No | Should the email controller skip sending the verification email. |
+| `isAdsAccount` | `boolean` | No | Whether the request is coming from ads site. |
+
+### Roblox.AccountSettings.Api.UpdateTradePrivacyRequest
+
+Request model for trade privacy setting update
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `tradePrivacy` | `integer enum (8 values)` | No | The desired trade privacy setting for the active user ['Undefined' = 0, 'Disabled' = 1, 'NoOne' = 2, 'Friends' = 3, 'TopFriends' = 4, 'Following' = 5, 'Followers' = 6, 'All' = 7] Values: 0, 1, 2, 3, 4, 5, 6, 7 |
+
+### Roblox.Web.WebAPI.Models.ApiArrayResponse[System.String]
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `data` | `string[]` | No |  |
