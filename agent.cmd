@@ -1,6 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
-rem --- shared paths (GS_ROOT, GS_GAMES, PY, NO_PROXY) come from one place ----
+rem --- shared paths (GS_ROOT, GS_PROJECTS, PY, NO_PROXY) come from one place ----
 call "%~dp0cmd\_env.cmd"
 
 set "PY=%GS_ROOT%.venv\Scripts\python.exe"

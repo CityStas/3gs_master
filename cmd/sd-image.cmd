@@ -1,7 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 rem --- this launcher lives in cmd\; the repo root is one level up ---
-rem --- shared paths (GS_ROOT, GS_GAMES, PY, NO_PROXY) come from one place ----
+rem --- shared paths (GS_ROOT, GS_PROJECTS, PY, NO_PROXY) come from one place ----
 call "%~dp0_env.cmd"
 
 rem --- z-image-turbo text-to-image via stable-diffusion.cpp (Vulkan) --------------

@@ -24,12 +24,14 @@
 репозиторий на HuggingFace, точный размер и `sha256`.
 
 ```cmd
-python -m venv .venv && .venv\Scripts\pip install -r requirements.txt
-gs models --fetch              :: всё, что помечено default (~39 ГБ)
+setup.cmd                      :: venv + зависимости + веса + doctor, одной командой
 gs models --verify             :: пересчитать хеши
 ```
 
-`--fetch` качает только отсутствующее, докачивает с места обрыва (`.part` + `Range`) и
+`setup.cmd` идемпотентен: повторный запуск ничего не перекачивает. `setup.cmd --no-models`
+создаёт окружение без весов, `--mirror` качает через hf-mirror.com.
+
+`gs models --fetch` качает только отсутствующее, докачивает с места обрыва (`.part` + `Range`) и
 сверяет `sha256` на лету - недокачанный файл никогда не станет похож на рабочий.
 Плохая связь с HuggingFace - добавь `--mirror` (hf-mirror.com).
 
@@ -55,11 +57,13 @@ gs models --verify rag --strict
 
 ## Модели: где лежат
 
-Корень задаётся одной переменной, по умолчанию `<repo>/models`:
+**По умолчанию всё качается внутрь репозитория** - `<repo>/models`, ничего настраивать
+не нужно. Переменные ниже нужны только чтобы взять веса из другого каталога:
 
 | переменная | по умолчанию | что покрывает |
 |---|---|---|
-| `GS_MODELS_ROOT` | `<repo>/models` | всё: чат-GGUF, эмбеддер, реранкер, VLM, z-image, ComfyUI |
+| `LOCAL_LLM_MODELS` | пусто | общий корень весов на машине: его читает и 3GS Master, и hc_local_ai_image_3D |
+| `GS_MODELS_ROOT` | `<repo>/models` | побеждает общий корень; всё: чат-GGUF, эмбеддер, реранкер, VLM, z-image, ComfyUI |
 | `GS_LLM_MODELS_DIR` | пусто | доп. корни **только** для чат-моделей, через `;` |
 
 Абсолютных путей в коде нет - буква диска не зашита нигде. Если веса лежат на другом
@@ -71,6 +75,19 @@ copy local.env.example.cmd local.env.cmd
 set "GS_MODELS_ROOT=D:\AI\Models"
 ```
 
+Ещё удобнее - задать общий корень один раз на машину, тогда его подхватят оба проекта
+без правки их файлов:
+
+```cmd
+setx LOCAL_LLM_MODELS "D:\AI\Models"
+```
+
+Уже скачанные веса переезжают туда обычным копированием:
+
+```cmd
+robocopy models D:\AI\Models /E /MOVE
+```
+
 Проверить, что где лежит и чего не хватает:
 
 ```cmd
@@ -80,21 +97,25 @@ gs models --paths
 Раскладка внутри корня: `*.gguf` в корне (9B чат, `bge-m3`, `bge-reranker`),
 `vlm/Qwen2.5-VL-7B/`, `image/z-image-turbo/`, `text_image_3D/` (ComfyUI и его 3D-модели).
 Этот же корень читают все четыре движка, роутер llama.cpp на :8080, `vlm.cmd`,
-`sd-image.cmd` и приложение hc_local_ai_image_3D (через `HC_MODELS_ROOT`).
+`sd-image.cmd`.
+
+hc_local_ai_image_3D - отдельный проект со своим кодом и своим `.env`; 3GS Master для
+него не нужен. Совпадать у них может только папка с весами, и совпадает она через
+`LOCAL_LLM_MODELS`: ни один из проектов не знает пути другого.
 
 ## Быстрый старт
 
 ```cmd
 git clone https://github.com/CityStas/3gs_master
 cd 3gs_master
-python -m venv .venv && .venv\Scripts\pip install -r requirements.txt
-gs models --fetch                 :: ~39 ГБ весов, один раз
-gs doctor                         :: окружение целиком
+setup.cmd                         :: venv + зависимости + ~39 ГБ весов + doctor
 dev.cmd my_game
 ```
 
-`dev.cmd <игра>` поднимает нужные сервисы, проверяет окружение и открывает агента
-в папке игры. Флаг `--studio` добавляет редактор уровней (только для Three.js).
+`setup.cmd` можно прервать и запустить снова - докачает с места обрыва. Отдельно
+`gs doctor` проверяет окружение целиком, `dev.cmd <игра>` поднимает нужные сервисы,
+проверяет окружение и открывает агента в папке игры. Флаг `--studio` добавляет
+редактор уровней (только для Three.js).
 
 ## Новый проект
 
@@ -106,15 +127,19 @@ dev.cmd my_game
 | Three.js | `projects/three/<имя>` | `{ "engine": "threejs", "version": "r186" }` | `cmd\init.cmd <имя>` — раскладывает three.js-стек по маркеру |
 | Godot 4 | `projects/godot/<имя>` | `{ "engine": "godot", "version": "4.7.2" }` | создать проект в Godot Project Manager в этой папке |
 | Unity 6 | `projects/unity/<имя>` | `{ "engine": "unity", "version": "6000.3" }` | создать проект в Unity Hub или дать это агенту |
-| Roblox | `projects/roblox/<имя>` | `{ "engine": "roblox" }` | `gs roblox-fetch`, `gs roblox-index`, затем `gs roblox-open` |
+| Roblox | `projects/roblox/<имя>` | `{ "engine": "roblox" }` | `gs roblox-index`, затем `gs roblox-open` |
 
-Старый `projects/games/<имя>` продолжает резолвиться как legacy, но нового там не
-появляется. Раскладка описана в одном месте - `project_layout.py`.
+Документация движков лежит в репозитории отдельно от проектов, по папке на движок:
+`knowledge/` (Three.js), `roblox/knowledge/` (Roblox). Это не данные проекта, а корпус,
+общий для всех проектов движка, поэтому он и не копируется в каждую папку. Клон уже
+содержит корпус Roblox целиком - 2432 страницы; докачивать нужно только индекс
+(`gs roblox-index`), он в git не входит (249 МБ). `gs roblox-fetch` нужен лишь чтобы
+обновить корпус до свежего.
 
-Для Roblox дополнительно нужны две вещи, которых нет у остальных движков: корпус
-документации скачивается отдельно (`gs roblox-fetch`, ~3600 страниц), а встроенный MCP
-Studio включается **внутри Studio** - Assistant → … → Manage MCP Servers → Enable
-Studio as MCP server.
+У Unity корпус в git не лежит - там `gs unity-fetch` действительно обязателен.
+
+Встроенный MCP Studio включается **внутри Studio**: Assistant → … → Manage MCP Servers
+→ Enable Studio as MCP server. Из репозитория это не настраивается.
 
 Дальше - `dev.cmd <имя>`. Инструменты движка появляются у агента только под проект
 с соответствующим `engine.json`.
@@ -128,12 +153,3 @@ Studio as MCP server.
 - [`unity/README.md`](unity/README.md) - Unity-стек
 - [`roblox/README.md`](roblox/README.md) - Roblox-стек (Luau, Studio MCP, корпус)
 - [`mcp/registry.json`](mcp/registry.json) - единственное описание MCP-серверов для pi и WorkBuddy
-
-## Что в репозитории, а что нет
-
-В git лежит код, корпус документации, конфигурация агента и **`models.manifest.json`** -
-опись весов со ссылками и хешами, по которой `gs models --fetch` их и забирает.
-Абсолютных путей нет: машинные (`GS_MODELS_ROOT`, `BLENDER_EXE`, `UNITY_EDITOR`) живут
-в `local.env.cmd`, которого в git нет - есть только `local.env.example.cmd`.
-Исключены сами веса, бинарники движков, кэши RAG, пользовательские проекты и логи -
-поэтому клон без `gs models --fetch` и `.venv` не запустится.

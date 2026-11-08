@@ -1,6 +1,6 @@
 @echo off
 setlocal
-rem --- shared paths (GS_ROOT, GS_GAMES, PY, NO_PROXY) come from one place ----
+rem --- shared paths (GS_ROOT, GS_PROJECTS, PY, NO_PROXY) come from one place ----
 call "%~dp0cmd\_env.cmd"
 
 rem --- One command for the whole cycle: models, optional studio, agent.

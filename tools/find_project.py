@@ -3,10 +3,9 @@
 
 `agent.cmd three/test_space`, `dev.cmd skateshop`, `studio.cmd my_game` all mean
 "the project called X", but only the Python stacks knew how to resolve that
-(absolute -> cwd -> repo root -> `projects/<engine>/<name>` -> legacy
-`projects/games/<name>`). Batch cannot reproduce those rules without drifting
-from them, so it calls this instead - the same `project_layout.find_project`
-the stacks use.
+(absolute -> cwd -> repo root -> `projects/<engine>/<name>`). Batch cannot
+reproduce those rules without drifting from them, so it calls this instead - the
+same `project_layout.find_project` the stacks use.
 
     python tools/find_project.py skateshop            # -> projects/roblox/skateshop
     python tools/find_project.py three/test_space     # -> projects/three/test_space
@@ -42,14 +41,20 @@ def main(argv: list[str]) -> int:
                     help="create the directory when it does not exist yet")
     ap.add_argument("--engine", action="store_true",
                     help="print the engine of the resolved project instead of its path")
+    ap.add_argument("--engine-name", metavar="NAME",
+                    help="engine for --create when cwd does not say (threejs/godot/unity/roblox)")
     a = ap.parse_args(argv[1:])
 
     dst = find_project(a.name, REPO)
 
     if dst is None and a.create:
         raw = Path(a.name)
-        parent = default_project_parent(Path.cwd(), REPO) if raw.parent == Path(".") \
-            else (REPO / raw).parent
+        # The engine decides the folder: `dev.cmd my_game` from the repo root lands
+        # in `projects/three/my_game` unless you are standing in another engine's
+        # folder (then that one wins). `--engine godot` overrides the guess.
+        guessed = a.engine_name or nearest_engine(Path.cwd(), REPO)[1]
+        parent = default_project_parent(Path.cwd(), REPO, guessed) \
+            if raw.parent == Path(".") else (REPO / raw).parent
         dst = (parent / raw.name).resolve()
         try:
             dst.mkdir(parents=True, exist_ok=True)
@@ -58,8 +63,8 @@ def main(argv: list[str]) -> int:
             return 1
 
     if dst is None:
-        print(f"[find_project] no project named {a.name!r}: tried cwd, the repo root, "
-              f"projects/<engine>/ and projects/games/", file=sys.stderr)
+        print(f"[find_project] no project named {a.name!r}: tried cwd, the repo root "
+              f"and projects/<engine>/", file=sys.stderr)
         return 1
 
     if a.engine:

@@ -11,9 +11,10 @@ Layout since 2026-11-08::
     projects/roblox/<name>     engine=roblox
 
 Each `<engine>` folder carries its own `engine.json`, so a project that forgets
-one still inherits the right engine from its parent. `projects/games/<name>`
-(the old layout) is still recognised, so nothing that was written against it
-breaks - it is a legacy fallback, not a second truth.
+one still inherits the right engine from its parent. There is exactly ONE layout:
+`projects/<engine>/<name>`. Nothing else is searched - a second, "legacy" parent
+would be a second source of truth, and the one thing worse than a wrong path is a
+path that resolves in two places and disagrees between the launcher and the stack.
 
 Four stacks need this (threejs, gdmaster, unimaster, rbxmaster) and they all
 used to hardcode `projects/games`. Keeping the rules here means a layout change
@@ -51,9 +52,6 @@ ENGINE_ALIASES = {"three": "threejs", "threejs": "threejs"}
 
 #: Default when a project declares nothing and no parent declares anything.
 DEFAULT_ENGINE = "threejs"
-
-#: Old layout. Kept as a fallback so existing scripts and habits still resolve.
-LEGACY_GAMES_DIR = REPO / "projects" / "games"
 
 
 def projects_dir(root: Path | None = None) -> Path:
@@ -143,20 +141,16 @@ def engine_project_parents(root: Path | None = None,
 
 
 def project_search_dirs(root: Path | None = None) -> list[Path]:
-    """Parents tried for a bare project name, in order. Legacy folder last."""
-    out = engine_project_parents(root)
-    legacy = (root or REPO) / "projects" / "games"
-    if legacy.is_dir() and legacy not in out:
-        out.append(legacy)
-    return out
+    """Parents tried for a bare project name, in order: `projects/<engine>/` only."""
+    return engine_project_parents(root)
 
 
 def find_project(name: str | Path, root: Path | None = None) -> Path | None:
     """Resolve a bare name or a relative path to an existing project directory.
 
-    Order: absolute path -> cwd -> repo root -> `projects/<engine>/<name>` ->
-    `projects/games/<name>`. `is_dir`, not `exists`: a file carrying the project's
-    name must not be mistaken for the project.
+    Order: absolute path -> cwd -> repo root -> `projects/<engine>/<name>`.
+    `is_dir`, not `exists`: a file carrying the project's name must not be mistaken
+    for the project.
     """
     raw = str(name or "").strip().strip('"')
     if not raw:
@@ -176,24 +170,30 @@ def find_project(name: str | Path, root: Path | None = None) -> Path | None:
 
 def default_project_parent(cwd: Path | str | None = None,
                            root: Path | None = None,
-                           legacy: Path | None = None) -> Path:
+                           engine: str | None = None,
+                           fallback: Path | None = None) -> Path:
     """Where a NEW project of an explicit bare name should be created.
 
-    Inside `projects/<engine>/` that folder wins (create the project where the
-    user is standing). Otherwise `legacy` - the caller's own `GAMES_DIR`, so a
-    `THREE_GAMES_DIR` / `GDM_GAMES_DIR` override still means what it says.
+    Inside `projects/<engine>/` that folder wins - create the project where the user
+    is standing. Anywhere else the folder of the caller's own engine does, so
+    `dev.cmd my_game` from the repo root lands in `projects/three/my_game`, not in
+    some shared `projects/games` that no engine owns.
+
+    `engine` is the caller's stack (threejs/godot/unity/roblox). `fallback` exists
+    for a `THREE_GAMES_DIR`-style override and for tests that redirect the tree.
     """
     root = (root or REPO).resolve()
-    fallback = Path(legacy) if legacy is not None else LEGACY_GAMES_DIR
     here = Path(cwd or os.getcwd()).resolve()
+    default = root / "projects" / engine_folder(engine)
+    fallback_path = Path(fallback) if fallback is not None else default
     try:
         rel = here.relative_to(root)
     except ValueError:
-        return fallback
+        return fallback_path
     parts = rel.parts
     if len(parts) >= 2 and parts[0] == "projects" and parts[1].lower() in ENGINE_FOLDERS:
         return root / "projects" / parts[1]
-    return fallback
+    return fallback_path
 
 
 def profile_for(engine: str | None) -> Path:

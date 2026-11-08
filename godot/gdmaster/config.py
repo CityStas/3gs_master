@@ -173,10 +173,10 @@ RERANK_TIMEOUT = float(os.environ.get("GDM_RERANK_TIMEOUT", "60"))
 
 # --- целевой Godot-проект ----------------------------------------------------
 # GDM_HOME - это `godot/`, поэтому корень репозитория на уровень выше, а проекты
-# пользователя лежат в `projects/<engine>/<имя>` (раскладка с 2026-11-08;
-# `projects/games/` остаётся как legacy). Раскладка описана ОДИН раз -
+# пользователя лежат в `projects/godot/<имя>` (раскладка с 2026-11-08;
+# `projects/godot/` остаётся как legacy). Раскладка описана ОДИН раз -
 # `project_layout.py` в корне репозитория; `cmd/_env.cmd` читает то же самое.
-GAMES_DIR: Path = Path(os.environ.get("GDM_GAMES_DIR", REPO_ROOT / "projects" / "games"))
+GAMES_DIR: Path = Path(os.environ.get("GDM_GAMES_DIR", REPO_ROOT / "projects" / "godot"))
 PROJECTS_DIR: Path = REPO_ROOT / "projects"
 
 # **ОДИН факт - ОДИН файл.** `agent.cmd` пишет активный проект в общий
@@ -211,17 +211,17 @@ def resolve_project(name_or_path: str | Path = "") -> Path:
     """Единственное определение «каталога Godot-проекта».
 
     Порядок: существующий абсолютный путь; существующий путь относительно cwd; путь
-    относительно корня репозитория; голое имя в `projects/games/`.
+    относительно корня репозитория; голое имя в `projects/godot/`.
     Env `GDM_PROJECT` / `GODOT_PROJECT_PATH` перекрывает файл активного проекта.
 
-    **Указатель - это подсказка, а не факт.** `projects/games/` - данные пользователя:
+    **Указатель - это подсказка, а не факт.** `projects/godot/` - данные пользователя:
     проекты создаются, переименовываются и удаляются, а `data/active_project.txt`
     продолжает называть старый. Поэтому подсказка разрешается на КАЖДОМ вызове и
     выдумать путь нельзя:
 
       * абсолютный путь возвращается как есть - это явное дело вызывающего;
       * относительный пробуется против cwd, затем корня репозитория, затем
-        `projects/games/`;
+        `projects/godot/`;
       * если на диске ничего не совпало и значение пришло из УКАЗАТЕЛЯ, указатель
         устарел -> `ValueError` с его именем. Раньше здесь стоял
         `Path(raw).resolve()`, то есть путь разрешался относительно cwd процесса:
@@ -250,7 +250,7 @@ def resolve_project(name_or_path: str | Path = "") -> Path:
     p = Path(raw).expanduser()
     if p.is_absolute():
         # Явный абсолютный путь - дело вызывающего (проект может лежать вне
-        # `projects/games/` и быть ещё не созданным). Из УКАЗАТЕЛЯ это состояние
+        # `projects/godot/` и быть ещё не созданным). Из УКАЗАТЕЛЯ это состояние
         # системы о данных пользователя, поэтому исчезнувшую цель нужно назвать.
         if from_pointer and not p.is_dir():
             raise ValueError(
@@ -275,8 +275,8 @@ def resolve_project(name_or_path: str | Path = "") -> Path:
     if p.parent == Path("."):
         # Голое имя - ЕДИНСТВЕННЫЙ случай, когда корень проектов правильный родитель:
         # проекта может ещё не быть. Внутри `projects/godot/` создаём там, иначе -
-        # legacy `projects/games`.
-        return (default_project_parent(Path.cwd(), REPO_ROOT, GAMES_DIR) / p).resolve()
+        # папке своего движка.
+        return (default_project_parent(Path.cwd(), REPO_ROOT, "godot", GAMES_DIR) / p).resolve()
     return (REPO_ROOT / p).resolve()
 
 

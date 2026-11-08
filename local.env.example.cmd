@@ -9,15 +9,25 @@ rem
 rem      copy local.env.example.cmd local.env.cmd
 rem
 rem  Nothing here is required. An empty (or missing) local.env.cmd means:
-rem  weights in <repo>\models, no extra chat roots, no Blender.
+rem  weights in <repo>\models (or in LOCAL_LLM_MODELS, if the machine has it),
+rem  no extra chat roots, no Blender.
 rem ===========================================================================
 
 rem --- weights root --------------------------------------------------------
 rem Default is <repo>\models. Set this to keep ~65 GB of GGUF/ComfyUI on another
-rem disk. Both the Python side (tools\model_paths.py) and the batch side
-rem (vlm.cmd, sd-image.cmd, serve-llm.cmd) read the same variable.
+rem disk. Both the Python side (model_paths.py) and the batch side (_env.cmd,
+rem vlm.cmd, sd-image.cmd, serve-llm.cmd) read the same variable.
 rem
 rem   set "GS_MODELS_ROOT=D:\AI\Models"
+rem
+rem One folder for ALL local tools: `LOCAL_LLM_MODELS` is a neutral name other
+rem projects read too (hc_local_ai_image_3D reads it in modelPaths.cjs), so the
+rem weights are downloaded once and shared. Best set machine-wide, once:
+rem
+rem   setx LOCAL_LLM_MODELS "D:\AI\Models"
+rem
+rem GS_MODELS_ROOT (this file) still wins - for the case where THIS project needs
+rem a different folder than everything else on the machine.
 
 rem --- extra chat roots (optional, ';'-separated) --------------------------
 rem Scanned IN ADDITION to the models root by tools\llm_models.py, and advertised

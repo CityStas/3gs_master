@@ -1,8 +1,8 @@
 """The project-resolver contract, asserted identically on all three stacks.
 
-`projects/games/` is USER DATA: games get created, renamed and deleted while the system
-files that point at them (`data/active_project.txt`) keep naming the old one. So the rule
-this file locks in is:
+`projects/<engine>/` is USER DATA: games get created, renamed and deleted while the
+system files that point at them (`data/active_project.txt`) keep naming the old one. So
+the rule this file locks in is:
 
     **A pointer is a hint, never a fact.** Resolve it on every call, and never invent a
     path that is not on disk.
@@ -10,8 +10,8 @@ this file locks in is:
 Three real failures motivated it (2026-10-11):
 
 1. `threejs` and `unity` fell through to `GAMES_DIR / raw`. For a pointer holding a
-   repo-relative `projects/games/<name>`, that produced
-   `projects/games/projects/games/<name>` - a path that cannot exist, returned silently,
+   repo-relative `projects/three/<name>`, that produced
+   `projects/three/projects/three/<name>` - a path that cannot exist, returned silently,
    so callers failed later with an error about the wrong directory.
 2. `godot` was worse: `Path(raw).resolve()` resolves a relative pointer against the
    PROCESS cwd, and MCP servers are started by pi from an arbitrary directory. A correct
@@ -56,7 +56,7 @@ class _Stack:
     environment would make every pointer test here meaningless.
 
     Redirecting the ROOTS (not just the pointer) is what keeps this hermetic: a live
-    repo-relative pointer can be tested by building a fake `projects/games/` under a temp
+    repo-relative pointer can be tested by building a fake `projects/three/` under a temp
     directory, instead of creating games inside the user's real one.
     """
 
@@ -88,9 +88,9 @@ class _Stack:
         return False
 
     def redirect_roots(self, root):
-        """Point the repo root and `projects/games/` at a temp tree."""
+        """Point the repo root and its project folder at a temp tree."""
         root = Path(root)
-        games = root / "projects" / "games"
+        games = root / "projects" / "three"
         games.mkdir(parents=True, exist_ok=True)
         setattr(self.cfg, self.root_attr, root)
         self.cfg.GAMES_DIR = games
@@ -119,14 +119,14 @@ class _Stack:
 
     @property
     def repo_root(self):
-        # GAMES_DIR is always <root>/projects/games in all three stacks.
+        # GAMES_DIR is always <root>/projects/<engine> in all three stacks.
         return self.games_dir.parent.parent
 
     def resolve(self, arg=""):
         return Path(self.cfg.resolve_project(arg))
 
 
-def test_a_bare_name_resolves_under_the_games_dir_on_every_stack():
+def test_a_bare_name_resolves_under_the_engine_folder_on_every_stack():
     for label, mod, env, root_attr in STACKS:
         with _Stack(label, mod, env, root_attr) as st:
             with tempfile.TemporaryDirectory() as td:
@@ -139,18 +139,18 @@ def test_a_bare_name_resolves_under_the_games_dir_on_every_stack():
 
 
 def test_a_repo_relative_pointer_is_never_doubled_on_every_stack():
-    """The signature of the old bug: `games` immediately followed by another `projects`."""
+    """The signature of the old bug: a project folder immediately followed by `projects`."""
     for label, mod, env, root_attr in STACKS:
         with _Stack(label, mod, env, root_attr) as st:
             with tempfile.TemporaryDirectory() as td:
                 st.redirect_roots(td)
                 st.clear_pointer(td)
-                got = st.resolve("projects/games/definitely-not-a-real-game")
-                want = (st.repo_root / "projects" / "games" /
+                got = st.resolve("projects/three/definitely-not-a-real-game")
+                want = (st.repo_root / "projects" / "three" /
                         "definitely-not-a-real-game").resolve()
                 if got != want:
                     _fail(label, "repo-relative -> %s, expected %s" % (got, want))
-                tail = got.parts[got.parts.index("games") + 1:]
+                tail = got.parts[got.parts.index("three") + 1:]
                 if tail and tail[0] == "projects":
                     _fail(label, "path was doubled: %s" % got)
 
@@ -172,7 +172,7 @@ def test_a_live_pointer_is_followed_on_every_stack():
 
 
 def test_a_live_repo_relative_pointer_is_followed_on_every_stack():
-    """`agent.cmd projects\\games\\<name>` stores a repo-relative string - the common case.
+    """`agent.cmd projects\\three\\<name>` stores a repo-relative string - the common case.
 
     This is the exact shape that was in `data/active_project.txt` when the bug surfaced,
     so it is covered explicitly rather than only in its absolute form.
@@ -184,7 +184,7 @@ def test_a_live_repo_relative_pointer_is_followed_on_every_stack():
                 project = games / "repo_rel_game"
                 project.mkdir(parents=True)
                 pointer = Path(td) / "active_project.txt"
-                pointer.write_text("projects/games/repo_rel_game", encoding="utf-8")
+                pointer.write_text("projects/three/repo_rel_game", encoding="utf-8")
                 st.point_at(pointer)
 
                 got = st.resolve("")
@@ -200,7 +200,7 @@ def test_a_stale_repo_relative_pointer_raises_on_every_stack():
             with tempfile.TemporaryDirectory() as td:
                 st.redirect_roots(td)
                 pointer = Path(td) / "active_project.txt"
-                pointer.write_text("projects/games/vanished-game", encoding="utf-8")
+                pointer.write_text("projects/three/vanished-game", encoding="utf-8")
                 st.point_at(pointer)
                 try:
                     st.resolve("")
@@ -322,20 +322,20 @@ def test_a_legacy_pointer_is_only_a_fallback():
                 legacy_dir.mkdir(parents=True)
                 st.cfg.LEGACY_ACTIVE_PROJECT_FILE = legacy_dir / "active_project.txt"
                 st.cfg.LEGACY_ACTIVE_PROJECT_FILE.write_text(
-                    "projects/games/from-legacy", encoding="utf-8")
+                    "projects/three/from-legacy", encoding="utf-8")
 
                 canonical_dir = Path(td) / "repo_data"
                 canonical_dir.mkdir(parents=True)
                 st.cfg.ACTIVE_PROJECT_FILE = canonical_dir / "active_project.txt"
                 st.cfg.ACTIVE_PROJECT_FILE.write_text(
-                    "projects/games/from-canonical", encoding="utf-8")
+                    "projects/three/from-canonical", encoding="utf-8")
 
-                if st.cfg.pointer_text() != "projects/games/from-canonical":
+                if st.cfg.pointer_text() != "projects/three/from-canonical":
                     _fail(label, "the legacy file outranked the canonical one")
 
                 # And with the canonical file empty/absent, the legacy one takes over.
                 st.cfg.ACTIVE_PROJECT_FILE.write_text("", encoding="utf-8")
-                if st.cfg.pointer_text() != "projects/games/from-legacy":
+                if st.cfg.pointer_text() != "projects/three/from-legacy":
                     _fail(label, "the legacy file was not used as a fallback")
 
 

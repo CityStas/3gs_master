@@ -11,7 +11,7 @@
 универсальность, которой не было, и модели звали его на любой новый проект.
 Теперь имя нейтральное, а решение принимает маркер движка.
 
-Скелет three.js-проекта: `projects/games/<имя>/`.
+Скелет three.js-проекта: `projects/three/<имя>/`.
 
 Зачем инструмент, а не «скопируй папку руками». Проект — это не один файл, а
 набор: `web3d/vendor/` (рантайм three.js r186), `web3d/scene.js`, сервер
@@ -52,10 +52,10 @@
 сказано в манифесте полем `builder`. Раньше выбор инструмента был зашит по
 идентификатору, и уровень с другим именем получал 500 «нет level_build.py».
 
-Проекты живут ТОЛЬКО в `projects/games/` репозитория. Это не пожелание, а
+Проекты живут ТОЛЬКО в `projects/<engine>/` репозитория. Это не пожелание, а
 условие работоспособности: на этот каталог смотрят `cmd/check.cmd`, гейты в
-`tools/web/`, `cmd/gen.cmd --project projects/games/<имя>` и обновление стека
-через `--sync`. Проект за пределами `projects/games/` отвязан от всего этого и
+`tools/web/`, `cmd/gen.cmd --project projects/three/<имя>` и обновление стека
+через `--sync`. Проект за пределами `projects/` отвязан от всего этого и
 живёт сам по себе. Поэтому аргумент — ИМЯ, а не путь: всё, что ведёт наружу,
 отвергается с подсказкой.
 
@@ -159,9 +159,10 @@ STUDIO_ONLY_FILES = [
 ]
 
 
-# Каталог проектов. ЕДИНСТВЕННОЕ определение в Python; лаунчеры читают то же
-# самое из `cmd/_env.cmd` (GS_GAMES). Меняешь раскладку — правишь оба места.
-GAMES_DIR = REPO / "projects"   # projects/<engine>/<name> since 2026-11-08
+# Корень проектов: projects/<engine>/<name>. Сама раскладка описана в
+# project_layout.py; здесь нужен только корень, чтобы отличить «внутри проектов»
+# от «где-то ещё».
+PROJECTS_DIR = REPO / "projects"
 
 
 class TargetError(Exception):
@@ -185,10 +186,9 @@ SKELETON_BY_ENGINE = {
 def resolve_target(arg: str | None) -> pathlib.Path:
     """Каталог проекта: явный путь или cwd.
 
-    Ограничения «только projects/games/» здесь больше нет: инициализация идёт
-    там, где лежит engine.json, — включая research/*. Для three.js путь вне
-    `projects/games/` допустим, но предупреждаем: студия, `check.cmd` и `gen.cmd`
-    такой проект не увидят.
+    Инициализация идёт там, где лежит engine.json, — включая research/*. Для
+    three.js путь вне `projects/` допустим, но предупреждаем: студия, `check.cmd`
+    и `gen.cmd` такой проект не увидят.
     """
     dst = pathlib.Path(arg).expanduser().resolve() if arg else pathlib.Path.cwd()
     if dst.exists() and not dst.is_dir():
@@ -196,9 +196,9 @@ def resolve_target(arg: str | None) -> pathlib.Path:
     return dst
 
 
-def _under_games(p: pathlib.Path) -> bool:
+def _under_projects(p: pathlib.Path) -> bool:
     try:
-        p.resolve().relative_to(GAMES_DIR.resolve())
+        p.resolve().relative_to(PROJECTS_DIR.resolve())
         return True
     except ValueError:
         return False
@@ -606,8 +606,8 @@ def main() -> int:
             print(f"pi     : {', '.join(pi_files)}")
         return 0
 
-    if not _under_games(dst):
-        print(f"[WARN] {dst} вне projects/games/: студия, check.cmd и gen.cmd "
+    if not _under_projects(dst):
+        print(f"[WARN] {dst} вне projects/: студия, check.cmd и gen.cmd "
               f"его не увидят", file=sys.stderr)
 
     name = dst.name

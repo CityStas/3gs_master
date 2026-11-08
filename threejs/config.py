@@ -6,7 +6,7 @@ from pathlib import Path
 
 THREE_RAG_HOME = Path(os.environ.get("THREE_RAG_HOME", Path(__file__).resolve().parent.parent)).resolve()
 
-# --- project layout (projects/<engine>/<project>) ------------------------------
+# --- project layout (projects/three/<project>) ------------------------------
 # One definition for all four stacks: `project_layout.py` in the repo root. The
 # import is by path because the stacks are imported from anywhere (a pi session
 # runs INSIDE a project folder, where the repo root is not on sys.path).
@@ -39,11 +39,12 @@ ASSET_MASK_DIR = ASSETS_DIR / "masks"
 ASSET_3D_DIR = ASSETS_DIR / "3d"
 ASSET_SPLAT_DIR = ASSETS_DIR / "splats"
 ASSET_PREVIEW_DIR = ASSETS_DIR / "previews"
-# Projects live in `projects/<engine>/<name>` since 2026-11-08; `projects/games` is the
-# legacy layout and still resolves. `project_layout.py` is the one definition, the
-# launchers read the same thing from `cmd/_env.cmd` (GS_PROJECTS / GS_GAMES).
+# Projects live in `projects/three/<name>`. `project_layout.py` is the one
+# definition; the launchers read the same thing from `cmd/_env.cmd`.
 PROJECTS_DIR = Path(os.environ.get("THREE_PROJECTS_DIR", THREE_RAG_HOME / "projects"))
-GAMES_DIR = Path(os.environ.get("THREE_GAMES_DIR", PROJECTS_DIR / "games"))
+# Where a bare name lands when you are not standing inside `projects/three/`.
+# Not a second layout: it IS `projects/three`, just addressable and overridable.
+GAMES_DIR = Path(os.environ.get("THREE_GAMES_DIR", PROJECTS_DIR / "three"))
 ACTIVE_PROJECT_FILE = DATA_DIR / "active_project.txt"
 
 # The `assets/` store above is the scratch pile for one-off probes. A game wants its
@@ -83,18 +84,18 @@ def resolve_project(name_or_path: str | Path = "") -> Path:
 
     Accepts, in order: an existing absolute path; an existing path relative to the
     current directory; a path relative to the repo root; a bare name under
-    `projects/games/`.
+    `projects/three/`.
 
-    **A pointer is a hint, never a fact.** `projects/games/` is user data: games get
+    **A pointer is a hint, never a fact.** `projects/three/` is user data: games get
     created, renamed and deleted while `data/active_project.txt` still names the old one.
     So this function resolves the hint on EVERY call and refuses to invent a path:
 
       * an absolute path is returned as-is - that is the caller's explicit business;
-      * a relative one is tried against cwd, then the repo root, then `projects/games/`;
+      * a relative one is tried against cwd, then the repo root, then `projects/three/`;
       * if nothing on disk matches and the value came from the POINTER, that pointer is
         stale -> `ValueError` naming it. Previously this fell through to
         `GAMES_DIR / raw`, which for a repo-relative `raw` produced
-        `projects/games/projects/games/<name>` - a path that can never exist, returned
+        `projects/three/projects/three/<name>` - a path that can never exist, returned
         silently, so every caller failed later with an error about the wrong directory;
       * if nothing matches and the caller passed the value EXPLICITLY, a bare name is
         still assumed to be a game that may not exist yet (`newgame.cmd`), while a
@@ -118,7 +119,7 @@ def resolve_project(name_or_path: str | Path = "") -> Path:
     p = Path(raw).expanduser()
     if p.is_absolute():
         # An explicit absolute path is the caller's business - it may be a project
-        # outside `projects/games/` that is about to be created. From the POINTER it is
+        # outside `projects/three/` that is about to be created. From the POINTER it is
         # system state about user data, so a vanished target has to be reported.
         if from_pointer and not p.is_dir():
             raise ValueError(
@@ -130,8 +131,7 @@ def resolve_project(name_or_path: str | Path = "") -> Path:
         return p.resolve()
     # `is_dir`, not `exists`: the result is called "the project directory", and a file
     # that happens to carry the name must not shadow it. The engine folders are tried
-    # before the legacy `projects/games`, so `three/test_space` and `test_space` mean
-    # the same thing.
+    # before `GAMES_DIR`, so `three/test_space` and `test_space` mean the same thing.
     for candidate in (Path.cwd() / p, THREE_RAG_HOME / p,
                       *(d / p for d in engine_project_parents(THREE_RAG_HOME, prefer="threejs")),
                       GAMES_DIR / p):
@@ -146,8 +146,8 @@ def resolve_project(name_or_path: str | Path = "") -> Path:
     if p.parent == Path("."):
         # A bare name is the ONE case where a project ROOT is the right parent: the
         # project may legitimately not exist yet. Standing inside `projects/three/`
-        # creates there; anywhere else keeps the legacy `projects/games`.
-        return (default_project_parent(Path.cwd(), THREE_RAG_HOME, GAMES_DIR) / p).resolve()
+        # creates there; anywhere else uses your own engine's folder.
+        return (default_project_parent(Path.cwd(), THREE_RAG_HOME, "threejs", GAMES_DIR) / p).resolve()
     return (THREE_RAG_HOME / p).resolve()
 
 

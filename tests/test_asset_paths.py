@@ -154,23 +154,23 @@ def test_a_relative_path_resolves_against_the_project():
         assert got.is_file()
 
 
-def test_a_repo_relative_path_is_never_joined_onto_the_games_dir():
-    """`projects/games/<name>` used to fall through to `GAMES_DIR / p`.
+def test_a_repo_relative_path_is_never_joined_onto_the_engine_folder():
+    """`projects/three/<name>` used to fall through to `GAMES_DIR / p`.
 
     For a value that already carries directories that produced
-    `projects/games/projects/games/<name>` - a path that can never exist, returned
+    `projects/three/projects/three/<name>` - a path that can never exist, returned
     silently, so every caller failed later with an error about the wrong directory.
     """
-    got = config.resolve_project("projects/games/definitely-not-a-real-game")
-    assert got == (config.THREE_RAG_HOME / "projects" / "games" /
+    got = config.resolve_project("projects/three/definitely-not-a-real-game")
+    assert got == (config.THREE_RAG_HOME / "projects" / "three" /
                    "definitely-not-a-real-game").resolve(), got
-    # The signature of the old bug: "games" followed by another "projects".
-    tail = got.parts[got.parts.index("games") + 1:]
+    # The signature of the old bug: the engine folder followed by another "projects".
+    tail = got.parts[got.parts.index("three") + 1:]
     assert tail[0] != "projects", got
 
 
-def test_a_bare_name_still_resolves_under_the_games_dir():
-    """The one case `GAMES_DIR` is the right parent for: a game `newgame.cmd` will make."""
+def test_a_bare_name_still_resolves_under_the_engine_folder():
+    """The one case `GAMES_DIR` is the right parent for: a game `dev.cmd` will make."""
     assert (config.resolve_project("not-created-yet")
             == (config.GAMES_DIR / "not-created-yet").resolve())
 

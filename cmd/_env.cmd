@@ -19,24 +19,30 @@ rem ===========================================================================
 for %%I in ("%~dp0..") do set "GS_ROOT=%%~fI\"
 
 rem --- projects root: relative form for messages, absolute form for work -----
+rem Layout is projects\<engine>\<name>, one folder per engine, no shared "games"
+rem folder - see project_layout.py. Which project is "active" is decided in Python
+rem (tools\find_project.py), never guessed from these paths.
 set "GS_PROJECTS_REL=projects"
-set "GS_GAMES_REL=%GS_PROJECTS_REL%\games"
 set "GS_PROJECTS=%GS_ROOT%%GS_PROJECTS_REL%"
-set "GS_GAMES=%GS_ROOT%%GS_GAMES_REL%"
 
 set "PY=%GS_ROOT%.venv\Scripts\python.exe"
 
 rem --- weights root: relative by default, no drive letter in the repo ---------
 rem ~65 GB of GGUF/ComfyUI is NOT in git, so "where the models are" is a property
-rem of the MACHINE, not of the checkout. The default is `<repo>\models`, which is
-rem what makes `git clone` + `gs models fetch` work on any drive letter.
+rem of the MACHINE, not of the checkout. Order, same as model_paths.py:
 rem
-rem `model_paths.py` reads the SAME two variables (GS_MODELS_ROOT,
-rem GS_LLM_MODELS_DIR) with the same defaults, so batch and Python never disagree.
+rem   GS_MODELS_ROOT    this project only (wins)
+rem   LOCAL_LLM_MODELS  the shared root - a neutral name any other local-model tool
+rem                     can read, so one folder serves several apps
+rem   <repo>\models     default, which is what makes `git clone` + `gs models fetch`
+rem                     work on any drive letter without editing a single file
 rem
-rem To keep the weights on a bigger disk, put ONE line in `local.env.cmd`
-rem (machine-local, not tracked - see `local.env.example.cmd`):
+rem To keep the weights on a bigger disk, set the shared one ONCE per machine:
+rem     setx LOCAL_LLM_MODELS "D:\AI\Models"
+rem or put one line in `local.env.cmd` (machine-local, not tracked - see
+rem `local.env.example.cmd`):
 rem     set "GS_MODELS_ROOT=D:\AI\Models"
+if not defined GS_MODELS_ROOT if defined LOCAL_LLM_MODELS set "GS_MODELS_ROOT=%LOCAL_LLM_MODELS%"
 if not defined GS_MODELS_ROOT set "GS_MODELS_ROOT=%GS_ROOT%models"
 
 rem --- Where alternative GGUF builds live (optional) --------------------------

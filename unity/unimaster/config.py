@@ -19,7 +19,7 @@ from pathlib import Path
 UNIM_HOME: Path = Path(__file__).resolve().parent.parent          # .../3GS_Master/unity
 REPO_ROOT: Path = UNIM_HOME.parent                                 # .../3GS_Master
 
-# Project layout (`projects/<engine>/<project>`) has ONE definition for all four
+# Project layout (`projects/unity/<project>`) has ONE definition for all four
 # stacks: `project_layout.py` in the repo root. Imported by path because a pi
 # session runs inside a project folder, where the repo root is not on sys.path.
 if str(REPO_ROOT) not in sys.path:
@@ -242,7 +242,7 @@ BLENDER_DIR: Path | None = BLENDER_EXE.parent if BLENDER_EXE else None
 # to "." and reported "active_project.txt is empty" while the canonical file in fact
 # held a path. Godot had the identical defect and was fixed the same way: read the
 # canonical file, keep the old per-stack path only as a legacy fallback.
-GAMES_DIR: Path = REPO_ROOT / "projects" / "games"
+GAMES_DIR: Path = REPO_ROOT / "projects" / "unity"
 PROJECTS_DIR: Path = REPO_ROOT / "projects"
 ACTIVE_PROJECT_FILE: Path = REPO_ROOT / "data" / "active_project.txt"
 LEGACY_ACTIVE_PROJECT_FILE: Path = DATA_DIR / "active_project.txt"
@@ -271,19 +271,19 @@ def resolve_project(name_or_path: str | Path = "") -> Path:
     """The one definition of "the Unity project directory".
 
     Accepts, in order: an existing absolute path; an existing path relative to cwd;
-    a path relative to the repo root; a bare name under `projects/games/`.
+    a path relative to the repo root; a bare name under `projects/unity/`.
     Env `UNITY_PROJECT` / `UNIM_PROJECT` overrides the active-project file.
 
-    **A pointer is a hint, never a fact.** `projects/games/` is user data: games get
+    **A pointer is a hint, never a fact.** `projects/unity/` is user data: games get
     created, renamed and deleted while `data/active_project.txt` still names the old one.
     So this function resolves the hint on EVERY call and refuses to invent a path:
 
       * an absolute path is returned as-is - that is the caller's explicit business;
-      * a relative one is tried against cwd, then the repo root, then `projects/games/`;
+      * a relative one is tried against cwd, then the repo root, then `projects/unity/`;
       * if nothing on disk matches and the value came from the POINTER, that pointer is
         stale -> `ValueError` naming it. Previously this fell through to
         `GAMES_DIR / raw`, which for a repo-relative `raw` produced
-        `projects/games/projects/games/<name>` - a path that can never exist, returned
+        `projects/unity/projects/unity/<name>` - a path that can never exist, returned
         silently, so every caller failed later with an error about the wrong directory;
       * if nothing matches and the caller passed the value EXPLICITLY, a bare name is
         still assumed to be a game that may not exist yet, while a relative path that
@@ -308,7 +308,7 @@ def resolve_project(name_or_path: str | Path = "") -> Path:
     p = Path(raw).expanduser()
     if p.is_absolute():
         # An explicit absolute path is the caller's business - it may be a project
-        # outside `projects/games/` that is about to be created. From the POINTER it is
+        # outside `projects/unity/` that is about to be created. From the POINTER it is
         # system state about user data, so a vanished target has to be reported.
         if from_pointer and not p.is_dir():
             raise ValueError(
@@ -334,8 +334,8 @@ def resolve_project(name_or_path: str | Path = "") -> Path:
     if p.parent == Path("."):
         # A bare name is the ONE case where a project ROOT is the right parent: the
         # project may legitimately not exist yet. Inside `projects/unity/` it is
-        # created there; anywhere else the legacy `projects/games` is kept.
-        return (default_project_parent(Path.cwd(), REPO_ROOT, GAMES_DIR) / p).resolve()
+        # created there; anywhere else your own engine's folder is used.
+        return (default_project_parent(Path.cwd(), REPO_ROOT, "unity", GAMES_DIR) / p).resolve()
     return (REPO_ROOT / p).resolve()
 
 

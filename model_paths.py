@@ -12,15 +12,17 @@ launchers). On any other machine at least one of them pointed at nothing.
 
 The contract now
 ----------------
-    GS_MODELS_ROOT   the root; default `<repo>/models`
+    GS_MODELS_ROOT    this project's root (wins)
+    LOCAL_LLM_MODELS  the SHARED root - a neutral name other local-model tools read
+                      too, so one folder of weights serves several apps
     GS_LLM_MODELS_DIR extra roots for CHAT models only, `;`-separated (optional)
 
 Default is repo-relative on purpose: `git clone` + `gs models fetch` works on any
 drive letter without editing a single file. A machine that keeps its weights on a
-bigger disk puts one line in `local.env.cmd` (not tracked, see
-`local.env.example.cmd`) and every consumer follows - the four stack configs, the
-llama.cpp router, `vlm.cmd`, `sd-image.cmd`, and the hc_local_ai_image_3D app
-through `HC_MODELS_ROOT`.
+bigger disk sets one variable (`setx LOCAL_LLM_MODELS D://AI//Models`) or puts one
+line in `local.env.cmd` (not tracked, see `local.env.example.cmd`), and every
+consumer follows - the four stack configs, the llama.cpp router, `vlm.cmd`,
+`sd-image.cmd`. No other project is named anywhere in this file.
 
 Layout inside the root
 ----------------------
@@ -115,6 +117,7 @@ def _local_env() -> dict[str, str]:
 _LOCAL_KEYS = {
     "GS_MODELS_ROOT", "GS_LLM_MODELS_DIR", "BLENDER_EXE", "UNITY_EDITOR",
     "UNITY_CLI", "ROBLOX_STUDIO_MCP", "THREE_COMFY_ROOT", "THREE_TEXT_IMAGE_3D_DIR",
+    "LOCAL_LLM_MODELS",
 }
 
 _LOCAL_CACHE: dict[str, str] | None = None
@@ -136,12 +139,21 @@ def _env_path(name: str) -> Path | None:
 
 
 def models_root() -> Path:
-    """The weights root: `GS_MODELS_ROOT`, else `<repo>/models`.
+    """The weights root. Order: `GS_MODELS_ROOT` -> `LOCAL_LLM_MODELS` -> `<repo>/models`.
 
-    `cmd/_env.cmd` sets the same default for batch, so Python and batch agree
-    without either asking the other.
+    `LOCAL_LLM_MODELS` is the point of the whole exercise: it is a NEUTRAL name that
+    this project does not own, so any other local-model tool (hc_local_ai_image_3D,
+    a ComfyUI install, a second agent) can read the same variable and share one
+    folder of weights without either project knowing the other exists. Set it once:
+
+        setx LOCAL_LLM_MODELS "D:\\AI\\Models"
+
+    `GS_MODELS_ROOT` still wins, because a machine that needs THIS project pointed
+    somewhere specific should not have to fight a global default.
     """
-    return _env_path("GS_MODELS_ROOT") or (REPO / "models")
+    return (_env_path("GS_MODELS_ROOT")
+            or _env_path("LOCAL_LLM_MODELS")
+            or (REPO / "models"))
 
 
 def llm_roots() -> list[Path]:
