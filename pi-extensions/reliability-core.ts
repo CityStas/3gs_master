@@ -39,6 +39,7 @@ export type ErrorCode =
   | "OUTPUT_TOO_LARGE"
   | "VALIDATION_FAILED"
   | "WRITE_NOT_VERIFIED"
+  | "EDIT_NO_MATCH"
   | "UNKNOWN";
 
 export interface CodePolicy {
@@ -170,6 +171,11 @@ export const DEFAULT_POLICY: Policy = {
         next_action:
           "The tool claimed success but the file on disk did not change. Re-read the file and retry the write with correct content.",
       },
+      EDIT_NO_MATCH: {
+        retryable: false,
+        next_action:
+          "The oldText you sent is not in the file as written. Re-read the lines around the change and copy the exact text including whitespace, or use `write` if the file is small. Do not resend the same edit.",
+      },
       UNKNOWN: {
         retryable: false,
         next_action: "Read the error text and change something before calling again.",
@@ -181,6 +187,10 @@ export const DEFAULT_POLICY: Policy = {
       ["DUPLICATE_SUCCESS", ["already succeeded in this state"]],
       ["NO_PROGRESS", ["nothing has been written yet", "no progress"]],
       ["WRITE_NOT_VERIFIED", ["write not verified"]],
+      // Before FILE_NOT_FOUND on purpose: "could not find the exact text" is about a
+      // mismatch inside an existing file, not a missing file, and the two need different
+      // next actions. Four of these showed up in one live 9B run.
+      ["EDIT_NO_MATCH", ["could not find the exact text", "could not find edits[", "must match exactly"]],
       ["PATH_OUTSIDE_SANDBOX", ["outside the repository", "outside the project", "path escapes", "sandbox"]],
       ["FILE_NOT_FOUND", ["no such file", "cannot find the file", "file not found", "does not exist", "enoent", "not found"]],
       ["PERMISSION_DENIED", ["permission denied", "eacces", "eperm", "access is denied", "access denied", "unauthorized", "forbidden"]],

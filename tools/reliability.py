@@ -91,6 +91,7 @@ DEFAULT_POLICY: dict = {
             "OUTPUT_TOO_LARGE": {"retryable": False, "next_action": "Reduce the payload: ranged read, narrower grep, or split the write into a first chunk plus edits."},
             "VALIDATION_FAILED": {"retryable": False, "next_action": "Read the validator's actual message and patch the cause; do not resend the same code."},
             "WRITE_NOT_VERIFIED": {"retryable": False, "next_action": "The tool claimed success but the file on disk did not change. Re-read the file and retry the write with correct content."},
+            "EDIT_NO_MATCH": {"retryable": False, "next_action": "The oldText you sent is not in the file as written. Re-read the lines around the change and copy the exact text including whitespace, or use `write` if the file is small. Do not resend the same edit."},
             "UNKNOWN": {"retryable": False, "next_action": "Read the error text and change something before calling again."},
         },
         "patterns": [
@@ -99,6 +100,7 @@ DEFAULT_POLICY: dict = {
             ["DUPLICATE_SUCCESS", ["already succeeded in this state"]],
             ["NO_PROGRESS", ["nothing has been written yet", "no progress"]],
             ["WRITE_NOT_VERIFIED", ["write not verified"]],
+            ["EDIT_NO_MATCH", ["could not find the exact text", "could not find edits[", "must match exactly"]],
             ["PATH_OUTSIDE_SANDBOX", ["outside the repository", "outside the project", "path escapes", "sandbox"]],
             ["FILE_NOT_FOUND", ["no such file", "cannot find the file", "file not found", "does not exist", "enoent", "not found"]],
             ["PERMISSION_DENIED", ["permission denied", "eacces", "eperm", "access is denied", "access denied", "unauthorized", "forbidden"]],

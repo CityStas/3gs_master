@@ -35,6 +35,10 @@ const CLASSIFY_CASES = [
   "operation timed out after 300s",
   "EISDIR: illegal operation on a directory, read",
   "write refused: path escapes the sandbox",
+  // The most common failure in the second live run: an `edit` whose oldText does not
+  // match the file. It must not be confused with a missing file.
+  "Could not find the exact text in F:\\p\\src\\three\\controls.ts. The old text must match exactly including all whitespace and newlines.",
+  "Could not find edits[1] in F:\\p\\src\\index.ts. The oldText must match exactly including all whitespace and newlines.",
   "something entirely new happened",
   "",
 ];
