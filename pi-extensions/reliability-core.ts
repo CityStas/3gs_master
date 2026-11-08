@@ -65,6 +65,7 @@ export interface Policy {
     enabled: boolean;
     block_after_inspections: number;
     require_zero_mutations: boolean;
+    mutation_tools: string[];
     inspection_tools: string[];
     inspection_bash_prefixes: string[];
   };
@@ -97,6 +98,7 @@ export const DEFAULT_POLICY: Policy = {
     enabled: true,
     block_after_inspections: 20,
     require_zero_mutations: true,
+    mutation_tools: ["write", "edit"],
     inspection_tools: ["read", "ls", "grep", "find"],
     inspection_bash_prefixes: [
       "ls", "cat", "sed", "head", "tail", "grep", "rg", "find", "wc", "type", "which",
@@ -593,6 +595,19 @@ export function isInspection(
 }
 
 /**
+ * Does this call write a file? The only honest test this layer can make.
+ *
+ * `progress_guard.mutation_tools` is a short list on purpose. A shell command that runs
+ * `npm install` does change the disk, but so does `ls`; the difference lives in the
+ * command, not in the tool name, and guessing it by prefix is how `node --version` ended
+ * up disarming the progress guard on a live run. Unknown calls are neutral.
+ */
+export function isMutation(toolName: string, policy: Policy = DEFAULT_POLICY): boolean {
+  const tools = policy.progress_guard.mutation_tools ?? ["write", "edit"];
+  return tools.includes(toolName);
+}
+
+/**
  * Blocks a session that has inspected a lot and produced nothing.
  *
  * The loop guard needs a REPEATED call. Measured live on the moon-exploration brief,
@@ -602,8 +617,8 @@ export function isInspection(
  * this counts.
  *
  * Conservative on purpose: `require_zero_mutations` means the guard switches itself off
- * for the rest of the session the moment one non-inspection call succeeds. An agent that
- * has started producing is never interrupted.
+ * for the rest of the session the moment one *write* succeeds. An agent that has started
+ * producing is never interrupted. Note "write", not "any call": see `isMutation`.
  */
 export class ProgressGuard {
   private inspections = 0;
@@ -663,8 +678,15 @@ export class ProgressGuard {
       this.inspections += 1;
       return;
     }
+    // Neither looking nor writing: leave both counters alone. This branch is the one the
+    // live run taught us to write. It used to be "anything not an inspection is progress",
+    // so `node --version` - a version check - counted as a mutation, released
+    // `require_zero_mutations`, and disarmed the guard for the rest of the session.
+    if (!isMutation(input.toolName, this.policy)) return;
+    // A write that failed is not progress either; the inspection count keeps climbing.
+    if (isError) return;
     this.inspections = 0;
-    if (!isError) this.mutations += 1;
+    this.mutations += 1;
   }
 }
 

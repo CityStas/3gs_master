@@ -65,6 +65,7 @@ DEFAULT_POLICY: dict = {
         "enabled": True,
         "block_after_inspections": 20,
         "require_zero_mutations": True,
+        "mutation_tools": ["write", "edit"],
         "inspection_tools": ["read", "ls", "grep", "find"],
         "inspection_bash_prefixes": [
             "ls", "cat", "sed", "head", "tail", "grep", "rg", "find", "wc", "type", "which",
@@ -409,6 +410,12 @@ def is_inspection(tool_name: str, args: dict, policy: dict | None = None) -> boo
     return True
 
 
+def is_mutation(tool_name: str, policy: dict | None = None) -> bool:
+    """Mirror of `isMutation` in reliability-core.ts - see there for the reasoning."""
+    policy = policy or DEFAULT_POLICY
+    return tool_name in policy["progress_guard"].get("mutation_tools", ["write", "edit"])
+
+
 class ProgressGuard:
     """Same rules as `ProgressGuard` in pi-extensions/reliability-core.ts."""
 
@@ -454,9 +461,17 @@ class ProgressGuard:
         if read_only or is_inspection(tool_name, args, self.policy):
             self.inspections += 1
             return
+        # Neither looking nor writing: leave both counters alone. This branch exists
+        # because a live run showed the previous rule ("anything not an inspection is
+        # progress") scoring `node --version` as a mutation and disarming the guard for
+        # the whole session.
+        if not is_mutation(tool_name, self.policy):
+            return
+        # A write that failed is not progress either; the inspection count keeps climbing.
+        if is_error:
+            return
         self.inspections = 0
-        if not is_error:
-            self.mutations += 1
+        self.mutations += 1
 
 
 # ---------------------------------------------------------------------------

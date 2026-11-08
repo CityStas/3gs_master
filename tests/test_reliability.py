@@ -206,9 +206,16 @@ def test_both_implementations_reach_the_same_progress_verdicts():
             (budget, ("mcp__threejs_rag__threejs_rag_search", {"query": "terrain"}, True)),
             ("before", ("mcp__threejs_rag__threejs_rag_search", {"query": "craters"}, True)),
         ],
-        "a_non_read_only_mcp_tool_is_progress": [
+        "a_non_write_tool_is_neutral_and_does_not_disarm_the_guard": [
             (budget, inspect),
-            ("before", ("mcp__assets__asset_image", {"prompt": "moon"}, False)),
+            ("after", ("mcp__assets__asset_image", {"prompt": "moon"}, False)),
+            ("after", ("bash", {"command": "node --version"}, False)),
+            ("before", again),
+        ],
+        "a_failed_write_is_not_progress": [
+            (budget, inspect),
+            ("after", ("write", {"path": "a.ts", "content": "x"}, False, True)),
+            ("before", again),
         ],
     }
     for name, steps in scenarios.items():
@@ -221,7 +228,8 @@ def test_both_implementations_reach_the_same_progress_verdicts():
                     guard.after(tool, args, False, read_only=bool(rest and rest[0]))
             elif step[0] == "after":
                 tool, args, *rest = step[1]
-                guard.after(tool, args, False, read_only=bool(rest and rest[0]))
+                guard.after(tool, args, bool(rest[1] if len(rest) > 1 else False),
+                            read_only=bool(rest and rest[0]))
             else:
                 tool, args, *rest = step[1]
                 verdict = guard.before(tool, args, read_only=bool(rest and rest[0]))

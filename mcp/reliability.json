@@ -50,6 +50,26 @@
     ],
     "block_after_inspections": 20,
     "require_zero_mutations": true,
+    "$comment_mutations": [
+      "Which tools count as 'the world changed'. Only tools that write a file belong here,",
+      "and only when the call succeeded. Everything that is neither an inspection nor a",
+      "write is NEUTRAL: it does not count as looking, it does not count as doing.",
+      "",
+      "This list used to be implicit - 'anything that is not an inspection is a mutation' -",
+      "and that was wrong in a way a live run made obvious. `node --version` and",
+      "`python tool.py --help` are not inspections by prefix, so they were scored as",
+      "mutations, which set require_zero_mutations loose and disarmed the guard for the",
+      "whole session. The model then did 23 inspections with nothing written and was never",
+      "asked to stop. A guard that a harmless version check can switch off is not a guard.",
+      "",
+      "`bash` is deliberately NOT here: a shell command may write (npm install, mkdir) or",
+      "may only look, and this layer cannot tell which without observing the disk. Rather",
+      "than guess in either direction it stays neutral - the guard keeps counting."
+    ],
+    "mutation_tools": [
+      "write",
+      "edit"
+    ],
     "inspection_tools": ["read", "ls", "grep", "find"],
     "$comment_bash": "`bash` is both a tool and a shell, so it is classified by the command it runs, not by its name. A prefix match on the first word (after stripping cd/&&/echo noise) is enough: `sed -n '1,60p' file` is inspection, `npm install` is not.",
     "inspection_bash_prefixes": ["ls", "cat", "sed", "head", "tail", "grep", "rg", "find", "wc", "type", "which", "pwd", "echo", "cd", "git status", "git log", "git diff", "dir", "stat", "file", "du"]

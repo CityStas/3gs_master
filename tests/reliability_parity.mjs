@@ -234,9 +234,19 @@ const progress = {
     })),
     { op: "before", call: call("mcp__threejs_rag__threejs_rag_search", { query: "craters" }), readOnly: true },
   ]),
-  a_non_read_only_mcp_tool_is_progress: runProgress([
+  // A non-write MCP tool used to count as progress and disarm the guard. Now it is
+  // neutral: the guard keeps counting and still blocks. Live evidence - `node --version`
+  // and `python tool.py --help` did this on the moon-exploration run.
+  a_non_write_tool_is_neutral_and_does_not_disarm_the_guard: runProgress([
     ...many(policy.progress_guard.block_after_inspections, inspect),
-    { op: "before", call: call("mcp__assets__asset_image", { prompt: "moon" }), readOnly: false },
+    { op: "after", call: call("mcp__assets__asset_image", { prompt: "moon" }), readOnly: false },
+    { op: "after", call: call("bash", { command: "node --version" }), readOnly: false },
+    { op: "before", call: inspectAgain },
+  ]),
+  a_failed_write_is_not_progress: runProgress([
+    ...many(policy.progress_guard.block_after_inspections, inspect),
+    { op: "after", call: writes, isError: true },
+    { op: "before", call: inspectAgain },
   ]),
 };
 
