@@ -1,9 +1,22 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 THREE_RAG_HOME = Path(os.environ.get("THREE_RAG_HOME", Path(__file__).resolve().parent.parent)).resolve()
+
+# --- project layout (projects/<engine>/<project>) ------------------------------
+# One definition for all four stacks: `project_layout.py` in the repo root. The
+# import is by path because the stacks are imported from anywhere (a pi session
+# runs INSIDE a project folder, where the repo root is not on sys.path).
+if str(THREE_RAG_HOME) not in sys.path:
+    sys.path.insert(0, str(THREE_RAG_HOME))
+from project_layout import (  # noqa: E402
+    default_project_parent,
+    engine_project_parents,
+)
+
 DATA_DIR = THREE_RAG_HOME / "data"
 SQLITE_DIR = DATA_DIR / "sqlite"
 KNOWLEDGE_DIR = THREE_RAG_HOME / "knowledge"
@@ -25,9 +38,11 @@ ASSET_MASK_DIR = ASSETS_DIR / "masks"
 ASSET_3D_DIR = ASSETS_DIR / "3d"
 ASSET_SPLAT_DIR = ASSETS_DIR / "splats"
 ASSET_PREVIEW_DIR = ASSETS_DIR / "previews"
-# Projects live in `projects/games` - the launchers read the same layout from
-# `cmd/_env.cmd` (GS_GAMES). Both places move together.
-GAMES_DIR = Path(os.environ.get("THREE_GAMES_DIR", THREE_RAG_HOME / "projects" / "games"))
+# Projects live in `projects/<engine>/<name>` since 2026-11-08; `projects/games` is the
+# legacy layout and still resolves. `project_layout.py` is the one definition, the
+# launchers read the same thing from `cmd/_env.cmd` (GS_PROJECTS / GS_GAMES).
+PROJECTS_DIR = Path(os.environ.get("THREE_PROJECTS_DIR", THREE_RAG_HOME / "projects"))
+GAMES_DIR = Path(os.environ.get("THREE_GAMES_DIR", PROJECTS_DIR / "games"))
 ACTIVE_PROJECT_FILE = DATA_DIR / "active_project.txt"
 
 # The `assets/` store above is the scratch pile for one-off probes. A game wants its
@@ -54,7 +69,7 @@ GENERATE_LOG = LOGS_DIR / "generate.log"
 for d in (DATA_DIR, SQLITE_DIR, KNOWLEDGE_DIR, OFFICIAL_DOCS_DIR, OFFICIAL_SOURCE_DIR,
           COOKBOOK_DIR, TROUBLESHOOTING_DIR, ANTIPATTERNS_DIR, RULES_DIR, LOGS_DIR,
           ASSET_IMAGE_DIR, ASSET_MASK_DIR, ASSET_3D_DIR, ASSET_SPLAT_DIR,
-          ASSET_PREVIEW_DIR, GAMES_DIR, GEN_STAGING_DIR):
+          ASSET_PREVIEW_DIR, PROJECTS_DIR, GEN_STAGING_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
 
@@ -113,8 +128,12 @@ def resolve_project(name_or_path: str | Path = "") -> Path:
             )
         return p.resolve()
     # `is_dir`, not `exists`: the result is called "the project directory", and a file
-    # that happens to carry the name must not shadow it.
-    for candidate in (Path.cwd() / p, THREE_RAG_HOME / p, GAMES_DIR / p):
+    # that happens to carry the name must not shadow it. The engine folders are tried
+    # before the legacy `projects/games`, so `three/test_space` and `test_space` mean
+    # the same thing.
+    for candidate in (Path.cwd() / p, THREE_RAG_HOME / p,
+                      *(d / p for d in engine_project_parents(THREE_RAG_HOME, prefer="threejs")),
+                      GAMES_DIR / p):
         if candidate.is_dir():
             return candidate.resolve()
     if from_pointer:
@@ -124,9 +143,10 @@ def resolve_project(name_or_path: str | Path = "") -> Path:
             "or `agent.cmd <project>` to point the system at a live project." % raw
         )
     if p.parent == Path("."):
-        # A bare name is the ONE case where GAMES_DIR is the right parent: the project
-        # may legitimately not exist yet and be created by `newgame.cmd <name>`.
-        return (GAMES_DIR / p).resolve()
+        # A bare name is the ONE case where a project ROOT is the right parent: the
+        # project may legitimately not exist yet. Standing inside `projects/three/`
+        # creates there; anywhere else keeps the legacy `projects/games`.
+        return (default_project_parent(Path.cwd(), THREE_RAG_HOME, GAMES_DIR) / p).resolve()
     return (THREE_RAG_HOME / p).resolve()
 
 

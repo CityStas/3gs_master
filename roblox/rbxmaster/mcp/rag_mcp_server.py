@@ -76,9 +76,22 @@ def rbx_rag_search(query: str, top_k: int = 8, source: str = "", path_prefix: st
         filters["path_prefix"] = path_prefix
     if context:
         filters["context"] = context
-    hits = _get().search(query, top_k, filters or None)
-    return json.dumps({"query": query, "count": len(hits),
-                       "results": [h.to_dict() for h in hits]}, ensure_ascii=False, indent=1)
+    ret = _get()
+    before = (ret.dense_failures, ret.rerank_failures)
+    hits = ret.search(query, top_k, filters or None)
+    payload = {"query": query, "count": len(hits),
+               "results": [h.to_dict() for h in hits]}
+    # A dead embedder or reranker is silent: search() keeps answering, just worse.
+    # Surface it here, otherwise "the answer was thin" is indistinguishable from
+    # "the corpus has nothing" - and the agent trusts a lexical-only hit list.
+    warn = []
+    if ret.dense_failures > before[0]:
+        warn.append("dense search unavailable (:8081) - results are lexical-only")
+    if ret.rerank_failures > before[1]:
+        warn.append("reranker unavailable (:8083) - order is RRF, not cross-encoder")
+    if warn:
+        payload["degraded"] = warn
+    return json.dumps(payload, ensure_ascii=False, indent=1)
 
 
 @mcp.tool()

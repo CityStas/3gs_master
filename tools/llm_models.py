@@ -52,13 +52,23 @@ REGISTRY = MODELS_DIR / "llm-registry.json"
 OVERRIDES = MODELS_DIR / "llm-overrides.json"
 
 # Every pi profile that talks to :8080. `pi-home` is the untouched default profile;
-# the three engine profiles are what `agent.cmd` actually points PI_CODING_AGENT_DIR at.
-PI_PROFILES = ("pi-home", "pi-home-three", "pi-home-godot", "pi-home-unity")
+# the four engine profiles are what `agent.cmd` actually points PI_CODING_AGENT_DIR at.
+# A bare `pi` typed in cmd has no PI_CODING_AGENT_DIR and reads ~/.pi/agent/models.json,
+# but that profile talks to the user's always-on Ollama (:1234) instead - the router on
+# :8080 is only up while serve-all.cmd runs, so advertising `3gs` there produced dead
+# entries in `/model`. Only the `ollama` provider of that file is synced (sync_ollama_pi).
+PI_PROFILES = ("pi-home", "pi-home-three", "pi-home-godot", "pi-home-unity",
+               "pi-home-roblox")
 
 # The model the rest of the system already assumes: settings.json:defaultModel and the
 # `--alias` in older launchers. It has to keep this exact id or every session starts
 # against a model the router does not advertise.
 DEFAULT_ID = "qwen3.5-9b"
+
+# Default model for the pi profiles. `DEFAULT_ID` above is the router's alias, but
+# Ollama has no `qwen3.5-9b` manifest - a profile default pointing at it would fail
+# on the first request. This id exists in both the registry and Ollama.
+DEFAULT_PI_MODEL = "qwen3.5-9b-distill-deepseek-v4.1-flash"
 
 # --- what is NOT a chat model ---------------------------------------------------
 # The embedder (:8081), the reranker (:8083) and the vision tower (:8082) are separate
@@ -302,49 +312,152 @@ def render_registry(models: list[dict]) -> str:
     return json.dumps({"default": DEFAULT_ID, "models": models}, ensure_ascii=False, indent=2) + "\n"
 
 
-def _pi_model(m: dict, template: dict) -> dict:
-    """One entry for pi's models.json, shaped like the entry it replaces."""
-    entry = json.loads(json.dumps(template))  # deep copy, keeps cost/compat/input
-    entry["id"] = m["id"]
-    entry["name"] = f"{m['id']} ({m['quant']}, {m['ctx'] // 1024}K)"
-    entry["contextWindow"] = m["ctx"]
-    # Never let the response budget eat the prompt: pi compacts at
-    # contextWindow - reserveTokens (16384), so a big maxTokens would only make the
-    # model truncate mid-answer.
-    entry["maxTokens"] = m["max_tokens"] or min(8192, max(1024, m["ctx"] // 4))
-    sp = entry.setdefault("samplingParams", {})
-    sp.update({"temperature": m["temp"], "top_p": m["top_p"], "top_k": m["top_k"]})
-    return entry
+def _ollama_ids() -> set[str] | None:
+    """Model names Ollama can actually serve, read from its manifests directory.
+
+    The router registry also knows `qwen3.5-9b`, which has no Ollama manifest: listing
+    it under the ollama provider would put a dead entry in `/model`. None means the
+    manifests are not reachable - in that case the provider is left untouched.
+    """
+    root = Path(os.environ.get("OLLAMA_MODELS", ""))
+    manifests = root / "manifests"
+    if not manifests.is_dir():
+        return None
+    return {p.parent.name for p in manifests.rglob("latest")}
+
+
+def _ollama_entries(models: list[dict], old: list[dict], names: set[str]) -> list[dict]:
+    """Provider model list: keep working entries, append new ids from the registry.
+
+    Existing entries are kept verbatim - their context/maxTokens were tuned by hand,
+    and `ornith-1.5-9b` is served by Ollama but no longer scanned as a GGUF. New ids
+    are cloned from the first entry so they inherit the same cost/compat shape.
+    """
+    entries = [e for e in old if e.get("id") in names]
+    known = {e.get("id") for e in entries}
+    template = old[0] if old else {}
+    for m in models:
+        if m["id"] not in names or m["id"] in known:
+            continue
+        e = json.loads(json.dumps(template))
+        e["id"] = m["id"]
+        e["name"] = f"{m['id']} ({m['quant']}, {m['ctx'] // 1024}K)"
+        entries.append(e)
+        known.add(m["id"])
+    # Ollama can serve ids the GGUF scan no longer sees (`ornith-1.5-9b` was
+    # dropped from the registry when its duplicate was collapsed). Keep them in the
+    # picker: a model the server answers for is not a dead entry. `_`/`.` variants
+    # (`qwen2-0_5b-instruct`) are the same file - do not list it twice.
+    for mid in sorted(names - known):
+        if mid.replace("_", ".") in known:
+            continue
+        e = json.loads(json.dumps(template))
+        e["id"] = mid
+        e["name"] = mid
+        entries.append(e)
+        known.add(mid)
+    return entries
+
+
+def _router_entries(models: list[dict], old: list[dict]) -> list[dict]:
+    """Provider `3gs` (:8080): every registry id, with the router's sampling params."""
+    template = old[0] if old else {}
+    out = []
+    for m in models:
+        e = json.loads(json.dumps(template))
+        e["id"] = m["id"]
+        e["name"] = f"{m['id']} ({m['quant']}, {m['ctx'] // 1024}K)"
+        e["contextWindow"] = m["ctx"]
+        e["maxTokens"] = m["max_tokens"] or min(8192, max(1024, m["ctx"] // 4))
+        sp = e.setdefault("samplingParams", {})
+        sp.update({"temperature": m["temp"], "top_p": m["top_p"], "top_k": m["top_k"]})
+        out.append(e)
+    return out
 
 
 def sync_pi(models: list[dict]) -> list[str]:
-    """Rewrite provider `3gs` in every profile. Everything else in the file is kept."""
+    """Point every pi profile at the always-on Ollama (:1234), not the router.
+
+    `pi-home*` (and the `~/.pi/agent` profile a bare `pi` reads) used to advertise
+    provider `3gs` -> :8080. That port only listens while `serve-all.cmd` runs, and
+    the user's always-on server is `E:\\Programs\\LocalLLM\\ollama\\start-ollama.cmd`
+    on :1234 - so `/model` was full of entries that answered Connection error.
+    Provider `3gs` is renamed to `ollama`, its baseUrl moved to :1234, and the list
+    filtered by Ollama's manifests. `settings.json` default is moved with it.
+    """
+    names = _ollama_ids()
+    if names is None:
+        print(f"[WARN] Ollama manifests not found under "
+              f"{os.environ.get('OLLAMA_MODELS', '')!r} - pi profiles left as-is",
+              file=sys.stderr)
+        return []
+    files = [ROOT / prof / "models.json" for prof in PI_PROFILES]
+    files.append(Path.home() / ".pi" / "agent" / "models.json")
     touched = []
-    for prof in PI_PROFILES:
-        f = ROOT / prof / "models.json"
+    for f in files:
         if not f.is_file():
             continue
         try:
             data = json.loads(f.read_text(encoding="utf-8"))
         except Exception as e:  # noqa: BLE001
-            print(f"[WARN] {prof}/models.json unreadable: {e}", file=sys.stderr)
+            print(f"[WARN] {f} unreadable: {e}", file=sys.stderr)
             continue
-        prov = (data.get("providers") or {}).get("3gs")
+        provs = data.setdefault("providers", {})
+        prov = provs.get("ollama") or provs.pop("3gs", None)
         if prov is None:
-            print(f"[WARN] {prof}/models.json has no `3gs` provider - skipped",
-                  file=sys.stderr)
             continue
-        old = prov.get("models") or [{}]
-        template = old[0] if old else {}
-        prov["models"] = [_pi_model(m, template) for m in models]
-        prov["name"] = "3GS - local router (llama.cpp :8080)"
-        prov["baseUrl"] = "http://127.0.0.1:8080/v1"
+        provs["ollama"] = prov
+        old = prov.get("models") or []
+        if not old:
+            continue
+        entries = _ollama_entries(models, old, names)
+        if not entries:
+            continue
+        prov["models"] = entries
+        prov["name"] = "Ollama (:1234)"
+        prov["baseUrl"] = "http://127.0.0.1:1234/v1"
         prov["api"] = "openai-completions"
-        prov["apiKey"] = "llama.cpp"
+        prov["apiKey"] = "ollama"
+
+        # Second provider: the 3GS router on :8080 (`serve-all.cmd`). Both are listed
+        # because both are legitimate: Ollama is the always-on server, the router adds
+        # RAG (:8081/:8083) and 64K sampling-tuned models. pi-here.cmd / agent.cmd pick
+        # the one whose port answers, so `/model` is never the thing that decides.
+        router = provs.get("3gs") or {"api": "openai-completions"}
+        router["name"] = "3GS router (llama.cpp :8080)"
+        router["baseUrl"] = "http://127.0.0.1:8080/v1"
+        router["api"] = "openai-completions"
+        router["apiKey"] = "llama.cpp"
+        router["models"] = _router_entries(models, router.get("models") or [])
+        provs["3gs"] = router
         text = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
         if f.read_text(encoding="utf-8") != text:
             f.write_text(text, encoding="utf-8")
-            touched.append(str(f.relative_to(ROOT)))
+            try:
+                label = str(f.relative_to(ROOT))
+            except ValueError:
+                label = str(f)
+            touched.append(label)
+
+        # settings.json: a default pointing at the removed `qwen3.5-9b` / `3gs`
+        # would start every session against a model the server does not have.
+        sf = f.parent / "settings.json"
+        if sf.is_file():
+            try:
+                st = json.loads(sf.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001
+                continue
+            ids = [e["id"] for e in entries]
+            if st.get("defaultProvider") in ("3gs", "ollama") and (
+                    st.get("defaultProvider") != "ollama"
+                    or st.get("defaultModel") != DEFAULT_PI_MODEL
+                    or st.get("defaultModel") not in ids):
+                st["defaultProvider"] = "ollama"
+                st["defaultModel"] = (DEFAULT_PI_MODEL if DEFAULT_PI_MODEL in ids
+                                      else ids[0])
+                sf.write_text(json.dumps(st, ensure_ascii=False, indent=2) + "\n",
+                              encoding="utf-8")
+                touched.append(str(sf))
     return touched
 
 

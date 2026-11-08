@@ -20,6 +20,9 @@ knowledge or tools in this profile.
 - Never use `threejs-rag`, `godot_*`, `unity_*`, `web3d/`, `level.json`, `Scene`, `Node`,
   `MonoBehaviour`, `Rigidbody`, `GDscript`. If a tool for another engine is in your list,
   you are in the wrong profile - say so instead of using it.
+- Never run `cmd\init.cmd` here: it scaffolds the Three.js stack (`web3d/`,
+  `level.json`, `serve.py`) and only applies to `engine: threejs`. A Roblox project
+  starts from `engine.json` = `{"engine": "roblox"}` plus `roblox\tools` and Studio.
 
 ### The three surfaces, and which one answers which question
 

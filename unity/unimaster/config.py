@@ -12,11 +12,22 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 from pathlib import Path
 
 # --- install root ------------------------------------------------------------
 UNIM_HOME: Path = Path(__file__).resolve().parent.parent          # .../3GS_Master/unity
 REPO_ROOT: Path = UNIM_HOME.parent                                 # .../3GS_Master
+
+# Project layout (`projects/<engine>/<project>`) has ONE definition for all four
+# stacks: `project_layout.py` in the repo root. Imported by path because a pi
+# session runs inside a project folder, where the repo root is not on sys.path.
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+from project_layout import (  # noqa: E402
+    default_project_parent,
+    engine_project_parents,
+)
 
 BIN_DIR: Path = UNIM_HOME / "bin"
 DATA_DIR: Path = UNIM_HOME / "data"
@@ -232,6 +243,7 @@ BLENDER_DIR: Path | None = BLENDER_EXE.parent if BLENDER_EXE else None
 # held a path. Godot had the identical defect and was fixed the same way: read the
 # canonical file, keep the old per-stack path only as a legacy fallback.
 GAMES_DIR: Path = REPO_ROOT / "projects" / "games"
+PROJECTS_DIR: Path = REPO_ROOT / "projects"
 ACTIVE_PROJECT_FILE: Path = REPO_ROOT / "data" / "active_project.txt"
 LEGACY_ACTIVE_PROJECT_FILE: Path = DATA_DIR / "active_project.txt"
 
@@ -308,7 +320,9 @@ def resolve_project(name_or_path: str | Path = "") -> Path:
         return p.resolve()
     # `is_dir`, not `exists`: the result is called "the project directory", and a file
     # that happens to carry the name must not shadow it.
-    for candidate in (Path.cwd() / p, REPO_ROOT / p, GAMES_DIR / p):
+    for candidate in (Path.cwd() / p, REPO_ROOT / p,
+                      *(d / p for d in engine_project_parents(REPO_ROOT, prefer="unity")),
+                      GAMES_DIR / p):
         if candidate.is_dir():
             return candidate.resolve()
     if from_pointer:
@@ -318,9 +332,10 @@ def resolve_project(name_or_path: str | Path = "") -> Path:
             "or `agent.cmd <project>` to point the system at a live project." % raw
         )
     if p.parent == Path("."):
-        # A bare name is the ONE case where GAMES_DIR is the right parent: the project
-        # may legitimately not exist yet.
-        return (GAMES_DIR / p).resolve()
+        # A bare name is the ONE case where a project ROOT is the right parent: the
+        # project may legitimately not exist yet. Inside `projects/unity/` it is
+        # created there; anywhere else the legacy `projects/games` is kept.
+        return (default_project_parent(Path.cwd(), REPO_ROOT, GAMES_DIR) / p).resolve()
     return (REPO_ROOT / p).resolve()
 
 

@@ -14,7 +14,9 @@ tools/llm_models.py            сканирует GGUF, читает метад�
         |                      (tools/gguf_meta.py - разбор заголовка GGUF без зависимостей)
         +--> models/llm-preset.ini      реестр роутера: [id] + model + ctx-size + сэмплинг
         +--> models/llm-registry.json   те же факты для doctor/бенчмарка/чтения глазами
-        +--> pi-home*/models.json       провайдер `3gs`, ВСЕ id (pi-home, -three, -godot, -unity)
+        +--> pi-home*/models.json       провайдер `3gs`, ВСЕ id (pi-home, -three, -godot, -unity, -roblox)
+        +--> ~/.pi/agent/models.json    провайдер `3gs` (ВСЕ id) + `ollama` (:1234, только id с манифестом)
+                |                      <- сюда смотрит «голый» `pi` из cmd без PI_CODING_AGENT_DIR
                 |
                 v
 cmd/serve-llm.cmd              пересобирает реестр и стартует роутер на :8080

@@ -21,6 +21,14 @@ set "PI_TELEMETRY=0"
 set "PROJ=%~1"
 rem --- a flag is not a project: `agent.cmd --help` once wrote "--help" into active_project.txt
 if "%PROJ:~0,1%"=="-" set "PROJ="
+rem --- `agent.cmd three/test_space` and `agent.cmd skateshop` both have to mean the
+rem --- folder: projects live in projects/<engine>/<name> since 2026-11-08, and the
+rem --- resolution rules (absolute, cwd, repo root, projects/<engine>/, legacy
+rem --- projects/games/) are owned by project_layout.py. Batch must not re-implement
+rem --- them - it calls the same resolver the stacks use.
+if not "%PROJ%"=="" if not exist "%PROJ%" (
+  for /f "usebackq delims=" %%P in (`%PY% "%GS_ROOT%tools\find_project.py" "%PROJ%" 2^>nul`) do set "PROJ=%%P"
+)
 set "PROJ_FROM_POINTER="
 if "%PROJ%"=="" (
   if exist "%GS_ROOT%data\active_project.txt" (
@@ -56,7 +64,7 @@ if not "%PROJ%"=="" (
   echo Active project: %PROJ%
 ) else (
   echo [WARN] No project set.
-  echo        Usage: agent.cmd projects\games\^<name^>
+  echo        Usage: agent.cmd projects\^<engine^>\^<name^>   ^(or a bare name^)
   echo        The agent can still answer API questions from RAG.
 )
 
@@ -96,9 +104,11 @@ rem --- Nothing else is appended: no brief filename, no task file. The message t
 rem --- agent is launched with IS the task, and naming a file here (even to forbid
 rem --- it) only plants the idea that such a file exists.
 rem --- engine marker: projects/<game>/engine.json. Read here so the banner shows it,
-rem --- and .pi/extensions/engine-gate.ts reads the same file to pick the MCP surface.
+rem --- and pi-extensions/engine-gate.ts reads the same file to pick the MCP surface.
 set "ENGINE=threejs"
-if defined PROJ "%PY%" -c "import json,os,sys;p=sys.argv[1];b=sys.argv[2];d=p if os.path.isabs(p) else os.path.join(b,p);print(json.load(open(os.path.join(d,'engine.json'),encoding='utf-8')).get('engine','threejs'))" "%PROJ%" "%GS_ROOT:~0,-1%" > "%TEMP%\gs_engine.txt" 2>nul
+rem --- utf-8-sig, not utf-8: a BOM written by `Set-Content -Encoding utf8` makes
+rem --- plain json.load throw, and the engine silently falls back to threejs.
+if defined PROJ "%PY%" -c "import json,os,sys;p=sys.argv[1];b=sys.argv[2];d=p if os.path.isabs(p) else os.path.join(b,p);print(json.load(open(os.path.join(d,'engine.json'),encoding='utf-8-sig')).get('engine','threejs'))" "%PROJ%" "%GS_ROOT:~0,-1%" > "%TEMP%\gs_engine.txt" 2>nul
 if defined PROJ if not errorlevel 1 for /f "usebackq delims=" %%E in ("%TEMP%\gs_engine.txt") do set "ENGINE=%%E"
 rem --- choose the agent profile from the engine. Godot, Unity and Roblox each get their own
 rem --- profile (SYSTEM.md, skills/, mcp.json, models.json); everything else (threejs, or
@@ -126,4 +136,21 @@ echo   agent config : %PI_CODING_AGENT_DIR%
 echo   project      : %THREE_PROJECT%
 echo   engine       : %ENGINE%   (read from "%PROJ%\engine.json")
 echo.
+rem --- Model: whichever local server answers, router (:8080, serve-all.cmd) first,
+rem --- Ollama (:1234, start-ollama.cmd) otherwise. Both providers are declared in
+rem --- every profile, so the same session works in either mode and /model is not
+rem --- the place where a dead port has to be diagnosed.
+set "HAS_MODEL="
+echo %PI_ARGS% | find "--model" >nul 2>&1 && set "HAS_MODEL=1"
+if not defined HAS_MODEL (
+  set "ROUTER=0"
+  rem --- no quotes around %PY% inside for/f: cmd would cut the command at the quote
+  for /f "usebackq delims=" %%P in (`%PY% -c "import socket;s=socket.socket();s.settimeout(0.4);print(1 if s.connect_ex(('127.0.0.1',8080))==0 else 0)"`) do set "ROUTER=%%P"
+  if "!ROUTER!"=="1" (
+    set "PI_ARGS=--model 3gs/qwen3.5-9b-distill-deepseek-v4.1-flash !PI_ARGS!"
+  ) else (
+    set "PI_ARGS=--model ollama/qwen3.5-9b-distill-deepseek-v4.1-flash !PI_ARGS!"
+  )
+)
+
 if not "%PI_SP%"=="" (pi --append-system-prompt "%PI_SP%" %PI_ARGS%) else (pi %PI_ARGS%)

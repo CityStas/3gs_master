@@ -13,8 +13,10 @@ if not exist "%PY%" (
 cd /d "%GS_ROOT%"
 
 rem --- Opens Roblox Studio, detached, on the active project's place file.
-rem --- The Studio MCP server is NOT started by this: it is a toggle inside Studio
-rem --- (Assistant -> ... -> Manage MCP Servers -> Enable Studio as MCP server).
+rem --- The MCP bridge needs no manual step: the launcher strips http(s)_proxy from
+rem --- Studio's environment. Studio dials ws://127.0.0.1:13469 and a system proxy
+rem --- swallows that loopback handshake, leaving the agent with no studios while
+rem --- Studio's own Assistant setting still says "enabled".
 rem ---
 rem ---   roblox-open.cmd                 active project's first .rbxlx/.rbxl
 rem ---   roblox-open.cmd my_game         by name under projects\games\

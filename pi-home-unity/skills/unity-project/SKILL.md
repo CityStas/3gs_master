@@ -29,7 +29,7 @@ description: "How a Unity project is laid out and how the 3GS agent works inside
 ```
 
 `engine.json` is what makes `agent.cmd` pick the Unity profile and what makes
-`.pi/extensions/engine-gate.ts` expose the `unity_*` tools. Without it the agent runs in the
+`pi-extensions/engine-gate.ts` expose the `unity_*` tools. Without it the agent runs in the
 Three.js profile and has none of them.
 
 ## Active project

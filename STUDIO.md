@@ -129,13 +129,13 @@ http://127.0.0.1:8777/web3d/studio.html
 
 ```cmd
 cd /d F:\Pets\Projects\local_tools\3GS_Master
-cmd\newgame.cmd my_game
+cmd\init.cmd my_game
 ```
 
 Или с полным путём, из любого каталога:
 
 ```cmd
-F:\Pets\Projects\local_tools\3GS_Master\.venv\Scripts\python.exe F:\Pets\Projects\local_tools\3GS_Master\tools\new_game.py my_game
+F:\Pets\Projects\local_tools\3GS_Master\.venv\Scripts\python.exe F:\Pets\Projects\local_tools\3GS_Master\tools\project_init.py my_game
 ```
 
 Голое имя создаёт `projects\games\my_game`. Путь **внутри**  
@@ -227,7 +227,7 @@ projects\games\my_game\
 Правка `studio\studio.html` или `studio\app.js` действует на все игры сразу —
 достаточно перезагрузить страницу (Ctrl+F5).
 
-`cmd\newgame.cmd <игра> --sync` остаётся для того, что всё-таки лежит в игре:
+`cmd\init.cmd <игра> --sync` остаётся для того, что всё-таки лежит в игре:
 `web3d/vendor`, `web3d/scene.js`, `tools/level_apply.py`, `tools/level_edits.py`,
 `tools/web/serve.py`. Уровни, манифест и README не трогаются — там твоя работа.
 `--force` перезаписывает и их.
@@ -248,7 +248,7 @@ projects\games\my_game\
 
 ```cmd
 cd /d F:\Pets\Projects\local_tools\3GS_Master
-cmd\newgame.cmd my_game --cli
+cmd\init.cmd my_game --cli
 ```
 
 Игра получит уровень как данные и гейт проверки — этого хватает, чтобы `pi`
@@ -259,7 +259,7 @@ cmd\newgame.cmd my_game --cli
 
 ## 3. Путь наружу не поддерживается
 
-Раньше проект можно было положить куда угодно (`newgame.cmd D:\games\my_game`).
+Раньше проект можно было положить куда угодно (`init.cmd D:\games\my_game`).
 Теперь нет, и это не ограничение ради ограничения: проект вне `projects\games\`
 не видят `cmd\check.cmd`, гейты в `tools/web/`, `cmd\gen.cmd --project` и обновление
 стека `--sync` — он отвязан от всего инструментария и живёт сам по себе. Поэтому
@@ -267,7 +267,7 @@ cmd\newgame.cmd my_game --cli
 
 ```cmd
 cd /d F:\Pets\Projects\local_tools\3GS_Master
-cmd\newgame.cmd D:\games\my_game
+cmd\init.cmd D:\games\my_game
 -> куда создать: D:\games\my_game — вне F:\Pets\Projects\local_tools\3GS_Master\projects\games.
    Проекты живут только в projects/games/ репозитория: только там
    их видят cmd/check.cmd, гейты, cmd/gen.cmd и --sync.
@@ -299,14 +299,14 @@ python tools\web\serve.py --dir . --assets mine=D:\art\my_game --assets ref=C:\r
 
 | Симптом                                             | Причина                                                       | Что делать                                                                                       |
 | --------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `не похоже на каталог игры - нет web3d/levels.json` | `--dir` указывает на подкаталог (`web3d`) или на пустую папку | указать **корень игры**: `--dir <игра>`, не `--dir <игра>\web3d`. Для новой игры — `cmd\newgame.cmd` |
+| `не похоже на каталог игры - нет web3d/levels.json` | `--dir` указывает на подкаталог (`web3d`) или на пустую папку | указать **корень игры**: `--dir <игра>`, не `--dir <игра>\web3d`. Для новой игры — `cmd\init.cmd` |
 | `!!! порт 8777 УЖЕ ЗАНЯТ`                           | работает второй сервер                                        | он ответит части запросов как старый, без новых ручек. Взять другой порт: `serve.cmd 8788`       |
 | `внешних каталогов ассетов нет`                     | не нашёлся корень репозитория                                 | выставить `GS_REPO` или добавить `--assets`                                                      |
 | Панель GLB пуста                                    | нет `*.glb` ни в игре, ни во внешних корнях                   | в репозитории модели лежат в `assets/3d`                                                         |
 | Панель картинок пуста                               | у игры нет своих картинок                                     | это норма для новой игры; генерация — `cmd\gen.cmd` из корня репозитория                             |
 | Агент отвечает `Connection error`                   | не поднят `llama-server` (студии не касается)                 | `serve-all.cmd` (§1, шаг 1) — это про консольный `pi`, не про студию                             |
 | `агент недоступен: HTTP 404`                        | запущен `python -m http.server`, а не `serve.py`              | поднять `serve.py`                                                                               |
-| Ошибки `Failed to resolve module specifier "three"` | нет `web3d/vendor` или `importmap` в `studio.html`            | `cmd\newgame.cmd <имя> --sync`                                                                       |
+| Ошибки `Failed to resolve module specifier "three"` | нет `web3d/vendor` или `importmap` в `studio.html`            | `cmd\init.cmd <имя> --sync`                                                                       |
 | Список узлов пуст, кадр пуст                        | уровень есть, но ни у одного узла нет `props.position`        | правимый узел обязан иметь `position` — двигать редактор умеет только её                         |
 
 Сервер печатает каждый запрос — по его окну видно, чего страница не дождалась:  

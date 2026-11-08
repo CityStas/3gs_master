@@ -36,22 +36,18 @@ PI_CMD = r"C:\Users\tio\.pi\agent\bin\pi.cmd"
 PROFILE_BY_ENGINE = {
     "godot": "pi-home-godot",
     "unity": "pi-home-unity",
+    "roblox": "pi-home-roblox",
 }
 DEFAULT_PROFILE = "pi-home-three"
 
 
 def resolve_project(name: str) -> Path | None:
-    """Имя -> путь проекта. Голое имя ищем в projects/games, иначе как путь от корня."""
+    """Имя -> путь проекта. Раскладка `projects/<engine>/<name>` - в project_layout."""
     if not name:
         return None
-    cand = Path(name)
-    if cand.is_absolute():
-        return cand if cand.is_dir() else None
-    for base in (ROOT / "projects" / "games", ROOT):
-        p = (base / name).resolve()
-        if p.is_dir():
-            return p
-    return None
+    sys.path.insert(0, str(ROOT))
+    from project_layout import find_project
+    return find_project(name, ROOT)
 
 
 def read_pointer() -> str:
@@ -91,7 +87,9 @@ def main() -> int:
     eng_file = proj / "engine.json"
     if eng_file.is_file():
         try:
-            engine = json.loads(eng_file.read_text(encoding="utf-8")).get("engine", "threejs")
+            # utf-8-sig: PowerShell `Set-Content -Encoding utf8` adds a BOM and plain
+            # json.loads rejects it - the profile would silently fall back to threejs.
+            engine = json.loads(eng_file.read_text(encoding="utf-8-sig")).get("engine", "threejs")
         except (OSError, ValueError):
             pass
     profile = PROFILE_BY_ENGINE.get(engine.lower(), DEFAULT_PROFILE)

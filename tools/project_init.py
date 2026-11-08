@@ -1,5 +1,17 @@
 #!/usr/bin/env python
-"""Скелет нового проекта 3GS: `projects/games/<имя>/`.
+"""Инициализация проекта 3GS по его engine.json.
+
+Движок — единственный вход. `engine.json` в корне проекта говорит, какой стек
+здесь уместен; инструмент читает его и раскладывает three.js-скелет ТОЛЬКО для
+`threejs`. Для roblox/unity/godot он ничего не пишет: там скелет создаёт сам
+движок (`cmd\\roblox-open.cmd`, `unity_project_create`, Godot Project Manager),
+а three-стек в чужом проекте — мусор, который путает агента и `engine-gate.ts`.
+
+Именно поэтому старого `new_game.py` больше нет: имя «new_game» обещало
+универсальность, которой не было, и модели звали его на любой новый проект.
+Теперь имя нейтральное, а решение принимает маркер движка.
+
+Скелет three.js-проекта: `projects/games/<имя>/`.
 
 Зачем инструмент, а не «скопируй папку руками». Проект — это не один файл, а
 набор: `web3d/vendor/` (рантайм three.js r186), `web3d/scene.js`, сервер
@@ -48,10 +60,14 @@
 отвергается с подсказкой.
 
 usage:
-    python tools/new_game.py my_game
-    python tools/new_game.py my_game --sync            # обновить стек
-    python tools/new_game.py my_game --force           # перезаписать уровни
-    python tools/new_game.py my_game --cli             # только то, что нужно CLI
+    python tools/project_init.py                        # cwd, движок из engine.json
+    python tools/project_init.py <dir>                  # каталог проекта
+    python tools/project_init.py --engine threejs       # создать маркер + стек
+    python tools/project_init.py <dir> --sync           # обновить стек three.js
+    python tools/project_init.py <dir> --force          # перезаписать уровни
+    python tools/project_init.py <dir> --cli            # только то, что нужно CLI
+
+    cmd\\init.cmd [<dir>] [--engine ...] [--sync] [--force] [--cli]
 """
 from __future__ import annotations
 
@@ -145,48 +161,120 @@ STUDIO_ONLY_FILES = [
 
 # Каталог проектов. ЕДИНСТВЕННОЕ определение в Python; лаунчеры читают то же
 # самое из `cmd/_env.cmd` (GS_GAMES). Меняешь раскладку — правишь оба места.
-GAMES_DIR = REPO / "projects" / "games"
+GAMES_DIR = REPO / "projects"   # projects/<engine>/<name> since 2026-11-08
 
 
 class TargetError(Exception):
-    """Аргумент не сводится к каталогу проекта внутри `projects/games/`."""
+    """Путь проекта не сводится к каталогу."""
 
 
-def resolve_under_games(arg: str, hint: str, example: str) -> pathlib.Path:
-    """Аргумент -> абсолютный путь ВНУТРИ `projects/games/`, иначе TargetError.
+# Движки, для которых этот скелет осмыслен. `three` — исторический алиас.
+THREE_ENGINES = {"threejs", "three"}
+ENGINES = THREE_ENGINES | {"roblox", "unity", "godot"}
 
-    Голое имя (`my_game`) означает `projects/games/my_game`; всё, что похоже на
-    путь (`projects/games/my_game`), разрешается как есть — и тоже должно
-    оказаться внутри `projects/games/`. Путь наружу не «поддерживается с
-    оговоркой», а отвергается: проект вне `projects/games/` не попадает ни в
-    `cmd/check.cmd`, ни в гейты, ни в `cmd/gen.cmd`, и обнаружится это позже и
-    дороже.
+# Что создаёт скелет для каждого движка. three.js — единственный, который этот
+# инструмент раскладывает сам; остальные создаёт их собственный тулинг, и наша
+# задача — не мешать ему three-стеком.
+SKELETON_BY_ENGINE = {
+    "roblox": r"cmd\roblox-open.cmd <имя>  (engine.json уже на месте)",
+    "unity": "unity_project_create (MCP) или Unity Hub",
+    "godot": "новый проект в Godot Project Manager",
+}
 
-    `hint` — что именно не так («куда создать»), `example` — готовая команда
-    для копирования.
+
+def resolve_target(arg: str | None) -> pathlib.Path:
+    """Каталог проекта: явный путь или cwd.
+
+    Ограничения «только projects/games/» здесь больше нет: инициализация идёт
+    там, где лежит engine.json, — включая research/*. Для three.js путь вне
+    `projects/games/` допустим, но предупреждаем: студия, `check.cmd` и `gen.cmd`
+    такой проект не увидят.
     """
-    p = pathlib.Path(arg)
-    looks_like_path = (p.is_absolute() or "/" in arg or "\\" in arg
-                       or arg.startswith("."))
-    dst = (p if looks_like_path else GAMES_DIR / arg).resolve()
-    # Голое `games` даёт `projects/games/games` — формально внутри, по смыслу —
-    # мусорный каталог, который потом путается под ногами. Ловим и его.
-    if dst == GAMES_DIR or (dst.parent == GAMES_DIR
-                            and dst.name.lower() == GAMES_DIR.name.lower()):
-        raise TargetError(f"{hint}: «{arg}» — это сам каталог проектов, а не игра.\n"
-                          f"Нужно имя: {example}")
-    if not dst.is_relative_to(GAMES_DIR):
-        raise TargetError(
-            f"{hint}: {dst} — вне {GAMES_DIR}.\n"
-            f"Проекты живут только в projects/games/ репозитория: только там\n"
-            f"их видят cmd/check.cmd, гейты, cmd/gen.cmd и --sync.\n"
-            f"  {example}")
+    dst = pathlib.Path(arg).expanduser().resolve() if arg else pathlib.Path.cwd()
+    if dst.exists() and not dst.is_dir():
+        raise TargetError(f"{dst} — файл, а не каталог проекта")
     return dst
 
 
-def resolve_target(arg: str) -> pathlib.Path:
-    return resolve_under_games(arg, "куда создать",
-                               "cmd/newgame.cmd my_game   ->  projects/games/my_game")
+def _under_games(p: pathlib.Path) -> bool:
+    try:
+        p.resolve().relative_to(GAMES_DIR.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def read_engine(dst: pathlib.Path) -> str | None:
+    """`engine` из <проект>/engine.json или None, если маркера нет.
+
+    utf-8-sig: PowerShell 5.1 `Set-Content -Encoding utf8` пишет BOM, и обычный
+    json.loads на нём падает. BOM в маркере движка не должен менять решение —
+    иначе roblox-проект молча получает three-стек.
+    """
+    f = dst / "engine.json"
+    if not f.is_file():
+        return None
+    try:
+        raw = json.loads(f.read_text(encoding="utf-8-sig")).get("engine", "")
+    except Exception:  # noqa: BLE001
+        return None
+    return str(raw).strip().lower() or None
+
+
+def write_engine(dst: pathlib.Path, engine: str) -> None:
+    dst.mkdir(parents=True, exist_ok=True)
+    # Без BOM: маркер читают json.load (agent.cmd), engine-gate.ts и этот файл.
+    (dst / "engine.json").write_text(
+        json.dumps({"engine": engine}, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
+PROFILE_BY_ENGINE = {
+    "threejs": "pi-home-three",
+    "three": "pi-home-three",
+    "roblox": "pi-home-roblox",
+    "unity": "pi-home-unity",
+    "godot": "pi-home-godot",
+}
+
+
+def sync_project_profile(dst: pathlib.Path, engine: str) -> list[str]:
+    """Project-level `.pi/` so a bare `pi` picks the engine up without a launcher.
+
+    `PI_CODING_AGENT_DIR` is the only switch for the *whole* profile, and a plain
+    `pi` typed in a project does not set it - that is why `/model` and the startup
+    banner showed the global skills (council-mode, workflow-*) and none of the
+    engine's MCP servers. pi does read `.pi/SYSTEM.md`, `.pi/mcp.json` and
+    `.pi/skills/` from the working directory after project trust, so copying those
+    three closes the gap: the engine's RAG MCP, its skills and its system prompt are
+    there for `pi`, while `pi-here.cmd` remains the explicit full-profile launch.
+    """
+    prof = REPO / PROFILE_BY_ENGINE.get(engine, "")
+    if not prof.is_dir():
+        print(f"[WARN] профиль {prof.name or engine} не найден — .pi/ не создан",
+              file=sys.stderr)
+        return []
+    pi_dir = dst / ".pi"
+    pi_dir.mkdir(parents=True, exist_ok=True)
+    made: list[str] = []
+    for name in ("mcp.json", "SYSTEM.md"):
+        src = prof / name
+        if not src.is_file():
+            continue
+        out = pi_dir / name
+        if out.is_file() and out.read_text(encoding="utf-8") == src.read_text(encoding="utf-8"):
+            continue
+        shutil.copy2(src, out)
+        made.append(f".pi/{name}")
+    src_skills = prof / "skills"
+    if src_skills.is_dir():
+        out_skills = pi_dir / "skills"
+        if out_skills.exists():
+            shutil.rmtree(out_skills)
+        shutil.copytree(src_skills, out_skills)
+        made.append(".pi/skills")
+    return made
 
 
 def copy_stack(dst: pathlib.Path, cli: bool = False) -> list[str]:
@@ -358,8 +446,9 @@ echo.
 README_TPL = """# {name}
 
 Проект 3GS (three.js, формат уровней `level.json`). Скелет создан
-`tools/new_game.py` из репозитория 3GS_Master; стек скопирован из самого
-репозитория, а не из соседней игры.
+`tools/project_init.py` из репозитория 3GS_Master по `engine.json`
+(`{{"engine": "threejs"}}`); стек скопирован из самого репозитория, а не из
+соседней игры.
 
 ## Запуск
 
@@ -463,10 +552,15 @@ def write_json(path: pathlib.Path, data: dict) -> None:
                     encoding="utf-8")
 
 
-def main() -> None:
+def main() -> int:
     ap = argparse.ArgumentParser(
-        description="скелет нового проекта 3GS (web3d + студия + сервер)")
-    ap.add_argument("name", help="имя проекта; создаётся в projects/games/<имя>")
+        description="Инициализация проекта 3GS по engine.json")
+    ap.add_argument("path", nargs="?", default=None,
+                    help="каталог проекта (по умолчанию — текущий)")
+    ap.add_argument("--engine", default="", choices=sorted(ENGINES),
+                    help="создать engine.json, если маркера ещё нет")
+    ap.add_argument("--profile-only", action="store_true",
+                    help="только .pi/ (MCP, skills, SYSTEM.md движка); стек не трогать")
     ap.add_argument("--sync", action="store_true",
                     help="только обновить стек студии; уровни и README не трогать")
     ap.add_argument("--force", action="store_true",
@@ -477,7 +571,45 @@ def main() -> None:
                          "правок уровня — их создаёт студия")
     a = ap.parse_args()
 
-    dst = resolve_target(a.name)
+    dst = resolve_target(a.path)
+    engine = read_engine(dst)
+    if engine is None:
+        if not a.engine:
+            sys.exit(
+                f"в {dst} нет engine.json — движок не объявлен.\n"
+                f"  python tools/project_init.py {a.path or '.'} --engine threejs|roblox|unity|godot\n"
+                f"или создайте файл вручную: {{\"engine\": \"threejs\"}}")
+        write_engine(dst, a.engine)
+        engine = a.engine
+        print(f"engine.json : {engine}")
+    if engine not in ENGINES:
+        sys.exit(f"{dst}: неизвестный engine «{engine}». "
+                 f"Ожидается: {', '.join(sorted(ENGINES))}")
+
+    # Профиль движка в проект: голый `pi` в этой папке получает его MCP (RAG),
+    # скиллы и SYSTEM.md. Делается для всех движков — three-стек ниже не при чём.
+    pi_files = sync_project_profile(dst, engine)
+    if a.profile_only:
+        print(f"проект : {dst}")
+        print(f"движок : {engine}")
+        print(f"pi     : {', '.join(pi_files) or 'уже актуален'}")
+        return 0
+
+    # Не three.js — этот инструмент ничего не раскладывает: скелет создаёт
+    # тулинг самого движка, а three-стек в чужом проекте — мусор.
+    if engine not in THREE_ENGINES:
+        print(f"проект : {dst}")
+        print(f"движок : {engine}")
+        print(f"three  : не нужен — скелет создаёт "
+              f"{SKELETON_BY_ENGINE.get(engine, 'инструмент движка')}")
+        if pi_files:
+            print(f"pi     : {', '.join(pi_files)}")
+        return 0
+
+    if not _under_games(dst):
+        print(f"[WARN] {dst} вне projects/games/: студия, check.cmd и gen.cmd "
+              f"его не увидят", file=sys.stderr)
+
     name = dst.name
     exists = (dst / "web3d" / "levels.json").is_file()
     if exists and not (a.force or a.sync):
@@ -550,6 +682,8 @@ def main() -> None:
     mode = "cli" if a.cli else "studio"
     print(f"проект    : {dst}")
     print(f"режим     : {mode}")
+    if pi_files:
+        print(f"pi-профиль: {', '.join(pi_files)}")
     print(f"стек      : {len(copied)} записей ({', '.join(copied)})")
     if made:
         print(f"создано   : {', '.join(made)}")
@@ -563,7 +697,7 @@ def main() -> None:
     if a.cli:
         # Лаунчера у игры нет намеренно — запускает агент из корня репозитория.
         print("Дальше — консольный агент (из корня репозитория):")
-        print(f'  serve-all.cmd && cmd\\doctor.cmd && agent.cmd projects\\games\\{name}')
+        print(f'  serve-all.cmd && cmd\\doctor.cmd && agent.cmd projects\\<engine>\\{name}')
         print()
         print(f"Проверка уровня (cwd = каталог игры):")
         print(f"  python tools/level_lint.py web3d/level.json")
@@ -578,12 +712,13 @@ def main() -> None:
               "tools/level_apply.py")
         print("(кнопка «Пересобрать» в студии, или вручную:")
         print(f'  python "{dst}\\tools\\level_apply.py")')
+    return 0
 
 
 if __name__ == "__main__":
-    # Ошибка «путь наружу» — не трейсбек, а сообщение: её читает человек,
-    # который просто ошибся каталогом.
+    # Ошибка пути — не трейсбек, а сообщение: её читает человек, который
+    # просто ошибся каталогом.
     try:
-        main()
+        raise SystemExit(main())
     except TargetError as e:
         sys.exit(str(e))

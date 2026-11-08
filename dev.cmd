@@ -12,7 +12,7 @@ rem --- Argument is a game NAME in projects\games\ (a leading path is tolerated)
 rem --- The folder is created when missing, and NOTHING is put inside it: no
 rem --- scene.js, no levels.json, no tools\, no serve.py. The model lays down
 rem --- whatever it needs. Laying down the standard stack is a separate, explicit
-rem --- act - newgame.cmd <name> - and dev.cmd never does it behind your back.
+rem --- act - cmd\init.cmd <каталог> - and dev.cmd never does it behind your back.
 rem ---
 rem --- The studio is OPTIONAL and runs in its OWN window: the agent takes over
 rem --- this one (pi is interactive and blocks). It is a viewer, not part of the
@@ -38,7 +38,7 @@ goto :parse
 if defined REMOVED (
   echo [ERROR] %REMOVED% is no longer a dev.cmd flag: dev.cmd does not scaffold.
   echo         It creates the empty folder and starts the agent - that is all.
-  echo         Lay down the standard stack explicitly:  newgame.cmd ^<name^>
+  echo         Lay down the standard stack explicitly:  cmd\init.cmd ^<name^>
   exit /b 2
 )
 
@@ -48,27 +48,21 @@ if not defined GAMEARG (
   echo   dev.cmd my_game              models, then the agent
   echo   dev.cmd my_game --studio     + studio in a parallel window
   echo.
-  echo The game is a NAME in %GS_GAMES_REL%\ - the folder is created when missing
-  echo and left EMPTY. The standard stack comes from newgame.cmd only:
-  echo   newgame.cmd my_game          scene.js, levels.json, tools\, serve.py
+  echo The game is a NAME in projects\^<engine^>\ - the folder is created when missing
+  echo and left EMPTY. The standard stack comes from cmd\init.cmd only:
+  echo   cmd\init.cmd ^<каталог^>          scene.js, levels.json, tools\, serve.py
   exit /b 2
 )
 
-rem --- bare name from whatever was typed: "test", "projects\games\test" ---------
+rem --- bare name from whatever was typed: "test", "three\test", "projects\roblox\shop" --
+rem --- Resolution (cwd -> repo root -> projects/<engine>/<name> -> legacy projects/games)
+rem --- is owned by project_layout.py; batch only asks it. A missing project is created
+rem --- EMPTY in the parent that resolver picked - `projects/three/` when the name came
+rem --- with that prefix, the legacy `projects/games` otherwise.
 for %%I in ("%GAMEARG%") do set "GAMENAME=%%~nI"
-
-rem --- 1. The folder, and nothing but the folder. Scaffolding used to live here:
-rem ---    a missing web3d\levels.json silently triggered newgame.cmd, so a
-rem ---    one-line "start the agent" also rewrote the file tree. The model does
-rem ---    not need that tree - it creates its own files - and an implicit write
-rem ---    of twenty files is not something a launcher should do. The only thing
-rem ---    created here is the directory the agent is pointed at, because
-rem ---    data\active_project.txt names it.
-if exist "%GS_GAMES%\%GAMENAME%" goto :have_dir
-echo Creating empty %GS_GAMES_REL%\%GAMENAME% ...
-mkdir "%GS_GAMES%\%GAMENAME%"
-if errorlevel 1 goto :fail_mkdir
-:have_dir
+set "PROJREL="
+for /f "usebackq delims=" %%P in (`%PY% "%GS_ROOT%tools\find_project.py" "%GAMEARG%" --create 2^>nul`) do set "PROJREL=%%P"
+if not defined PROJREL goto :fail_mkdir
 
 rem --- 2. Models. Blocking: returns only when :8080 and :8081 answer, so the
 rem ---    agent never starts against a half-loaded 9B.
@@ -98,11 +92,11 @@ if "%STUDIO%"=="1" (
 
 rem --- 5. The agent. Interactive and blocking: this window becomes the session.
 echo.
-echo Launching pi for %GS_GAMES_REL%\%GAMENAME% ...
-call "%GS_ROOT%agent.cmd" %GS_GAMES_REL%\%GAMENAME%
+echo Launching pi for %PROJREL% ...
+call "%GS_ROOT%agent.cmd" %PROJREL%
 exit /b %errorlevel%
 
 :fail_mkdir
 echo.
-echo [ERROR] could not create %GS_GAMES%\%GAMENAME% - see the output above.
+echo [ERROR] could not create %GAMEARG% - see the output above.
 exit /b 1

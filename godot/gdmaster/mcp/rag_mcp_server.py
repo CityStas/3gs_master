@@ -51,7 +51,9 @@ def rag_search(query: str, top_k: int = 8, source: str = "", path_prefix: str = 
         filters["source"] = source
     if path_prefix:
         filters["path_prefix"] = path_prefix.replace("res://", "")
-    hits = _get().search(query, top_k=top_k, filters=filters or None)
+    ret = _get()
+    before = (ret.dense_failures, ret.rerank_failures)
+    hits = ret.search(query, top_k=top_k, filters=filters or None)
     if not hits:
         return json.dumps(
             {"results": [], "note": "Ничего не найдено. Попробуй другие термины или "
@@ -62,6 +64,16 @@ def rag_search(query: str, top_k: int = 8, source: str = "", path_prefix: str = 
         "count": len(hits),
         "results": [h.to_dict() for h in hits],
     }
+    # Мёртвый эмбеддер/реранкер молчит: search() продолжает отвечать, просто хуже.
+    # Без этого «тонкий ответ» не отличить от «в корпусе нет», и агент верит
+    # лексической выдаче как полной.
+    warn = []
+    if ret.dense_failures > before[0]:
+        warn.append("dense search unavailable (:8081) - results are lexical-only")
+    if ret.rerank_failures > before[1]:
+        warn.append("reranker unavailable (:8083) - order is RRF, not cross-encoder")
+    if warn:
+        payload["degraded"] = warn
     return json.dumps(payload, ensure_ascii=False, indent=1)
 
 

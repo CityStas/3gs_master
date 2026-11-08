@@ -20,8 +20,15 @@ def threejs_rag_search(query:str,top_k:int=8,source:str="",path_prefix:str="")->
     top_k=max(1,min(int(top_k or 8),12)); filters={}
     if source: filters["source"]=source
     if path_prefix: filters["path_prefix"]=path_prefix
-    hits=_get().search(query,top_k,filters or None)
-    return json.dumps({"query":query,"count":len(hits),"results":[h.to_dict() for h in hits]},ensure_ascii=False,indent=1)
+    ret=_get(); before=(ret.dense_failures,ret.rerank_failures)
+    hits=ret.search(query,top_k,filters or None)
+    payload={"query":query,"count":len(hits),"results":[h.to_dict() for h in hits]}
+    # A dead embedder or reranker is silent: search() keeps answering, just worse.
+    warn=[]
+    if ret.dense_failures>before[0]: warn.append("dense search unavailable (:8081) - results are lexical-only")
+    if ret.rerank_failures>before[1]: warn.append("reranker unavailable (:8083) - order is RRF, not cross-encoder")
+    if warn: payload["degraded"]=warn
+    return json.dumps(payload,ensure_ascii=False,indent=1)
 
 @mcp.tool()
 def threejs_rag_status()->str:

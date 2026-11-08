@@ -33,7 +33,7 @@ if /i "%SUB%"=="index"   set "T=cmd\index.cmd"
 if /i "%SUB%"=="gen"     set "T=cmd\gen.cmd"
 if /i "%SUB%"=="img"     set "T=cmd\sd-image.cmd"
 if /i "%SUB%"=="check"   set "T=cmd\check.cmd"
-if /i "%SUB%"=="newgame" set "T=cmd\newgame.cmd"
+if /i "%SUB%"=="init"    set "T=cmd\init.cmd"
 if /i "%SUB%"=="test"    set "T=cmd\test.cmd"
 if /i "%SUB%"=="log"     set "T=cmd\pi-log.cmd"
 if /i "%SUB%"=="llm"     set "T=cmd\serve-llm.cmd"
@@ -52,6 +52,8 @@ if /i "%SUB%"=="roblox-check" set "T=cmd\roblox-check.cmd"
 if /i "%SUB%"=="roblox-doctor" set "T=cmd\roblox-doctor.cmd"
 if /i "%SUB%"=="roblox-open" set "T=cmd\roblox-open.cmd"
 if /i "%SUB%"=="mcp-sync" set "T=cmd\mcp-sync.cmd"
+if /i "%SUB%"=="pi"      set "T=cmd\pi.cmd"
+if /i "%SUB%"=="pi-shim" set "T=cmd\pi-shim.cmd"
 if /i "%SUB%"=="help"    goto :usage
 if /i "%SUB%"=="-h"      goto :usage
 if /i "%SUB%"=="--help"  goto :usage
@@ -76,7 +78,7 @@ echo   ask       one-shot pi task              "task text"
 echo   resume    continue a pi session         project [@brief]
 echo   studio    studio in one window          [game] [port]
 echo.
-echo   newgame   scaffold projects\games\^<name^>  [--sync] [--force]
+echo   init      scaffold by engine.json         [dir] [--engine ...] [--sync]
 echo   gen       asset pack (generate.py)      -p ^<game^> -j ^<plan^>
 echo   img       text-to-image                 "prompt" [out] [steps] [w] [h]
 echo   check     tsc gate                      ^<game^> [--full^|--json^|--code ^<code^>]
@@ -102,6 +104,10 @@ echo   roblox-open   open Roblox Studio on a place   [project] [--empty]
 echo.
 echo   mcp-sync      render mcp\registry.json into the pi profiles and WorkBuddy
 echo                 ^(dry run; --apply writes, --print ^<engine^> dumps one^)
+echo.
+echo   pi            pi with the profile of the engine you are standing in
+echo                 ^(cd projects\three\my_game ^&^& gs pi^)
+echo   pi-shim       make the bare word `pi` do that too  [--install^|--uninstall]
 echo.
 echo Day-to-day launchers (up/agent/resume/studio) live in the repo root;
 echo the rest live in cmd\ - `gs` is just a front door to both.

@@ -11,6 +11,9 @@ tools in this profile.
   gateway).
 - Never use Three.js (`web3d/`, `level.json`, importmap, `threejs-rag`) or Godot
   (`godot_*`, GDScript, `.tscn`, `project.godot`) in this profile.
+- Never run `cmd\init.cmd` here: it scaffolds the Three.js stack and only applies to
+  `engine: threejs`. A Unity project comes from Unity Hub or `unity_project_create`
+  (which writes `engine.json` with `"engine": "unity"`).
 - Art for Unity is generated locally first with the `asset_image` / `asset_edit` /
   `asset_remove_bg` / `asset_to_3d` / `asset_character` / `asset_generate_pack` tools; output
   goes to `<project>/Assets/Generated/`. Web downloads (`asset_search`, `asset_download`, ...)
@@ -29,7 +32,7 @@ tools in this profile.
 
 Do not mix engines in one answer. If the engine is missing or unclear, stop and ask the user.
 The `unity_*` tools are present only when the active project has `engine.json` with
-`"engine": "unity"` (`.pi/extensions/engine-gate.ts`). If you do not see them, you are not in
+`"engine": "unity"` (`pi-extensions/engine-gate.ts`). If you do not see them, you are not in
 a Unity project.
 
 ## Unity project rules

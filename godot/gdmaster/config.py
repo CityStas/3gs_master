@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 # --- корень установки агента -------------------------------------------------
@@ -157,10 +158,19 @@ RERANK_TIMEOUT = float(os.environ.get("GDM_RERANK_TIMEOUT", "60"))
 
 # --- целевой Godot-проект ----------------------------------------------------
 # GDM_HOME - это `godot/`, поэтому корень репозитория на уровень выше, а проекты
-# пользователя лежат в ОБЩЕМ `projects/games/` репозитория (как у threejs и unity).
-# Путь к проектам задан ещё и в `cmd/_env.cmd` (GS_GAMES) - менять синхронно.
+# пользователя лежат в `projects/<engine>/<имя>` (раскладка с 2026-11-08;
+# `projects/games/` остаётся как legacy). Раскладка описана ОДИН раз -
+# `project_layout.py` в корне репозитория; `cmd/_env.cmd` читает то же самое.
 REPO_ROOT: Path = GDM_HOME.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+from project_layout import (  # noqa: E402
+    default_project_parent,
+    engine_project_parents,
+)
+
 GAMES_DIR: Path = Path(os.environ.get("GDM_GAMES_DIR", REPO_ROOT / "projects" / "games"))
+PROJECTS_DIR: Path = REPO_ROOT / "projects"
 
 # **ОДИН факт - ОДИН файл.** `agent.cmd` пишет активный проект в общий
 # `<repo>/data/active_project.txt` - и раньше только threejs его и читал, потому что
@@ -244,7 +254,9 @@ def resolve_project(name_or_path: str | Path = "") -> Path:
         return p.resolve()
     # `is_dir`, а не `exists`: результат называется «каталог проекта», и файл с таким
     # именем не должен его подменять.
-    for candidate in (Path.cwd() / p, REPO_ROOT / p, GAMES_DIR / p):
+    for candidate in (Path.cwd() / p, REPO_ROOT / p,
+                      *(d / p for d in engine_project_parents(REPO_ROOT, prefer="godot")),
+                      GAMES_DIR / p):
         if candidate.is_dir():
             return candidate.resolve()
     if from_pointer:
@@ -254,9 +266,10 @@ def resolve_project(name_or_path: str | Path = "") -> Path:
             "`dev.cmd <имя>` или `agent.cmd <проект>`." % raw
         )
     if p.parent == Path("."):
-        # Голое имя - ЕДИНСТВЕННЫЙ случай, когда GAMES_DIR правильный родитель:
-        # проекта может ещё не быть, его создаст `newgame.cmd <имя>`.
-        return (GAMES_DIR / p).resolve()
+        # Голое имя - ЕДИНСТВЕННЫЙ случай, когда корень проектов правильный родитель:
+        # проекта может ещё не быть. Внутри `projects/godot/` создаём там, иначе -
+        # legacy `projects/games`.
+        return (default_project_parent(Path.cwd(), REPO_ROOT, GAMES_DIR) / p).resolve()
     return (REPO_ROOT / p).resolve()
 
 

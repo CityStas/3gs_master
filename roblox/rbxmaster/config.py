@@ -12,11 +12,22 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 from pathlib import Path
 
 # --- install root ------------------------------------------------------------
 RBX_HOME: Path = Path(__file__).resolve().parent.parent            # .../3GS_Master/roblox
 REPO_ROOT: Path = RBX_HOME.parent                                  # .../3GS_Master
+
+# Project layout (`projects/<engine>/<project>`) has ONE definition for all four
+# stacks: `project_layout.py` in the repo root. Imported by path because a pi
+# session runs inside a project folder, where the repo root is not on sys.path.
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+from project_layout import (  # noqa: E402
+    default_project_parent,
+    engine_project_parents,
+)
 
 DATA_DIR: Path = RBX_HOME / "data"
 SQLITE_DIR: Path = DATA_DIR / "sqlite"
@@ -211,6 +222,7 @@ MAX_INDEX_FILE_BYTES = int(os.environ.get("RBX_MAX_INDEX_FILE_BYTES", str(1024 *
 # `<repo>/data/active_project.txt`; the MCP servers read it back so a tool call that
 # names only `project="MyGame"` lands in the same tree the agent is editing.
 GAMES_DIR: Path = REPO_ROOT / "projects" / "games"
+PROJECTS_DIR: Path = REPO_ROOT / "projects"
 ACTIVE_PROJECT_FILE: Path = REPO_ROOT / "data" / "active_project.txt"
 LEGACY_ACTIVE_PROJECT_FILE: Path = DATA_DIR / "active_project.txt"
 
@@ -261,7 +273,9 @@ def resolve_project(name_or_path: str | Path = "") -> Path:
                 "live project." % raw
             )
         return p.resolve()
-    for candidate in (Path.cwd() / p, REPO_ROOT / p, GAMES_DIR / p):
+    for candidate in (Path.cwd() / p, REPO_ROOT / p,
+                      *(d / p for d in engine_project_parents(REPO_ROOT, prefer="roblox")),
+                      GAMES_DIR / p):
         if candidate.is_dir():
             return candidate.resolve()
     if from_pointer:
@@ -271,7 +285,10 @@ def resolve_project(name_or_path: str | Path = "") -> Path:
             "or `agent.cmd <project>` to point the system at a live project." % raw
         )
     if p.parent == Path("."):
-        return (GAMES_DIR / p).resolve()
+        # A bare name is the ONE case where a project ROOT is the right parent: the
+        # project may legitimately not exist yet. Inside `projects/roblox/` it is
+        # created there; anywhere else the legacy `projects/games` is kept.
+        return (default_project_parent(Path.cwd(), REPO_ROOT, GAMES_DIR) / p).resolve()
     return (REPO_ROOT / p).resolve()
 
 

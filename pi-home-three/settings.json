@@ -1,6 +1,6 @@
 {
-  "defaultProvider": "3gs",
-  "defaultModel": "qwen3.5-9b",
+  "defaultProvider": "ollama",
+  "defaultModel": "qwen3.5-9b-distill-deepseek-v4.1-flash",
   "defaultProjectTrust": "always",
   "defaultThinkingLevel": "off",
   "thinkingBudgets": {
@@ -9,7 +9,15 @@
     "medium": 2048,
     "high": 4096
   },
-  "defaultTools": ["read", "write", "edit", "bash", "grep", "find", "ls"],
+  "defaultTools": [
+    "read",
+    "write",
+    "edit",
+    "bash",
+    "grep",
+    "find",
+    "ls"
+  ],
   "extensions": [
     "+builtin:mcp",
     "-builtin:codemode",

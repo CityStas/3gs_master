@@ -51,7 +51,8 @@ TOOLS = pathlib.Path(__file__).resolve().parent
 REPO = TOOLS.parent
 sys.path.insert(0, str(TOOLS))
 
-import new_game  # noqa: E402  (GAMES_DIR, TargetError, resolve_under_games)
+import project_init as new_game  # noqa: E402  (TargetError, the skeleton, engine rules)
+from project_layout import find_project, project_search_dirs  # noqa: E402
 
 # Вывод должен появляться сразу. Под перенаправлением (лог, `| more`) Python
 # копит stdout в буфере, и баннер со ссылкой показался бы только после Ctrl+C -
@@ -204,26 +205,30 @@ def ensure_game(arg: str | None) -> pathlib.Path:
     `newgame.cmd`, и только по явной просьбе.
     """
     if arg:
-        dst = new_game.resolve_under_games(arg, "какой проект",
-                                           "studio.cmd my_game")
-        if not dst.is_dir():
+        dst = find_project(arg)
+        if dst is None:
             raise new_game.TargetError(
-                f"проекта нет: {dst}\n"
-                f"Создать пустую папку: mkdir \"{dst}\"\n"
-                f"Разложить стандартный стек: newgame.cmd {dst.name}")
+                f"проекта нет: {arg}\n"
+                f"Создать пустую папку: mkdir \"{arg}\"\n"
+                f"Разложить стандартный стек: cmd\\init.cmd <каталог>")
         return dst
 
-    if not new_game.GAMES_DIR.is_dir():
+    # Projects live in `projects/<engine>/<name>` since 2026-11-08; the legacy
+    # `projects/games` is searched too. The engine folders themselves are the
+    # parents, not projects, so only their children are listed.
+    parents = [d for d in project_search_dirs() if d.is_dir()]
+    if not parents:
         raise new_game.TargetError(
-            f"нет каталога проектов: {new_game.GAMES_DIR}\n"
-            f"Создать: newgame.cmd my_game")
-    found = sorted(p for p in new_game.GAMES_DIR.iterdir()
-                   if p.is_dir() and not p.name.startswith((".", "_")))
+            f"нет каталогов проектов: projects\\<engine>\\\n"
+            f"Создать: mkdir projects\\three\\my_game")
+    found = sorted((p for d in parents for p in d.iterdir()
+                    if p.is_dir() and not p.name.startswith((".", "_"))),
+                   key=lambda p: p.name)
     if not found:
         raise new_game.TargetError(
-            f"в {new_game.GAMES_DIR} нет ни одного проекта\n"
+            f"в {', '.join(str(d) for d in parents)} нет ни одного проекта\n"
             f"(ни одной подпапки).\n"
-            f"Создать: newgame.cmd my_game")
+            f"Создать: mkdir projects\\three\\my_game")
     if len(found) > 1:
         print(f"проектов несколько, беру первый по алфавиту: {found[0].name}")
         print(f"  другие: {', '.join(p.name for p in found[1:])}")
@@ -235,7 +240,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(
         description="студия одним файлом: модели + сервер игры в одном окне")
     ap.add_argument("game", nargs="?", default=None,
-                    help="имя проекта в projects/games/ (по умолчанию - единственный)")
+                    help="имя проекта в projects/<engine>/ (по умолчанию - единственный)")
     ap.add_argument("port", nargs="?", type=int, default=8777,
                     help="порт студии (по умолчанию 8777)")
     ap.add_argument("--no-models", action="store_true",

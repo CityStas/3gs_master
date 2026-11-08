@@ -8,6 +8,7 @@ closed" and "the code is wrong".
 """
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -19,6 +20,34 @@ MCP_PROCESS = "StudioMCP.exe"
 _CREATE_NO_WINDOW = 0x08000000
 _DETACHED = 0x00000008
 _NEW_GROUP = 0x00000200
+
+# --- Why Studio is launched with a scrubbed proxy environment ----------------
+# Studio reaches its own MCP server over a plain local WebSocket:
+# `ws://127.0.0.1:13469/proxy` (the `StudioMCP.exe` proxy binds 13469 and Studio
+# dials it). Studio's network stack honours `HTTP_PROXY` / `HTTPS_PROXY` and has
+# no loopback exemption of its own, so a system-wide proxy makes that handshake
+# go to the proxy instead of to 127.0.0.1. The proxy cannot CONNECT to a local
+# port, the WebSocket never opens, and Studio ends up with **zero** MCP tools
+# while the Assistant setting still reads `"mcp-server": {"enabled": true}` -
+# which is why the symptom looks like "MCP is off" and the fix looked like a
+# manual toggle. Measured on this machine: with the proxy env inherited, the
+# Studio log has 0 lines mentioning "mcp" and `list_roblox_studios` returns
+# `{"studios":[]}`; launched through this function, Studio connects within a
+# second of opening the place.
+_PROXY_VARS = ("http_proxy", "https_proxy", "all_proxy", "ftp_proxy",
+               "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "FTP_PROXY")
+
+
+def _studio_env() -> dict[str, str]:
+    """Environment for the Studio process: no outbound proxy, loopback exempt."""
+    env = {k: v for k, v in os.environ.items() if k not in _PROXY_VARS}
+    # Belt and braces: if anything re-adds a proxy, NO_PROXY still keeps 127.0.0.1
+    # direct. Studio's WS client reads these two, not only the uppercase forms.
+    no_proxy = ",".join(x for x in ("127.0.0.1", "localhost", "::1",
+                                    env.get("NO_PROXY", "")) if x)
+    env["NO_PROXY"] = no_proxy
+    env["no_proxy"] = no_proxy
+    return env
 
 
 def _tasklist(name: str) -> bool | None:
@@ -65,10 +94,12 @@ def status() -> dict:
         "studio_mcp": str(mcp) if mcp else None,
         "studio_mcp_running": mcp_running(),
         "docs_version": config.RBX_VERSION,
-        "note": ("The built-in Studio MCP server is what edits a live place. Enable it in "
-                 "Studio: Assistant -> ... -> Manage MCP Servers -> "
-                 "'Enable Studio as MCP server'. This stack provides the knowledge base and "
-                 "the file-level tools; it does not proxy Studio.")
+        "note": ("The built-in Studio MCP server is what edits a live place. It is a "
+                 "toggle in Studio (Assistant -> ... -> Manage MCP Servers -> 'Enable "
+                 "Studio as MCP server'), already enabled on this machine, and the "
+                 "handshake needs a proxy-free loopback - see launch(). If "
+                 "list_roblox_studios is empty, relaunch Studio through "
+                 "`cmd\\roblox-open.cmd`, which strips the proxy environment.")
     }
 
 
@@ -87,10 +118,10 @@ def launch(place: Path | None = None, timeout: float = 0.0) -> dict:
     if place:
         args.append(str(place))
     try:
-        subprocess.Popen(args, close_fds=True,
+        subprocess.Popen(args, close_fds=True, env=_studio_env(),
                          creationflags=_DETACHED | _NEW_GROUP | _CREATE_NO_WINDOW)
     except OSError as e:
         return {"ok": False, "error": f"{type(e).__name__}: {e}", "command": args}
     return {"ok": True, "launched": args,
-            "hint": "Studio takes ~20 s to open a place; enable the MCP server once, in "
-                    "Assistant -> ... -> Manage MCP Servers."}
+            "hint": "Studio takes ~20 s to open a place. The MCP bridge connects by "
+                    "itself (see _studio_env: the proxy is stripped on purpose)."}

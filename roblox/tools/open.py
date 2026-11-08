@@ -7,8 +7,9 @@
     python roblox/tools/open.py --studio E:\\path\\RobloxStudioBeta.exe
 
 Detached on purpose: Studio is a GUI and this command must return to the shell.
-The MCP surface of Studio is NOT started by this - enable it once inside Studio
-(Assistant -> ... -> Manage MCP Servers -> Enable Studio as MCP server).
+The MCP surface of Studio starts by itself - `studio.launch()` strips the proxy
+environment, without which Studio's WebSocket to `StudioMCP.exe` on
+127.0.0.1:13469 is swallowed by the system proxy and the agent sees no studios.
 """
 from __future__ import annotations
 
@@ -63,7 +64,7 @@ def main() -> int:
     if not result.get("ok"):
         print(f"[ERROR] {result.get('error')}", file=sys.stderr)
         return 1
-    print("opened. Enable the MCP server once: Assistant -> ... -> Manage MCP Servers.")
+    print("opened. The MCP bridge connects by itself (proxy is stripped for Studio).")
     return 0
 
 

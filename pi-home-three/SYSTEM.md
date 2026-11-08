@@ -48,7 +48,7 @@ a relative path (`projects/games/<name>/...`) or with the absolute path the user
 - `projects/games/<name>/` - the projects. Everything inside one is a **copy**.
 - `stack/` (`web3d/scene.js`), `vendor/three/` (the r186 runtime), `tools/`
   (`level_apply.py`, `level_edits.py`, `level_lint.py`, `web/serve.py`) - the
-  **canonical source** of that copy, one table: `STACK_SRC` in `tools/new_game.py`.
+  **canonical source** of that copy, one table: `STACK_SRC` in `tools/project_init.py`.
   Fixing a shared file means fixing it HERE; editing it inside one project fixes
   exactly one project and silently diverges the rest.
 - `studio/` - the studio shell, one copy for every project; the server serves it at
@@ -56,7 +56,9 @@ a relative path (`projects/games/<name>/...`) or with the absolute path the user
 - `scenes/` - plain three.js scenes with no level/studio structure at all. A task
   that only wants a 3D scene belongs here (or wherever the user says), and its files
   are written from scratch - do not scaffold a project for it.
-- The stack is refreshed in an existing project with `cmd\newgame.cmd <name> --sync`.
+- The stack is refreshed in an existing project with `cmd\init.cmd <name> --sync`.
+  `init.cmd` reads `engine.json` first: it lays down the Three.js stack only for
+  `threejs` and refuses to touch a Roblox/Unity/Godot project.
 
 ## Which game you are in
 
@@ -206,14 +208,14 @@ single most common source of wasted turns. Consequences:
   - No PowerShell cmdlets (`Select-Object`, `Get-ChildItem`, `2>$null`); no cmd idioms
     (`cd /d`, `2>nul`, `&&` is fine but `cd /d` is not).
 - **`.cmd` launchers DO NOT RUN from this shell.** `serve-all.cmd`, `cmd\check.cmd`,
-  `cmd\gen.cmd`, `cmd\newgame.cmd`, `agent.cmd` - all of them fail with
+  `cmd\gen.cmd`, `cmd\init.cmd`, `agent.cmd` - all of them fail with
   `command not found` (exit 127) if you invoke them by name. They are meant for the
   user's cmd.exe window, not for you. Do not try to run them, and do not `cd` around
   trying to make one work.
 - **Where the launchers actually are** - so you stop guessing and stop `read`-ing
   paths that do not exist. Six day-to-day ones live in the **repository root**:
   `gs.cmd`, `dev.cmd`, `agent.cmd`, `studio.cmd`, `serve-all.cmd`, `resume.cmd`.
-  The other twelve live in `cmd\`: `check`, `gen`, `newgame`, `doctor`, `index`,
+  The other twelve live in `cmd\`: `check`, `gen`, `init`, `doctor`, `index`,
   `test`, `pi-log`, `ask`, `sd-image`, `vlm`, `serve-llm`, `serve-embed`. There is no
   `cmd\agent.cmd`, no `cmd\dev.cmd` and no `cmd\studio.cmd` - `read`-ing them
   is a wasted call, and you do not run any of them anyway.
@@ -221,7 +223,7 @@ single most common source of wasted turns. Consequences:
   in `tools/`. Call it with the project's venv, from the repository root:
 
       ./.venv/Scripts/python.exe tools/tscheck.py projects/games/<game>
-      ./.venv/Scripts/python.exe tools/new_game.py <name> --force
+      ./.venv/Scripts/python.exe tools/project_init.py <name> --force
       ./.venv/Scripts/python.exe tools/level_lint.py projects/games/<game>/web3d/level.json
 
   (inside a game directory the linter is copied locally, so
@@ -287,7 +289,7 @@ this project's TypeScript averages roughly 40 characters, and the whole response
 The `World.ts` that died was 432 lines. Split anything past ~150 lines into a `write` plus
 one or more `edit` calls appending the remainder.
 
-**This is enforced, not advice.** An extension (`.pi/extensions/write-guard.ts`) refuses a
+**This is enforced, not advice.** An extension (`pi-extensions/write-guard.ts`) refuses a
 `write` over 320 lines / 12 KB before it runs, and returns the reason as the tool result.
 You will see the refusal instead of losing the turn - but you have still wasted the call,
 so plan the split up front.

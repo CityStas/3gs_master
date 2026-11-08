@@ -89,9 +89,9 @@ dev.cmd test --studio
 ни `tools\`, ни `serve.py` там не появятся. Модель раскладывает то, что ей нужно,  
 сама — пустая папка это нормальный старт, а не ошибка.  
 
-Стандартный стек кладёт **только явный** `newgame.cmd <имя>` (а `--cli` — его  
+Стандартный стек кладёт **только явный** `init.cmd <имя>` (а `--cli` — его  
 урезанный слой без студии). Раньше отсутствие `web3d\levels.json` молча тянуло за  
-собой `newgame.cmd`: одна строка «запусти агента» переписывала дерево файлов. Флаги  
+собой `init.cmd`: одна строка «запусти агента» переписывала дерево файлов. Флаги  
 `--force` и `--cli` у `dev.cmd` убраны — они делали ровно это, и теперь отбиваются  
 сообщением `no longer a dev.cmd flag` (rc=2).
 
@@ -137,7 +137,7 @@ gs agent projects\games\my_game      :: интерактивная сессия 
 gs ask "включи тени от directional light"   :: разовый запрос без сессии
 gs resume projects\games\my_game     :: продолжить прошлую сессию
 gs studio my_game           :: студия одним окном
-gs newgame my_game          :: скелет новой игры
+gs init my_game             :: скелет по engine.json (three.js)
 gs gen -p my_game -j plan.json
 gs check my_game            :: tsc-гейт
 gs img "изумрудный кристалл" assets\images\crystal.png
@@ -230,7 +230,7 @@ repo root…)`. Без этого модель знает только `<cwd>` =
 
 **Путь у указателя ОДИН на все стеки: `<репозиторий>\data\active_project.txt`.** Это не
 файл стека: пишет его `agent.cmd`, читают threejs, godot, unity (через `resolve_project`)
-и `.pi/extensions/engine-gate.ts` — последний выбирает движок сессии. У godot и unity свои
+и `pi-extensions/engine-gate.ts` — последний выбирает движок сессии. У godot и unity свои
 `data\active_project.txt` остались только как legacy-фолбэк (читаются вторым).
 
 **Указатель — подсказка, а не факт.** `projects\games\` — данные пользователя: игры
@@ -431,7 +431,7 @@ studio.cmd
 `studio.cmd --no-models` — студия без моделей (мгновенно; моделями пользуется только
 консольный агент). Аргумент — **имя игры,
 а не путь**: игры живут только в `projects\games\`. Папки нет или она пуста — студия сама создаст
-её через `cmd\newgame.cmd`. Интерфейс масштабируется кнопками `A−/A+` (весь UI в `rem`,
+её через `cmd\init.cmd`. Интерфейс масштабируется кнопками `A−/A+` (весь UI в `rem`,
 база — `--ui-size` на `<html>`), выбор запоминается в `localStorage`. Вердикт линтера
 уровня виден прямо в студии (кнопка «формат», `GET /__lint`) и пересчитывается сам при
 открытии, сохранении и пересборке.
@@ -440,7 +440,7 @@ studio.cmd
 
 ```cmd
 cd /d F:\Pets\Projects\local_tools\3GS_Master
-cmd\newgame.cmd my_game
+cmd\init.cmd my_game
 studio.cmd my_game
 ```
 
@@ -453,7 +453,7 @@ studio.cmd my_game
 `AGENTS.md`, `level_edit.json`. Для работы «только через `pi`»:
 
 ```cmd
-cmd\newgame.cmd my_game --cli
+cmd\init.cmd my_game --cli
 ```
 
 **Оболочки студии в игре нет.** Страница и её модули (`studio.html`, `app.js`,  
@@ -472,10 +472,10 @@ cmd\newgame.cmd my_game --cli
 **Источник стека — сам репозиторий, а не соседний проект.** Раньше рантайм  
 копировался из первой попавшейся игры (`find_sample`), и удаление одной игры  
 останавливало создание всех остальных. Теперь что и откуда берётся, сказано одной  
-таблицей `STACK_SRC` в `tools/new_game.py`; образец не нужен, флага `--from` больше нет.
+таблицей `STACK_SRC` в `tools/project_init.py`; образец не нужен, флага `--from` больше нет.
 
 Обновить то, что всё-таки лежит в игре (рантайм, сервер, сборщик правок), не  
-трогая уровни: `cmd\newgame.cmd my_game --sync`.
+трогая уровни: `cmd\init.cmd my_game --sync`.
 
 **Подробная инструкция — [`STUDIO.md`](STUDIO.md)**: с чего начать, что должно  
 появиться на экране, разбор симптомов и что студия умеет, а что нет.
@@ -507,7 +507,7 @@ cmd\newgame.cmd my_game --cli
 | `scenes/`        | Сцены **без** игровой структуры: просто `index.html` + importmap на `vendor/three/`. Скелет, студия и уровни здесь не нужны — модель пишет файлы с нуля                                                                                                                                                                                                                                                                                                                                                          |
 | `*.md` (корень)  | `AGENTS.md` - правила, `LEVEL-SCHEMA.md` - **формат уровня, читать до правки `level*.json`**, `ASSET-POLICY.md` - ассеты, `STUDIO.md` - студия                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `*.cmd` (корень) | `gs.cmd` (единый фасад: `gs help`), `dev.cmd` (модели + doctor + агент, `--studio` — студия рядом), `agent.cmd`, `serve-all.cmd`, `studio.cmd`, `resume.cmd`. Остальные лаунчеры - в `cmd/`                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `cmd/`           | Сервисные лаунчеры: `doctor`, `index`, `gen`, `check`, `newgame`, `test`, `pi-log`, `sd-image`, `ask`, `vlm`, `serve-llm`, `serve-embed`, `serve-rerank`. Все доступны через `gs` и напрямую (`cmd\doctor.cmd`). Ходовые (`serve-all`, `agent`, `studio`, `resume`) и `gs.cmd` остаются в корне |
+| `cmd/`           | Сервисные лаунчеры: `doctor`, `index`, `gen`, `check`, `init`, `test`, `pi-log`, `sd-image`, `ask`, `vlm`, `serve-llm`, `serve-embed`, `serve-rerank`. Все доступны через `gs` и напрямую (`cmd\doctor.cmd`). Ходовые (`serve-all`, `agent`, `studio`, `resume`) и `gs.cmd` остаются в корне |
 | `archive/`       | Архивы прошлых конфигураций проекта                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `logs/`          | Логи индексации и прогонов: `generate.log`, `comfy-sidecar.log`, `llm-sidecar.log`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
@@ -641,7 +641,7 @@ unity/
 | `unity`           | `pi-home-unity`   | `unity-rag`, `unity-project`, `assets`     |
 | `threejs` / нет   | `pi-home-three`   | `threejs-rag`, `assets` (+ студия)         |
 
-Инструменты регистрирует не промпт, а расширение `.pi/extensions/engine-gate.ts`:  
+Инструменты регистрирует не промпт, а расширение `pi-extensions/engine-gate.ts`:  
 под Unity-профилем модель **не видит** godot-инструментов вообще, потому что они не  
 зарегистрированы. 9B-модель не может вызвать инструмент, которого нет в `tools/list` -  
 это надёжнее любого запрета в тексте.
@@ -1106,7 +1106,7 @@ KV-кэш Qwen3.5-9B стоит 17 КиБ/токен (гибридная арх�
 | Агент чинит ошибки по одной                      | Он читает сырой `tsc`, а `head -50` прячет файлы после пятидесятого. Дай ему `cmd\check.cmd`: сводка целиком, содержательные ошибки отдельно от шума                                                                                          |
 | `TS2307: Cannot find module 'three/addons/...'`  | `three` не поставляет типов и не имеет реального каталога `addons/`. Импорт верный для Vite; лечится маппингом `paths` в `tsconfig.json` игры (см. ниже)                                                                                  |
 | Модель переписывает файл и возвращает тот же баг | Полный `write` регенерирует файл с нуля, и исправленное в нём не выживает. Нужен `edit` по конкретной строке, а после двух неудач - `read` файла                                                                                          |
-| Агент «теряет ход» на большом `write`            | Файл не влез в бюджет ответа и вызов отклонён целиком (`the response hit the output token limit`). Сторож `.pi/extensions/write-guard.ts` теперь отбивает `write` больше 320 строк / 12 КБ **до** генерации - правь константы в его шапке |
+| Агент «теряет ход» на большом `write`            | Файл не влез в бюджет ответа и вызов отклонён целиком (`the response hit the output token limit`). Сторож `pi-extensions/write-guard.ts` теперь отбивает `write` больше 320 строк / 12 КБ **до** генерации - правь константы в его шапке |
 | Агент ходит по кругу на одном файле              | Сторож блокирует 4-й по счёту `write` в один и тот же путь и велит `read` + `edit`. Порог - `MAX_REWRITES` в том же файле                                                                                                                 |
 
 Логи индексации - `logs/`. Лог сессии pi - `pi-home/sessions/<проект>/<timestamp>.jsonl`  

@@ -36,7 +36,7 @@ dev.cmd my_game
 
 | Движок | `engine.json` | Что сделать перед запуском |
 | --- | --- | --- |
-| Three.js | `{ "engine": "threejs", "version": "r186" }` | ничего, скелет ставит `cmd\newgame.cmd <имя>` |
+| Three.js | `{ "engine": "threejs", "version": "r186" }` | `cmd\init.cmd <имя>` — раскладывает three.js-стек по маркеру |
 | Godot 4 | `{ "engine": "godot", "version": "4.7.2" }` | создать проект в Godot Project Manager в этой папке |
 | Unity 6 | `{ "engine": "unity", "version": "6000.3" }` | создать проект в Unity Hub или дать это агенту |
 | Roblox | `{ "engine": "roblox" }` | `gs roblox-fetch`, `gs roblox-index`, затем `gs roblox-open` |

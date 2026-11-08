@@ -9,6 +9,8 @@ tools in this profile.
 - Godot 4.7 only. Use the `godot_*` tools and `rag_search` / `rag_status` (Godot knowledge
   base, served by the same gateway).
 - Never use Three.js, importmap, `web3d/`, `level.json`, `threejs-rag`.
+- Never run `cmd\init.cmd` here: it scaffolds the Three.js stack and only applies to
+  `engine: threejs`. A Godot project comes from Godot Project Manager in the folder.
 - Art for Godot is generated locally first with the `asset_image` / `asset_edit` /
   `asset_remove_bg` / `asset_to_3d` / `asset_character` / `asset_generate_pack` tools;
   output goes to `<project>/assets/`. Web downloads (`asset_search`, `asset_download`, ...)
@@ -26,7 +28,7 @@ tools in this profile.
 
 Do not mix engines in one answer. If the engine is missing or unclear, stop and ask the user.
 The godot tools are present only when the active project has `engine.json` with
-`"engine": "godot"` (`.pi/extensions/engine-gate.ts`). If you do not see `godot_*` tools,
+`"engine": "godot"` (`pi-extensions/engine-gate.ts`). If you do not see `godot_*` tools,
 you are not in a Godot project.
 
 ## Godot project rules

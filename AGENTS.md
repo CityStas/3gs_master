@@ -1,7 +1,7 @@
 # Three.js RAG Agent Rules
 
 Правила проекта `3GS_Master`. Действуют для **любой** папки внутри репозитория —
-в том числе для каждой игры в `projects/games/<name>/`.
+в том числе для каждой игры в `projects/<engine>/<name>/`.
 
 ## Как читаются эти правила, и почему `AGENTS.md` в папке игры не нужен
 
@@ -20,12 +20,58 @@
     <repo>/AGENTS.md                                     <- читается
     F:\Pets\Projects\local_tools\, F:\Pets\, F:\   <- файлов нет
 
-а `projects/games/AGENTS.md` и `projects/games/<игра>/AGENTS.md` — **потомки `cwd`**, и
+а `projects/<engine>/AGENTS.md` и `projects/<engine>/<игра>/AGENTS.md` — **потомки `cwd`**, и
 их не читает никто. Раньше здесь лежала «короткая выжимка для pi»; в промпт она не
 попадала ни разу, поэтому её содержимое перенесено сюда, а сам файл удалён.
 
 Полная политика — `ASSET-POLICY.md`, операционная выжимка — скилл
 `3gs-local-generation-first`. Не пересказывай их целиком; суть — ниже.
+
+## Раскладка: `projects/<engine>/<project>` и голый `pi`
+
+С 2026-11-08 проекты лежат по движкам, и `engine.json` может стоять как на самом
+проекте, так и на папке движка:
+
+    projects/three/<name>/engine.json     {"engine":"threejs"}
+    projects/godot/<name>/                наследует projects/godot/engine.json
+    projects/unity/<name>/                наследует projects/unity/engine.json
+    projects/roblox/<name>/               наследует projects/roblox/engine.json
+
+Раскладка описана **в одном месте** — `project_layout.py` в корне. Его читают все
+четыре стека (`threejs/config.py`, `godot/gdmaster/config.py`,
+`unity/unimaster/config.py`, `roblox/rbxmaster/config.py`), `tools/find_project.py`
+(через него — `agent.cmd` и `dev.cmd`) и `tools/pi_launch.py`. Старый
+`projects/games/<name>` продолжает резолвиться как legacy, но это не второй источник
+правды: нового там не появляется.
+
+**Голый `pi` внутри проекта = `agent.cmd` для этого проекта.** `cmd\pi.cmd`
+(ставится как `pi` через `cmd\pi-shim.cmd --install`, forwarder живёт в
+`%USERPROFILE%\.pi\agent\bin\pi.cmd`) поднимается вверх до ближайшего
+`engine.json` и выставляет:
+
+| что | значение |
+|---|---|
+| `PI_CODING_AGENT_DIR` | `pi-home-<engine>` — SYSTEM.md, `skills/`, `mcp.json`, `models.json` этого движка |
+| `data/active_project.txt` | проект, в котором ты стоишь (его читают RAG- и project-MCP-серверы, а не `cwd`) |
+| `GS_ROOT`, `GS_ENGINE`, `THREE_PROJECT`, `NO_PROXY` | как у `agent.cmd` |
+| модель | `3gs/...` если отвечает роутер :8080, иначе `ollama/...` |
+
+Если `PI_CODING_AGENT_DIR` уже выставлен (`agent.cmd`, `pi-here.cmd`,
+`tools/run_pi.py`), шим ничего не трогает — решение внешнего лаунчера главнее.
+Вне репозитория и там, где `engine.json` нет, `pi` работает как обычно.
+
+Проверить, что подхватится, ничего не запуская:
+
+    python tools/pi_launch.py --plan          # JSON: engine, profile, project, model
+    gs pi-shim                                # установлен ли шим
+
+**Расширения pi живут в `pi-extensions/`**, а в `pi-home-*/extensions/` лежат только
+стабы-реэкспорты. Причина: `pi` читает `<cwd>/.pi/extensions`, то есть ровно один
+каталог — при запуске из папки проекта корневой `.pi/` не читается вообще, и
+`engine-gate`/`write-guard` молча пропадали. `extensions/` внутри профиля читается
+всегда, независимо от `cwd`. Один экземпляр кода на четыре профиля — не копии.
+
+После `pi update` шим затирается вместе с `bin\pi.cmd` — вернуть: `gs pi-shim --install`.
 
 ## Где работать: только активный проект, новых не создавать
 
@@ -84,6 +130,19 @@ Three.js**. Для Roblox действуют:
 - **База знаний** — `roblox/knowledge/` (гайды Creator Hub, Engine API Reference,
   Open Cloud, курированный стартовый набор) + `roblox/data/sqlite/lexical.db`.
   Поиск: `rbx_rag_search`; статус: `rbx_rag_status`.
+- **Сначала `rbx_rag_search`, потом руки.** Это правило действует и в WorkBuddy, не
+  только в pi: факт о платформе берётся из базы, а не из памяти. Проверка перед
+  первой правкой стоит секунды, а «я и так знаю» уже стоило часа на `MeshPart.MeshId`
+  (правильный ответ — `MeshPart:ApplyMesh`, и он лежал в базе) и на клонировании
+  части с чужими `Weld`.
+  - **Рантайм-поведение Studio MCP** — `roblox/knowledge/curated_kb/15_STUDIO_MCP_GOTCHAS.md`
+    (play-клиент для `generate_avatar`, MCP-таймауты при живой задаче, `NotAccessible`
+    в песочнице, `GetBoundingBox` из двух значений, `PivotTo` vs bbox, клон с варками,
+    `Motor6D = 0` как норма, один `StarterCharacter`, idle для NPC, моргание = динамическая
+    голова, undo сносит пачку правок).
+  - **Эмбеддинг-сервер на :8081 обязателен** (`gs embed`). Если он лежит, поиск молча
+    деградирует до лексики: тот же запрос про `ApplyMesh` давал score 0.0147 вместо
+    0.0295 и не поднимал метод в топ. Проверять `rbx_rag_status` → `embedding_server.status`.
 - **Два разных входа в проект, не путать.** `rbx_project_*` работает с **файлами на
   диске** (Rojo-дерево, закрытый `.rbxlx`), а `roblox-studio` — это **встроенный MCP
   Studio**, он видит живой DataModel. Правка открытого места файловыми инструментами
@@ -123,7 +182,7 @@ gs roblox-open [проект] [--empty]
 **Перед тем как писать или править уровень, прочитать `LEVEL-SCHEMA.md`.** Это
 единственное полное описание формата; там же рабочий пример целиком.
 
-Уровень — обычный JSON (`projects/games/<name>/web3d/level.json`), его читают
+Уровень — обычный JSON (`projects/<engine>/<name>/web3d/level.json`), его читают
 `web3d/scene.js` (сцена) и `web3d/engine.js` (игра). Не Godot-сцена, не тайлмап.
 
 Четыре ошибки, из-за которых уровень получается пустым МОЛЧА:
@@ -142,7 +201,7 @@ gs roblox-open [проект] [--empty]
 **корне репозитория**, а не в папке игры, поэтому путь к уровню — полный:
 
 ```bash
-./.venv/Scripts/python.exe tools/level_lint.py projects/games/<name>/web3d/level.json
+./.venv/Scripts/python.exe tools/level_lint.py projects/<engine>/<name>/web3d/level.json
 ```
 
 Копия линтера лежит и в каждой игре, так что из её каталога сработает короткая форма
@@ -214,7 +273,7 @@ gs roblox-open [проект] [--empty]
   примеров в `SYSTEM.md`/`LEVEL-SCHEMA.md` — это иллюстрации синтаксиса, а НЕ список
   ассетов: брать их как задание = сгенерировать космос для ниндзя.
 - **Один запуск на пак:** `./.venv/Scripts/python.exe tools/generate.py
-  --project projects/games/<name> --jobs <plan.json>` (или `cmd\gen.cmd`).
+  --project projects/<engine>/<name> --jobs <plan.json>` (или `cmd\gen.cmd`).
 - **Несколько вырезаний — одним вызовом:** `asset_remove_bg(images=[...])`, а не по
   вызову на файл. Результат кладётся РЯДОМ с исходником (`<dir>/<stem>-nobg.png`),
   ответ сопоставляет каждый вход с его выходом — переносить ничего не надо.
@@ -252,21 +311,32 @@ cd /d F:\Pets\Projects\local_tools\3GS_Master && dev.cmd <имя игры> [--st
 ```
 
 `dev.cmd` = `serve-all.cmd` (модели) → `cmd\doctor.cmd` (проверка) → необязательная
-студия в **отдельном окне** → `agent.cmd projects\games\<имя>`. Аргумент — **имя игры**, не путь.
+студия в **отдельном окне** → `agent.cmd projects\<engine>\<имя>`. Аргумент — **имя игры**, не путь.
 Без `--studio` получается чистая CLI-сессия; со `--studio` параллельно открывается
 студия для живого просмотра.
 
 **`dev.cmd` ничего не создаёт, кроме самой папки.** Заводит пустой
-`projects\games\<имя>\` и сразу передаёт его агенту: ни `scene.js`, ни `level.json`,
+`projects\<engine>\<имя>\` и сразу передаёт его агенту: ни `scene.js`, ни `level.json`,
 ни `tools\`, ни `serve.py` там не появятся — файлы пишет сама модель, пустая папка
-это нормальный старт. Стандартный стек кладёт **только явный** `newgame.cmd <имя>`
+это нормальный старт. Стандартный стек кладёт **только явный** `init.cmd <dir>`
 (`--sync` — обновить стек, `--force` — перезаписать и уровни, `--cli` — слой без
 студии). Флаги `--force` и `--cli` у `dev.cmd` убраны и отбиваются сообщением
 `no longer a dev.cmd flag` (rc=2): они делали ровно то автосоздание, от которого
 избавились. У `dev.cmd` остались `--studio` / `--no-studio`.
 
+**Инициализация — по `engine.json`, а не по имени проекта.** `cmd\init.cmd`
+(он же `tools/project_init.py`) читает маркер движка и раскладывает three.js-стек
+ТОЛЬКО для `threejs`. Для `roblox`/`unity`/`godot` он ничего не пишет: скелет
+создаёт сам движок (`cmd\roblox-open.cmd`, `unity_project_create`, Godot Project
+Manager). Отдельного «new game» больше нет — имя обещало универсальность, которой
+не было, и модели звали three-скелет в roblox-проект. `pi-here.cmd` в корне
+запускает `pi` в текущей папке с профилем из её `engine.json`; без маркера он
+предупреждает и берёт three.js-профиль. Если `engine.json` нет, `agent.cmd`
+ведёт себя так же — молчаливый three.js-дефолт и был причиной «проект на Roblox
+вдруг получил `web3d/`».
+
 **Источник стека — репозиторий, а не соседний проект.** Что попадает в новый
-проект и откуда, сказано ОДНОЙ таблицей `STACK_SRC` в `tools/new_game.py`:
+проект и откуда, сказано ОДНОЙ таблицей `STACK_SRC` в `tools/project_init.py`:
 `web3d/vendor/` ← `vendor/three/` (three.js r186), `web3d/scene.js` ←
 `stack/web3d/scene.js`, остальное ← `tools/`. Раньше стек копировался из первой
 попавшейся игры (`find_sample`), и удаление одной игры останавливало создание
@@ -283,7 +353,7 @@ cd /d F:\Pets\Projects\local_tools\3GS_Master && dev.cmd <имя игры> [--st
 То же вручную, если нужно по шагам:
 
 ```cmd
-cd /d F:\Pets\Projects\local_tools\3GS_Master && serve-all.cmd && cmd\doctor.cmd && agent.cmd projects\games\<имя>
+cd /d F:\Pets\Projects\local_tools\3GS_Master && serve-all.cmd && cmd\doctor.cmd && agent.cmd projects\<engine>\<имя>
 ```
 
 > **Эта строка — для окна `cmd.exe` ПОЛЬЗОВАТЕЛЯ, а не для агента.** У агента шелл —
@@ -291,8 +361,8 @@ cd /d F:\Pets\Projects\local_tools\3GS_Master && serve-all.cmd && cmd\doctor.cmd
 > `command not found` (exit 127). Агенту не нужно поднимать модели и не нужно
 > запускать `agent.cmd` — их уже запустил пользователь. Из bash агент зовёт
 > python-скрипты напрямую:
-> `./.venv/Scripts/python.exe tools/tscheck.py projects/games/<game>`,
-> `./.venv/Scripts/python.exe tools/level_lint.py projects/games/<game>/web3d/level.json`.
+> `./.venv/Scripts/python.exe tools/tscheck.py projects/<engine>/<game>`,
+> `./.venv/Scripts/python.exe tools/level_lint.py projects/<engine>/<game>/web3d/level.json`.
 
 То же самое одной подкомандой: `gs dev <игра> [--studio]`, либо по шагам
 `gs up` (модели) → `gs agent <игра>`. Полный список подкоманд — `gs help`.
@@ -337,12 +407,12 @@ cd /d F:\Pets\Projects\local_tools\3GS_Master && studio.cmd <игра>
 - Интернет-ассет: лицензия прежде файла, запись в `CREDITS`, сообщить
   пользователю, что скачано.
 - Проверка игры — гейт, а не вежливость: `cmd\check.cmd <game>` для типов
-  (из bash: `./.venv/Scripts/python.exe tools/tscheck.py projects/games/<game>`),
+  (из bash: `./.venv/Scripts/python.exe tools/tscheck.py projects/<engine>/<game>`),
   `python tools/level_lint.py web3d/level.json` из каталога игры для уровня
   (код возврата 1 при падении).
 - **Страница проверяется до того, как её откроет пользователь:**
   `cmd\check.cmd <game>` после tsc гоняет второй гейт —
-  `./.venv/Scripts/python.exe tools/pagecheck.py projects/games/<game>`.
+  `./.venv/Scripts/python.exe tools/pagecheck.py projects/<engine>/<game>`.
   Он резолвит каждый модульный спецификатор через importmap самой страницы и
   проверяет, что файл есть, потом то же для ассетов. Зачем: импорт, который 404-ит,
   не «портит» страницу, а **обрывает граф модулей целиком** — `init()` не
