@@ -32,7 +32,29 @@ roblox/data/
 games/
 
 # --- пользовательские проекты и логи -----------------------------------
-projects/
+# `projects/*` а не `projects/`: каталог, целиком закрытый правилом, git внутрь не
+# заходит вообще, и `!`-исключения ниже не срабатывают. Дальше на каждую папку движка
+# нужны ДВЕ строки: `!projects/<e>/` пускает git внутрь каталога, `projects/<e>/*`
+# снова закрывает содержимое, и только `!.../engine.json` открывает сам маркер.
+# Одной `!projects/<e>/` мало - она открывает и все проекты внутри.
+# Так версионируется только скелет; содержимое проектов остаётся у каждого своё.
+# Пустой projects/<e>/engine.json - инициализатор движка: без него проект в этой
+# папке не получает ни профиль агента, ни набор MCP-серверов.
+projects/*
+!projects/.gitignore
+!projects/README.md
+!projects/three/
+projects/three/*
+!projects/three/engine.json
+!projects/godot/
+projects/godot/*
+!projects/godot/engine.json
+!projects/unity/
+projects/unity/*
+!projects/unity/engine.json
+!projects/roblox/
+projects/roblox/*
+!projects/roblox/engine.json
 logs/
 godot/logs/
 unity/logs/
@@ -59,3 +81,5 @@ m2m/
 
 # --- состояние сессии (у каждого своё) --------------------------------
 data/active_project.txt
+# Кэш reliability-слоя: сводка шагов по прогонам. Воспроизводится из логов.
+data/reliability/

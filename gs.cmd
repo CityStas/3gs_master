@@ -52,6 +52,8 @@ if /i "%SUB%"=="roblox-check" set "T=cmd\roblox-check.cmd"
 if /i "%SUB%"=="roblox-doctor" set "T=cmd\roblox-doctor.cmd"
 if /i "%SUB%"=="roblox-open" set "T=cmd\roblox-open.cmd"
 if /i "%SUB%"=="mcp-sync" set "T=cmd\mcp-sync.cmd"
+if /i "%SUB%"=="reliability" set "T=cmd\reliability.cmd"
+if /i "%SUB%"=="rel"   set "T=cmd\reliability.cmd"
 if /i "%SUB%"=="pi"      set "T=cmd\pi.cmd"
 if /i "%SUB%"=="pi-shim" set "T=cmd\pi-shim.cmd"
 if /i "%SUB%"=="help"    goto :usage
@@ -106,6 +108,7 @@ echo   roblox-doctor Roblox stack environment check ^(Studio, corpus, index^)
 echo   roblox-open   open Roblox Studio on a place   [project] [--empty]
 echo.
 echo   mcp-sync      render mcp\registry.json into the pi profiles and WorkBuddy
+echo   reliability   loop-guard log, run state, policy selftest (alias: rel)
 echo                 ^(dry run; --apply writes, --print ^<engine^> dumps one^)
 echo.
 echo   pi            pi with the profile of the engine you are standing in

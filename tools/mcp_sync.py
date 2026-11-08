@@ -148,6 +148,32 @@ def render_workbuddy(registry: dict, ph: dict) -> dict:
     return {name: _workbuddy_entry(cfg, ph) for name, cfg in registry["servers"].items()}
 
 
+def render_workbuddy_profile(registry: dict, engine: str, ph: dict) -> dict:
+    """One engine's WorkBuddy surface, generated from the same registry.
+
+    WorkBuddy has no per-engine gating and no way to switch profiles inside a session: it
+    loads every server that is not marked `disabled` and needs a reload to see a new list.
+    So the honest implementation of "a WorkBuddy profile" is this - write the file with the
+    selected engine's servers enabled and everything else explicitly disabled, and tell the
+    user to reload. That is derived state, not a hand-maintained second config, and it keeps
+    `mcp/registry.json` the only place a server is declared.
+
+    `engines: ["any"]` (the shared asset pipeline) is always enabled: it is the one server
+    that is correct in every session.
+    """
+    out = {}
+    for name, cfg in registry["servers"].items():
+        entry = _workbuddy_entry(cfg, ph)
+        engines = cfg.get("engines", ["any"])
+        wanted = engine in engines or "any" in engines
+        if wanted:
+            entry.pop("disabled", None)
+        else:
+            entry["disabled"] = True
+        out[name] = entry
+    return out
+
+
 def _merge(target: dict, generated: dict, owned: list[str], label: str,
            verbose: bool) -> tuple[dict, list[str], list[str]]:
     """Merge generated entries into `target`, reporting added/updated/dropped.
@@ -189,6 +215,9 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--apply", action="store_true", help="write the files (default: dry run)")
     ap.add_argument("--only", choices=("pi", "workbuddy"), default="",
                     help="limit to one client")
+    ap.add_argument("--profile", choices=ENGINES + ("all",), default="",
+                    help="WorkBuddy: enable only this engine's servers (plus the shared "
+                         "`any` ones) and disable the rest. Needs a client reload.")
     ap.add_argument("--print", dest="show", choices=ENGINES, default="",
                     help="print one pi profile and exit")
     a = ap.parse_args(argv[1:])
@@ -203,9 +232,20 @@ def main(argv: list[str]) -> int:
         print(json.dumps(render_pi(registry, a.show, ph), ensure_ascii=False, indent=2))
         return 0
 
+    if a.profile == "all":
+        a.profile = ""
+    if a.profile and a.only == "pi":
+        print("[ERROR] --profile applies to WorkBuddy; pi picks its profile from engine.json",
+              file=sys.stderr)
+        return 2
+    if a.profile:
+        a.only = "workbuddy"
+
     manifest = _load(MANIFEST, {})
     print(f"registry: {len(registry['servers'])} servers -> {', '.join(ENGINES)} + WorkBuddy")
     print(f"mode    : {'APPLY' if a.apply else 'dry run (--apply to write)'}")
+    if a.profile:
+        print(f"profile : workbuddy={a.profile} (other engines' servers are disabled, not removed)")
 
     if a.only in ("", "pi"):
         for engine, path in PI_PROFILE.items():
@@ -226,7 +266,8 @@ def main(argv: list[str]) -> int:
     if a.only in ("", "workbuddy"):
         existing = _load(WORKBUDDY_MCP, {"mcpServers": {}})
         current = existing.get("mcpServers", {})
-        generated = render_workbuddy(registry, ph)
+        generated = (render_workbuddy_profile(registry, a.profile, ph) if a.profile
+                     else render_workbuddy(registry, ph))
         owned = manifest.get("workbuddy", [])
         merged, touched, dropped = _merge(current, generated, owned, "workbuddy", verbose=True)
         if a.apply and (touched or dropped or not WORKBUDDY_MCP.exists()):
@@ -235,6 +276,11 @@ def main(argv: list[str]) -> int:
             _write(WORKBUDDY_MCP, payload)
         manifest["workbuddy"] = sorted(generated)
         print(f"  target : {WORKBUDDY_MCP}")
+        active = sorted(name for name, entry in generated.items() if not entry.get("disabled"))
+        off = sorted(name for name, entry in generated.items() if entry.get("disabled"))
+        print(f"  active : {', '.join(active) or '(none)'}")
+        if off:
+            print(f"  off    : {', '.join(off)}")
 
     if a.apply:
         _write(MANIFEST, manifest)
