@@ -202,18 +202,29 @@ def test_both_implementations_reach_the_same_progress_verdicts():
         "stops_counting_once_something_was_written": [
             ("after", writes), (budget + 5, inspect), ("before", again),
         ],
+        "read_only_mcp_tool_counts_as_inspection": [
+            (budget, ("mcp__threejs_rag__threejs_rag_search", {"query": "terrain"}, True)),
+            ("before", ("mcp__threejs_rag__threejs_rag_search", {"query": "craters"}, True)),
+        ],
+        "a_non_read_only_mcp_tool_is_progress": [
+            (budget, inspect),
+            ("before", ("mcp__assets__asset_image", {"prompt": "moon"}, False)),
+        ],
     }
     for name, steps in scenarios.items():
         guard = reliability.ProgressGuard(policy)
         verdict = None
         for step in steps:
             if isinstance(step[0], int):
+                tool, args, *rest = step[1]
                 for _ in range(step[0]):
-                    guard.after(step[1][0], step[1][1], False)
+                    guard.after(tool, args, False, read_only=bool(rest and rest[0]))
             elif step[0] == "after":
-                guard.after(step[1][0], step[1][1], False)
+                tool, args, *rest = step[1]
+                guard.after(tool, args, False, read_only=bool(rest and rest[0]))
             else:
-                verdict = guard.before(step[1][0], step[1][1])
+                tool, args, *rest = step[1]
+                verdict = guard.before(tool, args, read_only=bool(rest and rest[0]))
         expected = parity["progress"][name]
         got = {"decision": verdict["decision"], "code": verdict.get("code")}
         if got != expected:

@@ -35,7 +35,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -399,8 +399,6 @@ def is_inspection(tool_name: str, args: dict, policy: dict | None = None) -> boo
     command = args.get("command") if isinstance(args, dict) else ""
     if not isinstance(command, str) or not command.strip():
         return False
-    import re
-
     segments = [s.strip() for s in re.split(r"\|\||&&|;|\|", command) if s.strip()]
     if not segments:
         return False
@@ -425,7 +423,7 @@ class ProgressGuard:
         self.mutations = 0
         self.blocked = 0
 
-    def before(self, tool_name: str, args: dict, context: str = "") -> dict:
+    def before(self, tool_name: str, args: dict, context: str = "", read_only: bool = False) -> dict:
         cfg = self.policy["progress_guard"]
         if not cfg["enabled"]:
             return {"decision": "allow"}
@@ -433,7 +431,7 @@ class ProgressGuard:
             return {"decision": "allow"}
         if self.inspections < cfg["block_after_inspections"]:
             return {"decision": "allow"}
-        if not is_inspection(tool_name, args, self.policy):
+        if not read_only and not is_inspection(tool_name, args, self.policy):
             return {"decision": "allow"}
         self.blocked += 1
         cls = classify("", self.policy, hint="NO_PROGRESS")
@@ -449,10 +447,11 @@ class ProgressGuard:
             "next_action": cls["next_action"],
         }
 
-    def after(self, tool_name: str, args: dict, is_error: bool, context: str = "") -> None:
+    def after(self, tool_name: str, args: dict, is_error: bool, context: str = "",
+              read_only: bool = False) -> None:
         if not self.policy["progress_guard"]["enabled"]:
             return
-        if is_inspection(tool_name, args, self.policy):
+        if read_only or is_inspection(tool_name, args, self.policy):
             self.inspections += 1
             return
         self.inspections = 0

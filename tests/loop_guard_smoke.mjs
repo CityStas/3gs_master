@@ -33,12 +33,15 @@ process.env.GS_RELIABILITY_LOG_DIR = logDir;
 const { default: loopGuard } = await import("../pi-extensions/loop-guard.ts");
 
 /** Minimal stand-in for pi's ExtensionAPI: collects handlers, nothing else. */
-function fakePi() {
+function fakePi(tools = []) {
   const handlers = new Map();
   return {
     api: {
       on(event, handler) {
         handlers.set(event, handler);
+      },
+      getAllTools() {
+        return tools;
       },
     },
     fire(event, payload) {
@@ -58,7 +61,13 @@ function check(name, condition, detail) {
   failures.push(`${name}: ${detail}`);
 }
 
-const pi = fakePi();
+// A read-only MCP tool, exactly as pi reports one: the progress guard has to treat it as
+// inspection, or a search-heavy session switches the guard off after the first query.
+const pi = fakePi([
+  { name: "read", annotations: { readOnlyHint: true } },
+  { name: "mcp__threejs_rag__threejs_rag_search", annotations: { readOnlyHint: true } },
+  { name: "write", annotations: { readOnlyHint: false } },
+]);
 loopGuard(pi.api);
 pi.fire("session_start", {});
 

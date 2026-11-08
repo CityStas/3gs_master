@@ -630,12 +630,12 @@ export class ProgressGuard {
     return this.mutations;
   }
 
-  before(input: FingerprintInput): GuardVerdict {
+  before(input: FingerprintInput, readOnly = false): GuardVerdict {
     const cfg = this.policy.progress_guard;
     if (!cfg.enabled) return { decision: "allow" };
     if (cfg.require_zero_mutations && this.mutations > 0) return { decision: "allow" };
     if (this.inspections < cfg.block_after_inspections) return { decision: "allow" };
-    if (!isInspection(input.toolName, input.args, this.policy)) return { decision: "allow" };
+    if (!readOnly && !isInspection(input.toolName, input.args, this.policy)) return { decision: "allow" };
     this.blocked += 1;
     const cls = classify("", this.policy, "NO_PROGRESS");
     return {
@@ -650,10 +650,16 @@ export class ProgressGuard {
     };
   }
 
-  after(input: FingerprintInput, isError: boolean): void {
+  /**
+   * `readOnly` comes from the client, not from the policy: pi reports each tool's
+   * `readOnlyHint`, and an MCP search tool declares it. Without that, `threejs_rag_search`
+   * would look like a mutation, switch the guard off, and a RAG-heavy session would
+   * circle unguarded - which is exactly what a 9B model does with a search tool.
+   */
+  after(input: FingerprintInput, isError: boolean, readOnly = false): void {
     const cfg = this.policy.progress_guard;
     if (!cfg.enabled) return;
-    if (isInspection(input.toolName, input.args, this.policy)) {
+    if (readOnly || isInspection(input.toolName, input.args, this.policy)) {
       this.inspections += 1;
       return;
     }

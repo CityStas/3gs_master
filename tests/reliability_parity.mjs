@@ -194,8 +194,8 @@ function runProgress(steps) {
   const guard = new ProgressGuard(policy);
   let verdict = null;
   for (const step of steps) {
-    if (step.op === "after") guard.after(step.call, step.isError ?? false);
-    else verdict = guard.before(step.call);
+    if (step.op === "after") guard.after(step.call, step.isError ?? false, step.readOnly ?? false);
+    else verdict = guard.before(step.call, step.readOnly ?? false);
   }
   return verdict ? { decision: verdict.decision, code: verdict.code ?? null } : null;
 }
@@ -223,6 +223,20 @@ const progress = {
     { op: "after", call: writes },
     ...many(policy.progress_guard.block_after_inspections + 5, inspect),
     { op: "before", call: inspectAgain },
+  ]),
+  // A read-only MCP tool (readOnlyHint) counts as inspection even though its name is not
+  // in the policy's list - otherwise a search-heavy session disables the guard.
+  read_only_mcp_tool_counts_as_inspection: runProgress([
+    ...Array.from({ length: policy.progress_guard.block_after_inspections }, () => ({
+      op: "after",
+      call: call("mcp__threejs_rag__threejs_rag_search", { query: "terrain" }),
+      readOnly: true,
+    })),
+    { op: "before", call: call("mcp__threejs_rag__threejs_rag_search", { query: "craters" }), readOnly: true },
+  ]),
+  a_non_read_only_mcp_tool_is_progress: runProgress([
+    ...many(policy.progress_guard.block_after_inspections, inspect),
+    { op: "before", call: call("mcp__assets__asset_image", { prompt: "moon" }), readOnly: false },
   ]),
 };
 

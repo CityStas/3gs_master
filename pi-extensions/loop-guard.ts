@@ -65,6 +65,7 @@ interface ExtensionApi {
   on(event: "session_shutdown", handler: () => void): void;
   on(event: "tool_call", handler: (event: ToolCallEvent) => { block?: boolean; reason?: string } | void): void;
   on(event: "tool_result", handler: (event: ToolResultEvent) => { content?: unknown[]; isError?: boolean } | void): void;
+  getAllTools(): { name: string; annotations?: { readOnlyHint?: boolean } }[];
 }
 
 /** Tools whose `path` argument is a write target and therefore sandbox-checked. */
@@ -92,6 +93,28 @@ export default function loopGuard(pi: ExtensionApi): void {
   const progress = new ProgressGuard(policy);
   const MUTATING = mutatingTools(policy);
 
+  /**
+   * Tools the client itself declares read-only (MCP servers set `readOnlyHint`).
+   *
+   * Read at session start and on `mcp_servers_change`-free cadence: the set only grows
+   * when a server connects, and `getAllTools()` is a cheap array copy. Without this a RAG
+   * search would count as a mutation, switch the progress guard off, and leave a
+   * search-heavy session - the exact shape a 9B model falls into - unguarded.
+   */
+  let readOnlyTools = new Set<string>();
+  const refreshReadOnly = (): void => {
+    try {
+      readOnlyTools = new Set(
+        (pi.getAllTools() ?? [])
+          .filter((tool) => tool.annotations?.readOnlyHint === true)
+          .map((tool) => tool.name),
+      );
+    } catch {
+      readOnlyTools = new Set();
+    }
+  };
+  const isReadOnly = (name: string): boolean => readOnlyTools.has(name);
+
   const runId = `pi-${process.pid}-${new Date().toISOString().replace(/[:.]/g, "-")}`;
   /** toolCallId -> start time, for the elapsed column. */
   const started = new Map<string, number>();
@@ -118,6 +141,7 @@ export default function loopGuard(pi: ExtensionApi): void {
     guard.reset();
     ledger.reset();
     progress.reset();
+    refreshReadOnly();
     staleWarned = false;
     const ctx = readProjectContext(root);
     if (ctx.stale) {
@@ -219,7 +243,10 @@ export default function loopGuard(pi: ExtensionApi): void {
 
     // 4. Nothing written yet, and a lot of looking. The one failure mode a fingerprint
     //    cannot see: 40 different calls that all amount to re-reading the same files.
-    const noProgress = progress.before({ toolName: event.toolName, args: input, context: ctx.project ?? ctx.engine });
+    const noProgress = progress.before(
+      { toolName: event.toolName, args: input, context: ctx.project ?? ctx.engine },
+      isReadOnly(event.toolName),
+    );
     if (noProgress.decision === "block" && noProgress.code) {
       emit({
         tool: event.toolName,
@@ -297,7 +324,11 @@ export default function loopGuard(pi: ExtensionApi): void {
         // A verified mutation moves the world on: nothing counted before it is a fact now.
         guard.resetOnMutation();
         ledger.after({ toolName: event.toolName, args: input, context: ctx.project ?? ctx.engine }, false);
-        progress.after({ toolName: event.toolName, args: input, context: ctx.project ?? ctx.engine }, false);
+        progress.after(
+          { toolName: event.toolName, args: input, context: ctx.project ?? ctx.engine },
+          false,
+          isReadOnly(event.toolName),
+        );
         return;
       }
     }
@@ -308,7 +339,11 @@ export default function loopGuard(pi: ExtensionApi): void {
       // followed may now work for a real reason (a dependency installed, a file written).
       if (MUTATING.has(event.toolName)) guard.resetOnMutation();
       ledger.after({ toolName: event.toolName, args: input, context: ctx.project ?? ctx.engine }, false);
-      progress.after({ toolName: event.toolName, args: input, context: ctx.project ?? ctx.engine }, false);
+      progress.after(
+        { toolName: event.toolName, args: input, context: ctx.project ?? ctx.engine },
+        false,
+        isReadOnly(event.toolName),
+      );
       emit({
         tool: event.toolName,
         fingerprint: fp,
@@ -322,7 +357,11 @@ export default function loopGuard(pi: ExtensionApi): void {
     // --- failure: classify, count, and hand back something actionable ----------------
     const cls = classify(text, policy);
     guard.after({ toolName: event.toolName, args: input, context: ctx.project ?? ctx.engine }, true, cls.code);
-    progress.after({ toolName: event.toolName, args: input, context: ctx.project ?? ctx.engine }, true);
+    progress.after(
+      { toolName: event.toolName, args: input, context: ctx.project ?? ctx.engine },
+      true,
+      isReadOnly(event.toolName),
+    );
 
     const extra: Record<string, unknown> = {};
     if (cls.code === "FILE_NOT_FOUND" && typeof input.path === "string") {
