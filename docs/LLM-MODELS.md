@@ -32,8 +32,9 @@ cmd/serve-llm.cmd              пересобирает реестр и стар
 Сканируются:
 
 - `models\*.gguf` и `models\llm\**\*.gguf` (репозиторий);
-- `GS_LLM_MODELS_DIR` (по умолчанию `E:\Programs\LocalLLM\Models`, `;`-разделитель
-  для второго диска) — задаётся в `cmd\_env.cmd`.
+- `GS_LLM_MODELS_DIR` (`;`-разделитель для второго диска) - задаётся в
+  `local.env.cmd`, которого в git нет. Пусто по умолчанию: на чистом клоне
+  чат-модель одна, из `models.manifest.json`.
 
 Отбрасываются:
 

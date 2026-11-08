@@ -90,6 +90,9 @@ echo.
 echo   llm ^| embed ^| rerank ^| vlm ^| voice   start a single model server directly
 echo                             ^(rerank :8083 optional; voice :8084 = x_life creature^)
 echo   models    models pi can pick from         [--refresh^|--live^|--list]
+echo             weights: where they are          --paths
+echo                      download what is missing --fetch [groups] [--mirror] [--yes]
+echo                      re-hash what is on disk  --verify [groups] [--strict]
 echo.
 echo   unity-fetch   fetch the Unity docs corpus   [--with-source]
 echo   unity-index   build the Unity RAG index

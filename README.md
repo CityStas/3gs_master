@@ -12,14 +12,49 @@
 ## Требования
 
 - Windows, Python 3.11+ (`.venv` в корне)
-- веса моделей и бинарники в `bin/` - в репозиторий не входят, порядок установки
-  описан в [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- **~39 ГБ весов** (скачиваются одной командой, см. ниже) и бинарники в `bin/` - в git
+  они не входят
 - 8 ГБ VRAM: на карте одновременно живёт одна модель - LLM, генератор картинок
   или ComfyUI
 
+## Модели: скачать
+
+Веса в git не входят: клон получает код и пустой `models/`. Что именно нужно и откуда
+это брать, записано в [`models.manifest.json`](models.manifest.json) - на каждый файл
+репозиторий на HuggingFace, точный размер и `sha256`.
+
+```cmd
+python -m venv .venv && .venv\Scripts\pip install -r requirements.txt
+gs models --fetch              :: всё, что помечено default (~39 ГБ)
+gs models --verify             :: пересчитать хеши
+```
+
+`--fetch` качает только отсутствующее, докачивает с места обрыва (`.part` + `Range`) и
+сверяет `sha256` на лету - недокачанный файл никогда не станет похож на рабочий.
+Плохая связь с HuggingFace - добавь `--mirror` (hf-mirror.com).
+
+Можно взять не всё:
+
+| группа | размер | что это | нужна для |
+|---|---|---|---|
+| `llm` | 6.2 ГБ | Qwen3.5-9B Q4_K_M | агент (роутер :8080) |
+| `rag` | 1.1 ГБ | `bge-m3` + `bge-reranker-v2-m3` | поиск по документации |
+| `vlm` | 5.5 ГБ | Qwen2.5-VL-7B + mmproj | «посмотри на скриншот» (:8082) |
+| `image` | 6.5 ГБ | z-image-turbo + VAE + текстовый энкодер | текст → картинка (:8687) |
+| `3d` | 13.3 ГБ | Pixal3D, MoGe, TripoSplat, BiRefNet | картинка → GLB (ComfyUI :8188) |
+| `3d-x` | 6.5 ГБ | бэкбон Trellis2 (`switch=True`) | альтернатива Pixal3D |
+
+```cmd
+gs models --fetch llm,rag      :: 7.2 ГБ - хватает на агента и RAG
+gs models --fetch all          :: включая необязательный 3d-x
+gs models --verify rag --strict
+```
+
+**3D отдельно:** модели `3d` кладутся внутрь ComfyUI, поэтому сначала сам движок.
+`--fetch` скажет, куда именно, если его нет; после установки ComfyUI повтори команду.
+
 ## Модели: где лежат
 
-Веса (~65 ГБ) в git не входят, поэтому «где модели» - свойство машины, а не репозитория.
 Корень задаётся одной переменной, по умолчанию `<repo>/models`:
 
 | переменная | по умолчанию | что покрывает |
@@ -43,9 +78,9 @@ gs models --paths
 ```
 
 Раскладка внутри корня: `*.gguf` в корне (9B чат, `bge-m3`, `bge-reranker`),
-`vlm/Qwen2.5-VL-7B/`, `image/z-image-turbo/`, `text_image_3D/` (ComfyUI и его 3D-модели,
-~45 ГБ). Этот же корень читают все четыре движка, роутер llama.cpp на :8080,
-`vlm.cmd`, `sd-image.cmd` и приложение hc_local_ai_image_3D (через `HC_MODELS_ROOT`).
+`vlm/Qwen2.5-VL-7B/`, `image/z-image-turbo/`, `text_image_3D/` (ComfyUI и его 3D-модели).
+Этот же корень читают все четыре движка, роутер llama.cpp на :8080, `vlm.cmd`,
+`sd-image.cmd` и приложение hc_local_ai_image_3D (через `HC_MODELS_ROOT`).
 
 ## Быстрый старт
 
@@ -53,7 +88,7 @@ gs models --paths
 git clone https://github.com/CityStas/3gs_master
 cd 3gs_master
 python -m venv .venv && .venv\Scripts\pip install -r requirements.txt
-gs models --paths                 :: что уже есть, чего не хватает
+gs models --fetch                 :: ~39 ГБ весов, один раз
 gs doctor                         :: окружение целиком
 dev.cmd my_game
 ```
@@ -63,15 +98,18 @@ dev.cmd my_game
 
 ## Новый проект
 
-Проект - это папка `projects/games/<имя>`. Движок задаёт файл `engine.json` в её
-корне; без него агент работает в режиме Three.js.
+Проект - это папка `projects/<движок>/<имя>`. Движок задаёт `engine.json` - на самой
+папке проекта или на папке движка, откуда он наследуется:
 
-| Движок | `engine.json` | Что сделать перед запуском |
-| --- | --- | --- |
-| Three.js | `{ "engine": "threejs", "version": "r186" }` | `cmd\init.cmd <имя>` — раскладывает three.js-стек по маркеру |
-| Godot 4 | `{ "engine": "godot", "version": "4.7.2" }` | создать проект в Godot Project Manager в этой папке |
-| Unity 6 | `{ "engine": "unity", "version": "6000.3" }` | создать проект в Unity Hub или дать это агенту |
-| Roblox | `{ "engine": "roblox" }` | `gs roblox-fetch`, `gs roblox-index`, затем `gs roblox-open` |
+| Движок | папка | `engine.json` | Что сделать перед запуском |
+| --- | --- | --- | --- |
+| Three.js | `projects/three/<имя>` | `{ "engine": "threejs", "version": "r186" }` | `cmd\init.cmd <имя>` — раскладывает three.js-стек по маркеру |
+| Godot 4 | `projects/godot/<имя>` | `{ "engine": "godot", "version": "4.7.2" }` | создать проект в Godot Project Manager в этой папке |
+| Unity 6 | `projects/unity/<имя>` | `{ "engine": "unity", "version": "6000.3" }` | создать проект в Unity Hub или дать это агенту |
+| Roblox | `projects/roblox/<имя>` | `{ "engine": "roblox" }` | `gs roblox-fetch`, `gs roblox-index`, затем `gs roblox-open` |
+
+Старый `projects/games/<имя>` продолжает резолвиться как legacy, но нового там не
+появляется. Раскладка описана в одном месте - `project_layout.py`.
 
 Для Roblox дополнительно нужны две вещи, которых нет у остальных движков: корпус
 документации скачивается отдельно (`gs roblox-fetch`, ~3600 страниц), а встроенный MCP
@@ -93,8 +131,9 @@ Studio as MCP server.
 
 ## Что в репозитории, а что нет
 
-В git лежит код, корпус документации и конфигурация агента. Абсолютных путей нет:
-машинные (`GS_MODELS_ROOT`, `BLENDER_EXE`, `UNITY_EDITOR`) живут в `local.env.cmd`,
-которого в git нет - есть только `local.env.example.cmd`. Исключены веса моделей,
-бинарники движков, кэши RAG, пользовательские проекты и логи - поэтому клон без
-дополнительных шагов не запустится: сначала нужны модели и `.venv`.
+В git лежит код, корпус документации, конфигурация агента и **`models.manifest.json`** -
+опись весов со ссылками и хешами, по которой `gs models --fetch` их и забирает.
+Абсолютных путей нет: машинные (`GS_MODELS_ROOT`, `BLENDER_EXE`, `UNITY_EDITOR`) живут
+в `local.env.cmd`, которого в git нет - есть только `local.env.example.cmd`.
+Исключены сами веса, бинарники движков, кэши RAG, пользовательские проекты и логи -
+поэтому клон без `gs models --fetch` и `.venv` не запустится.

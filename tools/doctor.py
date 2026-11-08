@@ -107,7 +107,7 @@ def check_models() -> list[tuple[str, str, str]]:
     if missing:
         rows.append((WARN, "weights",
                      f"missing {len(missing)}/{len(groups)}: {', '.join(missing)}"
-                     f"  <- gs models --paths"))
+                     f"  <- gs models --fetch"))
     else:
         rows.append((OK, "weights", f"all {len(groups)} groups present"))
     return rows

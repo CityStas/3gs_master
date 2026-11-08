@@ -1,0 +1,211 @@
+{
+  "$comment": [
+    "What to download, where from, and how to prove it arrived intact.",
+    "",
+    "The weights are ~39 GB and are NOT in git, so a fresh clone has code and nothing",
+    "else. This file is the missing half: `gs models fetch` reads it, resolves the",
+    "target through model_paths.py (GS_MODELS_ROOT, no drive letters anywhere) and",
+    "downloads only what is absent. `gs models verify` re-hashes and fails loudly.",
+    "",
+    "`size` and `sha256` are the HuggingFace LFS values, not guesses - they were read",
+    "from the API for these exact repos, and every one of them matches the file the",
+    "project was developed against, byte for byte. `path` is relative to the models",
+    "root (GS_MODELS_ROOT), except group `3d`/`3d-x`, which is relative to",
+    "<comfy root>/ComfyUI/models."
+  ],
+  "version": 1,
+  "groups": {
+    "llm": {
+      "title": "Chat model for pi (llama.cpp router :8080)",
+      "required": true,
+      "default": true
+    },
+    "rag": {
+      "title": "Embedder + reranker (the RAG needs both)",
+      "required": true,
+      "default": true
+    },
+    "vlm": {
+      "title": "Qwen2.5-VL-7B - look at a screenshot, describe an image (:8082)",
+      "required": false,
+      "default": true
+    },
+    "image": {
+      "title": "z-image-turbo - text to image (sd-server :8687)",
+      "required": false,
+      "default": true
+    },
+    "3d": {
+      "title": "ComfyUI 3D - Pixal3D (default), MoGe, TripoSplat, BiRefNet",
+      "required": false,
+      "default": true
+    },
+    "3d-x": {
+      "title": "Trellis2 backbone (optional, +6.5 GB; switch=True in the workflow)",
+      "required": false,
+      "default": false
+    }
+  },
+  "files": [
+    {
+      "group": "llm",
+      "path": "Qwen_Qwen3.5-9B-Q4_K_M.gguf",
+      "repo": "bartowski/Qwen_Qwen3.5-9B-GGUF",
+      "file": "Qwen_Qwen3.5-9B-Q4_K_M.gguf",
+      "size": 6169341984,
+      "sha256": "d784ce9eda1a5a7b51e8f705a9e6310844bf4f173654d115823c775fdea56d43"
+    },
+    {
+      "group": "rag",
+      "path": "bge-m3-q4_k_m.gguf",
+      "repo": "gpustack/bge-m3-GGUF",
+      "file": "bge-m3-Q4_K_M.gguf",
+      "size": 437778496,
+      "sha256": "6d39681b26c61279ac1f82db35a04a05009e94c415b51c858ff571489a82fc06"
+    },
+    {
+      "group": "rag",
+      "path": "bge-reranker-v2-m3-Q8_0.gguf",
+      "repo": "gpustack/bge-reranker-v2-m3-GGUF",
+      "file": "bge-reranker-v2-m3-Q8_0.gguf",
+      "size": 635676416,
+      "sha256": "a43c7c9b11a4c1517e5bf95151960e1621d1b72f7a493364b01e386cf1aaa1d3"
+    },
+    {
+      "group": "vlm",
+      "path": "vlm/Qwen2.5-VL-7B/Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf",
+      "repo": "unsloth/Qwen2.5-VL-7B-Instruct-GGUF",
+      "file": "Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf",
+      "size": 4683072384,
+      "sha256": "d16776dcd9a28d42758c2958ed3a752aabf20a305252cd64ff2be72b4a78c503"
+    },
+    {
+      "group": "vlm",
+      "path": "vlm/Qwen2.5-VL-7B/mmproj-Qwen2.5-VL-7B-Instruct-Q8_0.gguf",
+      "repo": "ggml-org/Qwen2.5-VL-7B-Instruct-GGUF",
+      "file": "mmproj-Qwen2.5-VL-7B-Instruct-Q8_0.gguf",
+      "size": 853119712,
+      "sha256": "2ddb555391bae966e412deab9e07b58afa18bcc06930ba0f1c78a3695ab9e506"
+    },
+    {
+      "group": "image",
+      "path": "image/z-image-turbo/z_image_turbo-Q4_K.gguf",
+      "repo": "leejet/Z-Image-Turbo-GGUF",
+      "file": "z_image_turbo-Q4_K.gguf",
+      "size": 3864250304,
+      "sha256": "14b375ab4f226bc5378f68f37e899ef3c2242b8541e61e2bc1aff40976086fbd"
+    },
+    {
+      "group": "image",
+      "path": "image/z-image-turbo/Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+      "repo": "unsloth/Qwen3-4B-Instruct-2507-GGUF",
+      "file": "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+      "size": 2497281120,
+      "sha256": "3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597"
+    },
+    {
+      "group": "image",
+      "path": "image/z-image-turbo/ae.safetensors",
+      "repo": "black-forest-labs/FLUX.1-schnell",
+      "file": "vae/diffusion_pytorch_model.safetensors",
+      "size": 167666902,
+      "sha256": "f5b59a26851551b67ae1fe58d32e76486e1e812def4696a4bea97f16604d40a3"
+    },
+    {
+      "group": "3d",
+      "path": "diffusion_models/pixal3d_int8_convrot.safetensors",
+      "repo": "Comfy-Org/Pixal3D",
+      "file": "diffusion_models/pixal3d_int8_convrot.safetensors",
+      "size": 5584555824,
+      "sha256": "4621eac3b715484f79303c7152af641fe0b2b14f4d0e3d394fd6922d00f955ec"
+    },
+    {
+      "group": "3d",
+      "path": "clip_vision/dino_v3_L_naf_fp32.safetensors",
+      "repo": "Comfy-Org/Pixal3D",
+      "file": "clip_vision/dino_v3_L_naf_fp32.safetensors",
+      "size": 1215214176,
+      "sha256": "4ad2ec4e0879a5b5b04cd97325cc37da954a7b6edca5170b86510f17f2b2290f"
+    },
+    {
+      "group": "3d",
+      "path": "vae/trellis_2_shape_vae_bf16.safetensors",
+      "repo": "Comfy-Org/Pixal3D",
+      "file": "vae/trellis_2_shape_vae_bf16.safetensors",
+      "size": 1095844024,
+      "sha256": "de0cb4949a76c59ee5c091a995a69bcc8c51d5aeda939f0c641a50d2a72341f4"
+    },
+    {
+      "group": "3d",
+      "path": "vae/trellis_2_texture_vae_bf16.safetensors",
+      "repo": "Comfy-Org/Pixal3D",
+      "file": "vae/trellis_2_texture_vae_bf16.safetensors",
+      "size": 948461364,
+      "sha256": "714e5ebf094a610e12a8e3b5175c18a62f37f6ea4218acb6073644456b73ab0e"
+    },
+    {
+      "group": "3d",
+      "path": "geometry_estimation/moge_2_vitl_normal_fp16.safetensors",
+      "repo": "Comfy-Org/MoGe",
+      "file": "geometry_estimation/moge_2_vitl_normal_fp16.safetensors",
+      "size": 661859924,
+      "sha256": "cb1a692d03235671e959e81360d7b4d9f44aefadb1f852d6ca6aa17799d5e31f"
+    },
+    {
+      "group": "3d",
+      "path": "background_removal/birefnet.safetensors",
+      "repo": "Comfy-Org/BiRefNet",
+      "file": "background_removal/birefnet.safetensors",
+      "size": 444473596,
+      "sha256": "9ab37426bf4de0567af6b5d21b16151357149139362e6e8992021b8ce356a154"
+    },
+    {
+      "group": "3d",
+      "path": "clip_vision/dino_v3_vit_h.safetensors",
+      "repo": "VAST-AI/TripoSplat",
+      "file": "clip_vision/dino_v3_vit_h.safetensors",
+      "size": 1681247696,
+      "sha256": "a29ef35101a16966972a0d50732a6f3a608ff7cfffb2afa9bbe9007cb842cc53"
+    },
+    {
+      "group": "3d",
+      "path": "diffusion_models/triposplat_fp16.safetensors",
+      "repo": "VAST-AI/TripoSplat",
+      "file": "diffusion_models/triposplat_fp16.safetensors",
+      "size": 741106994,
+      "sha256": "c870b97ac1d6bc9177608a5ec625e19ef9f3c5019aa68f64b0fb7803abcd6d20"
+    },
+    {
+      "group": "3d",
+      "path": "vae/flux2-vae.safetensors",
+      "repo": "VAST-AI/TripoSplat",
+      "file": "vae/flux2-vae.safetensors",
+      "size": 336213556,
+      "sha256": "d64f3a68e1cc4f9f4e29b6e0da38a0204fe9a49f2d4053f0ec1fa1ca02f9c4b5"
+    },
+    {
+      "group": "3d",
+      "path": "vae/triposplat_vae_decoder_fp16.safetensors",
+      "repo": "VAST-AI/TripoSplat",
+      "file": "vae/triposplat_vae_decoder_fp16.safetensors",
+      "size": 576148442,
+      "sha256": "ed0d0c3d43b599e326845d0ec70f3cf77be9a55e2d97627ac3b34d2830763cc8"
+    },
+    {
+      "group": "3d-x",
+      "path": "diffusion_models/trellis_2_int8_convrot.safetensors",
+      "repo": "Comfy-Org/TRELLIS.2",
+      "file": "diffusion_models/trellis_2_int8_convrot.safetensors",
+      "size": 5253048192,
+      "sha256": "d01952ad137213f6a868f86b6b877026276f84af5eec23069217475a0bad3a31"
+    },
+    {
+      "group": "3d-x",
+      "path": "clip_vision/dino_v3_vit_l.safetensors",
+      "repo": "Comfy-Org/TRELLIS.2",
+      "file": "clip_vision/dino_v3_vit_l.safetensors",
+      "size": 1212559776,
+      "sha256": "5cb785e458de7c460579082418af81f5c62380c181599344bdc60898c63468ee"
+    }
+  ]
+}
