@@ -45,8 +45,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from tools.gguf_meta import describe  # noqa: E402
+from model_paths import llm_roots, models_root  # noqa: E402
 
-MODELS_DIR = ROOT / "models"
+# The weights root is NOT a constant of this file: `GS_MODELS_ROOT` (default
+# `<repo>/models`) is resolved by model_paths.py, the same module the four
+# stack configs and the .cmd launchers use. The registry, preset and overrides all
+# live next to the weights, so a machine that moved them keeps its edits.
+MODELS_DIR = models_root()
 PRESET = MODELS_DIR / "llm-preset.ini"
 REGISTRY = MODELS_DIR / "llm-registry.json"
 OVERRIDES = MODELS_DIR / "llm-overrides.json"
@@ -92,17 +97,13 @@ QUANT_LABEL_RE = re.compile(r"(i?q\d+(?:_[a-z0-9]+)*|f16|bf16|fp16)", re.I)
 def _roots() -> list[Path]:
     """Where to look for .gguf files, in order.
 
-    `GS_LLM_MODELS_DIR` is a `;`-separated list so a second drive can be added without
-    touching code. The default is this machine's `E:\\Programs\\LocalLLM\\Models`,
-    which is where the alternative 9B builds live.
+    The models root first, then `GS_LLM_MODELS_DIR` - a `;`-separated list of extra
+    roots for alternative 9B builds. No drive letter is baked in: a machine with
+    only `<repo>/models` gets one root and works; a machine that keeps extra builds
+    elsewhere puts them in `local.env.cmd`. Resolution lives in
+    `model_paths.py` so the .cmd launchers cannot drift from it.
     """
-    out = [MODELS_DIR]
-    raw = os.environ.get("GS_LLM_MODELS_DIR", r"E:\Programs\LocalLLM\Models")
-    for part in raw.split(";"):
-        part = part.strip().strip('"')
-        if part:
-            out.append(Path(part))
-    return out
+    return llm_roots()
 
 
 def _skip(path: Path) -> str:

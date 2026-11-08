@@ -16,6 +16,7 @@ from project_layout import (  # noqa: E402
     default_project_parent,
     engine_project_parents,
 )
+from model_paths import models_root  # noqa: E402
 
 DATA_DIR = THREE_RAG_HOME / "data"
 SQLITE_DIR = DATA_DIR / "sqlite"
@@ -176,7 +177,7 @@ COMFY_HOST = os.environ.get("THREE_COMFY_HOST", "127.0.0.1")
 COMFY_PORT = int(os.environ.get("THREE_COMFY_PORT", "8188"))
 COMFY_BASE_URL = f"http://{COMFY_HOST}:{COMFY_PORT}"
 TEXT_IMAGE_3D_DIR = Path(os.environ.get(
-    "THREE_TEXT_IMAGE_3D_DIR", THREE_RAG_HOME / "models" / "text_image_3D"
+    "THREE_TEXT_IMAGE_3D_DIR", models_root() / "text_image_3D"
 ))
 COMFY_ROOT = Path(os.environ.get(
     "THREE_COMFY_ROOT",
@@ -216,7 +217,7 @@ SD_PORT = int(os.environ.get("THREE_SD_PORT", "8687"))
 SD_BASE_URL = f"http://{SD_HOST}:{SD_PORT}"
 SD_BIN_DIR = Path(os.environ.get("THREE_SD_BIN_DIR", THREE_RAG_HOME / "bin" / "sd-vulkan"))
 SD_MODEL_DIR = Path(os.environ.get("THREE_SD_MODEL_DIR",
-                                   THREE_RAG_HOME / "models" / "image" / "z-image-turbo"))
+                                   models_root() / "image" / "z-image-turbo"))
 
 # Real-ESRGAN (ncnn/Vulkan) - upscales a finished picture instead of making the
 # diffusion model draw it large. Holds a few hundred MB, so it is not part of the

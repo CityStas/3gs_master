@@ -10,9 +10,9 @@ rem per image, ~4-8 s on a warm Vulkan device. The text encoder (Qwen3-4B) runs 
 rem CPU on purpose: the 8 GB card has to hold the 3.9 GB diffusion model + VAE.
 
 set "SD=%GS_ROOT%bin\sd-vulkan\sd-cli.exe"
-set "DIFF=%GS_ROOT%models\image\z-image-turbo\z_image_turbo-Q4_K.gguf"
-set "VAE=%GS_ROOT%models\image\z-image-turbo\ae.safetensors"
-set "TE=%GS_ROOT%models\image\z-image-turbo\Qwen3-4B-Instruct-2507-Q4_K_M.gguf"
+set "DIFF=%GS_MODELS_ROOT%\image\z-image-turbo\z_image_turbo-Q4_K.gguf"
+set "VAE=%GS_MODELS_ROOT%\image\z-image-turbo\ae.safetensors"
+set "TE=%GS_MODELS_ROOT%\image\z-image-turbo\Qwen3-4B-Instruct-2507-Q4_K_M.gguf"
 
 if not exist "%SD%"  ( echo [ERROR] sd-cli.exe not found: "%SD%" & exit /b 1 )
 if not exist "%DIFF%" ( echo [ERROR] diffusion model not found: "%DIFF%" & exit /b 1 )

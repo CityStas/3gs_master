@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from threejs import config  # noqa: E402
+from model_paths import report as model_report  # noqa: E402
 
 OK = "  ok  "
 BAD = " FAIL "
@@ -74,6 +75,41 @@ def check_servers() -> list[tuple[str, str, str]]:
     except Exception as e:  # noqa: BLE001
         rows.append((WARN, "RERANK llama.cpp (optional)",
                      f"{rurl} -> {type(e).__name__}: {e}  <- run: gs rerank"))
+    return rows
+
+
+def check_models() -> list[tuple[str, str, str]]:
+    """Where the weights are, and which of them are missing.
+
+    ~65 GB is not in git, so on a fresh clone this is the first thing that is wrong
+    and the last thing that says so: pi starts, the RAG answers from an index built
+    on someone else's machine, and the first `asset_image` fails with a 404 from a
+    server that never loaded a model.
+
+    Resolved by `model_paths.py` - the same module the four stack configs and the
+    .cmd launchers read, so the doctor cannot disagree with them about the root.
+    A missing group is WARN, not FAIL: half a stack is a legitimate state (you may
+    only need the RAG today), and doctor runs on every `agent.cmd` launch.
+    """
+    r = model_report()
+    rows = [(OK, "models root", r["models_root"])]
+    extra = r["llm_roots"][1:]
+    if extra:
+        rows.append((OK, "chat roots +", ", ".join(extra)))
+
+    groups = [
+        ("chat", r["chat"]), ("embed", r["embed"]), ("rerank", r["rerank"]),
+        ("vlm", r["vlm_model"]), ("vlm mmproj", r["vlm_mmproj"]),
+        ("sd diffusion", r["sd_diffusion"]), ("sd vae", r["sd_vae"]),
+        ("sd text enc", r["sd_text_encoder"]), ("comfyui", r["comfy"]),
+    ]
+    missing = [label for label, row in groups if not row["exists"]]
+    if missing:
+        rows.append((WARN, "weights",
+                     f"missing {len(missing)}/{len(groups)}: {', '.join(missing)}"
+                     f"  <- gs models --paths"))
+    else:
+        rows.append((OK, "weights", f"all {len(groups)} groups present"))
     return rows
 
 
@@ -343,7 +379,7 @@ def main() -> int:
     print(f"  three.js    : {config.THREE_VERSION}")
     print(f"  assets dir  : {config.ASSETS_DIR}")
     print()
-    rows = check_servers() + check_gpu() + check_corpus() + check_index()
+    rows = check_servers() + check_gpu() + check_models() + check_corpus() + check_index()
     if not quick:
         rows = rows + check_comfy() + check_blender() + check_agent_reach()
     rows = rows + check_unity(quick=quick)

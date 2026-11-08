@@ -12,9 +12,24 @@ from pathlib import Path
 # --- корень установки агента -------------------------------------------------
 GDM_HOME: Path = Path(__file__).resolve().parent.parent
 
+# Корень репозитория: раскладка проектов и корень весов описаны ОДИН раз -
+# `project_layout.py` и `model_paths.py` в корне. Импорт по пути, потому что
+# сессия pi стартует из папки проекта, где корня репозитория в sys.path нет.
+REPO_ROOT: Path = GDM_HOME.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+from project_layout import (  # noqa: E402
+    default_project_parent,
+    engine_project_parents,
+)
+from model_paths import models_root  # noqa: E402
+
 BIN_DIR: Path = GDM_HOME / "bin"
 LLAMA_DIR: Path = BIN_DIR / "llama"
-MODELS_DIR: Path = GDM_HOME / "models"
+# Веса общие для всех движков: GS_MODELS_ROOT (по умолчанию <repo>/models).
+# Раньше здесь был `godot/models/` - пустая папка, из-за которой `gdm.py serve`
+# искал GGUF, которого никогда не было.
+MODELS_DIR: Path = models_root()
 DATA_DIR: Path = GDM_HOME / "data"
 QDRANT_DIR: Path = DATA_DIR / "qdrant"
 SQLITE_DIR: Path = DATA_DIR / "sqlite"
@@ -161,14 +176,6 @@ RERANK_TIMEOUT = float(os.environ.get("GDM_RERANK_TIMEOUT", "60"))
 # пользователя лежат в `projects/<engine>/<имя>` (раскладка с 2026-11-08;
 # `projects/games/` остаётся как legacy). Раскладка описана ОДИН раз -
 # `project_layout.py` в корне репозитория; `cmd/_env.cmd` читает то же самое.
-REPO_ROOT: Path = GDM_HOME.parent
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-from project_layout import (  # noqa: E402
-    default_project_parent,
-    engine_project_parents,
-)
-
 GAMES_DIR: Path = Path(os.environ.get("GDM_GAMES_DIR", REPO_ROOT / "projects" / "games"))
 PROJECTS_DIR: Path = REPO_ROOT / "projects"
 

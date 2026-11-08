@@ -10,8 +10,8 @@ rem render and tell me what is wrong" loops. Kept separate from the 9B coding mo
 rem because both together do not fit in 8 GB of VRAM.
 
 set "LLAMA=%GS_ROOT%bin\llama-mtmd\llama-server.exe"
-set "MODEL=%GS_ROOT%models\vlm\Qwen2.5-VL-7B\Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf"
-set "MMPROJ=%GS_ROOT%models\vlm\Qwen2.5-VL-7B\mmproj-Qwen2.5-VL-7B-Instruct-Q8_0.gguf"
+set "MODEL=%GS_MODELS_ROOT%\vlm\Qwen2.5-VL-7B\Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf"
+set "MMPROJ=%GS_MODELS_ROOT%\vlm\Qwen2.5-VL-7B\mmproj-Qwen2.5-VL-7B-Instruct-Q8_0.gguf"
 
 if not exist "%LLAMA%"  ( echo [ERROR] llama-server.exe not found: "%LLAMA%" & exit /b 1 )
 if not exist "%MODEL%"  ( echo [ERROR] VLM model not found: "%MODEL%" & exit /b 1 )

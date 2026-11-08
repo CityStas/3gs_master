@@ -12,17 +12,49 @@
 ## Требования
 
 - Windows, Python 3.11+ (`.venv` в корне)
-- веса моделей в `models/` и бинарники в `bin/` - в репозиторий не входят,
-  порядок установки описан в [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- веса моделей и бинарники в `bin/` - в репозиторий не входят, порядок установки
+  описан в [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - 8 ГБ VRAM: на карте одновременно живёт одна модель - LLM, генератор картинок
   или ComfyUI
+
+## Модели: где лежат
+
+Веса (~65 ГБ) в git не входят, поэтому «где модели» - свойство машины, а не репозитория.
+Корень задаётся одной переменной, по умолчанию `<repo>/models`:
+
+| переменная | по умолчанию | что покрывает |
+|---|---|---|
+| `GS_MODELS_ROOT` | `<repo>/models` | всё: чат-GGUF, эмбеддер, реранкер, VLM, z-image, ComfyUI |
+| `GS_LLM_MODELS_DIR` | пусто | доп. корни **только** для чат-моделей, через `;` |
+
+Абсолютных путей в коде нет - буква диска не зашита нигде. Если веса лежат на другом
+диске, это одна строка в `local.env.cmd` (копия `local.env.example.cmd`, в git не попадает):
+
+```cmd
+copy local.env.example.cmd local.env.cmd
+:: затем в local.env.cmd:
+set "GS_MODELS_ROOT=D:\AI\Models"
+```
+
+Проверить, что где лежит и чего не хватает:
+
+```cmd
+gs models --paths
+```
+
+Раскладка внутри корня: `*.gguf` в корне (9B чат, `bge-m3`, `bge-reranker`),
+`vlm/Qwen2.5-VL-7B/`, `image/z-image-turbo/`, `text_image_3D/` (ComfyUI и его 3D-модели,
+~45 ГБ). Этот же корень читают все четыре движка, роутер llama.cpp на :8080,
+`vlm.cmd`, `sd-image.cmd` и приложение hc_local_ai_image_3D (через `HC_MODELS_ROOT`).
 
 ## Быстрый старт
 
 ```cmd
 git clone https://github.com/CityStas/3gs_master
 cd 3gs_master
-dev.cmd test
+python -m venv .venv && .venv\Scripts\pip install -r requirements.txt
+gs models --paths                 :: что уже есть, чего не хватает
+gs doctor                         :: окружение целиком
 dev.cmd my_game
 ```
 
@@ -61,6 +93,8 @@ Studio as MCP server.
 
 ## Что в репозитории, а что нет
 
-В git лежит код, корпус документации и конфигурация агента. Исключены веса моделей,
+В git лежит код, корпус документации и конфигурация агента. Абсолютных путей нет:
+машинные (`GS_MODELS_ROOT`, `BLENDER_EXE`, `UNITY_EDITOR`) живут в `local.env.cmd`,
+которого в git нет - есть только `local.env.example.cmd`. Исключены веса моделей,
 бинарники движков, кэши RAG, пользовательские проекты и логи - поэтому клон без
 дополнительных шагов не запустится: сначала нужны модели и `.venv`.

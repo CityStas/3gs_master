@@ -24,7 +24,7 @@ rem  models\llm-overrides.json instead.
 rem ===========================================================================
 
 set "LLAMA=%GS_ROOT%bin\llama\llama-server.exe"
-set "PRESET=%GS_ROOT%models\llm-preset.ini"
+set "PRESET=%GS_MODELS_ROOT%\llm-preset.ini"
 
 if not exist "%LLAMA%" (
   echo [ERROR] llama-server.exe not found: "%LLAMA%"

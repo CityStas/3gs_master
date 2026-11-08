@@ -4,7 +4,7 @@ rem --- shared paths (GS_ROOT, GS_GAMES, PY, NO_PROXY) come from one place ----
 call "%~dp0_env.cmd"
 
 set "LLAMA=%GS_ROOT%bin\llama\llama-server.exe"
-set "MODEL=%GS_ROOT%models\llm\mini\qwen3.5-0.8b-q4_k_m\qwen3.5-0.8b-q4_k_m.gguf"
+set "MODEL=%GS_MODELS_ROOT%\llm\mini\qwen3.5-0.8b-q4_k_m\qwen3.5-0.8b-q4_k_m.gguf"
 
 if not exist "%LLAMA%" (
   echo [ERROR] llama-server.exe not found: "%LLAMA%"
