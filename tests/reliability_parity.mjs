@@ -11,10 +11,12 @@
  *   node tests/reliability_parity.mjs
  */
 import {
+  ErrorRepeatGuard,
   LoopGuard,
   ProgressGuard,
   SuccessLedger,
   classify,
+  errorSignature,
   fingerprint,
   isInspection,
   loadPolicy,
@@ -254,6 +256,44 @@ const progress = {
   ]),
 };
 
+/**
+ * Repeat-the-same-error scenarios. `observe` feeds an error signature in; `before` asks
+ * whether the next call should be blocked. Signatures are produced by `errorSignature`
+ * so the fixture cannot drift from the implementation.
+ */
+const ERROR_TEXTS = [
+  "src/globals.d.ts(16,9): error TS1003: Identifier expected.",
+  "src/globals.d.ts(16,9): error TS1003: Identifier expected.", // same file, same line
+  "src/globals.d.ts(20,1): error TS1005: ';' expected.", // moved on: different line
+  "EACCES: permission denied, open 'x'",
+];
+const signatures = ERROR_TEXTS.map((text) => errorSignature(text, classify(text, policy).code, policy));
+const [sigSame, , sigOther, sigDenied] = signatures;
+
+function runRepeats(steps) {
+  const guard = new ErrorRepeatGuard(policy);
+  let verdict = null;
+  for (const step of steps) {
+    if (step.op === "observe") guard.observe(step.sig);
+    else verdict = guard.before(step.tool);
+  }
+  return verdict ? { decision: verdict.decision, code: verdict.code ?? null } : null;
+}
+
+const obs = (sig) => ({ op: "observe", sig });
+const ask = (tool) => ({ op: "before", tool });
+
+const repeats = {
+  blocks_the_third_same_error: runRepeats([obs(sigSame), obs(sigSame), obs(sigSame), ask("bash")]),
+  allows_the_first_two: runRepeats([obs(sigSame), obs(sigSame), ask("bash")]),
+  different_errors_do_not_accumulate: runRepeats([obs(sigSame), obs(sigOther), obs(sigDenied), ask("bash")]),
+  never_blocks_a_write: runRepeats([obs(sigSame), obs(sigSame), obs(sigSame), ask("write")]),
+  clears_itself_after_one_block: runRepeats([
+    obs(sigSame), obs(sigSame), obs(sigSame), ask("bash"),
+    obs(sigSame), obs(sigSame), obs(sigSame), ask("bash"),
+  ]),
+};
+
 process.stdout.write(
   JSON.stringify(
     {
@@ -265,6 +305,8 @@ process.stdout.write(
       ledger,
       inspection,
       progress,
+      signatures,
+      repeats,
     },
     null,
     2,

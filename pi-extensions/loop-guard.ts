@@ -25,6 +25,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
 import {
+  ErrorRepeatGuard,
   EventLog,
   LoopGuard,
   ProgressGuard,
@@ -32,6 +33,7 @@ import {
   checkPath,
   classify,
   errorPayload,
+  errorSignature,
   fingerprint,
   loadPolicy,
   readProjectContext,
@@ -91,6 +93,7 @@ export default function loopGuard(pi: ExtensionApi): void {
   const guard = new LoopGuard(policy);
   const ledger = new SuccessLedger(policy);
   const progress = new ProgressGuard(policy);
+  const repeats = new ErrorRepeatGuard(policy);
   const MUTATING = mutatingTools(policy);
 
   /**
@@ -141,6 +144,7 @@ export default function loopGuard(pi: ExtensionApi): void {
     guard.reset();
     ledger.reset();
     progress.reset();
+    repeats.reset();
     refreshReadOnly();
     staleWarned = false;
     const ctx = readProjectContext(root);
@@ -264,6 +268,27 @@ export default function loopGuard(pi: ExtensionApi): void {
         }, policy),
       };
     }
+
+    // 5. The same error, three times, through three different calls. Neither of the guards
+    //    above can see this: the fingerprints are all new and files have been written.
+    const sameError = repeats.before(event.toolName);
+    if (sameError.decision === "block" && sameError.code) {
+      emit({
+        tool: event.toolName,
+        fingerprint: fp,
+        ok: false,
+        error_code: sameError.code,
+        decision: "block",
+        retry_count: sameError.attempts,
+      });
+      return {
+        block: true,
+        reason: errorPayload(sameError.code, event.toolName, {
+          attempts: sameError.attempts,
+          message: sameError.message,
+        }, policy),
+      };
+    }
     return;
   });
 
@@ -279,6 +304,12 @@ export default function loopGuard(pi: ExtensionApi): void {
     const text = (event.content ?? [])
       .map((part) => (part && typeof part.text === "string" ? part.text : ""))
       .join("\n");
+
+    // An error only counts as an outcome when something RAN. A `read` of a file that
+    // happens to contain the word "error" is not a failure, and scoring it as one would
+    // make the repeat guard fire on the model reading the file it is trying to fix.
+    const ranSomething = event.isError || event.toolName === "bash" || event.toolName === "powershell";
+    repeats.observe(ranSomething ? errorSignature(text, classify(text, policy).code, policy) : null);
 
     // --- postcondition: a write/edit that did not land is NOT a success ---------------
     if (!event.isError && policy.write_verification.enabled && policy.write_verification.tools.includes(event.toolName)) {

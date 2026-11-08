@@ -192,6 +192,41 @@ check(
   dupVerdict?.reason?.slice(0, 200),
 );
 
+// --- 8. the same compiler error, three times, through three different calls ----
+// The shape neither of the other guards can see: fingerprints all new, files already
+// written. A `bash` that exits 0 but prints a TS error still counts as the same error.
+const tscError = "src/globals.d.ts(16,9): error TS1003: Identifier expected.";
+const tscCalls = [
+  { type: "tool_call", toolCallId: "e1", toolName: "bash", input: { command: "sed -n '10,20p' src/globals.d.ts" } },
+  { type: "tool_call", toolCallId: "e2", toolName: "bash", input: { command: "grep -n 'class Vector' src/globals.d.ts" } },
+  { type: "tool_call", toolCallId: "e3", toolName: "bash", input: { command: "head -20 src/globals.d.ts" } },
+];
+for (const [index, call] of tscCalls.entries()) {
+  pi.fire("tool_call", call);
+  pi.fire("tool_result", {
+    type: "tool_result",
+    toolCallId: call.toolCallId,
+    toolName: "bash",
+    input: call.input,
+    content: [{ type: "text", text: tscError }],
+    isError: false,
+    timestamp: Date.now() + index,
+  });
+}
+const repeatCall = {
+  type: "tool_call",
+  toolCallId: "e4",
+  toolName: "bash",
+  input: { command: "awk 'NR==16' src/globals.d.ts" },
+};
+const repeatVerdict = pi.fire("tool_call", repeatCall);
+check("the fourth pass at one error is blocked", repeatVerdict?.block === true, "the loop was allowed");
+check(
+  "the refusal names ERROR_REPEAT",
+  (repeatVerdict?.reason ?? "").includes("ERROR_REPEAT"),
+  repeatVerdict?.reason?.slice(0, 200),
+);
+
 pi.fire("session_shutdown", {});
 
 rmSync(work, { recursive: true, force: true });
@@ -203,4 +238,4 @@ if (failures.length) {
   console.log(`\n${failures.length} check(s) failed`);
   process.exit(1);
 }
-console.log("PASS loop-guard wiring: 7 scenarios, all checks passed");
+console.log("PASS loop-guard wiring: 8 scenarios, all checks passed");

@@ -74,6 +74,25 @@
     "$comment_bash": "`bash` is both a tool and a shell, so it is classified by the command it runs, not by its name. A prefix match on the first word (after stripping cd/&&/echo noise) is enough: `sed -n '1,60p' file` is inspection, `npm install` is not.",
     "inspection_bash_prefixes": ["ls", "cat", "sed", "head", "tail", "grep", "rg", "find", "wc", "type", "which", "pwd", "echo", "cd", "git status", "git log", "git diff", "dir", "stat", "file", "du"]
   },
+  "error_repeat": {
+    "enabled": true,
+    "$comment": [
+      "The loop guard keys on the CALL, the progress guard keys on the ABSENCE of writes.",
+      "Neither sees the third shape, which the second live run produced: the model edits",
+      "a file, breaks the syntax, and then spends ten calls trying different `sed`/`grep`",
+      "incantations against the SAME compiler error. Every call is new, so no fingerprint",
+      "repeats; files have been written, so the progress guard is already off.",
+      "",
+      "The signal that does repeat is the error text itself. Signature = error code plus",
+      "the most informative line, with paths kept (same file and line IS the signal) and",
+      "whitespace collapsed. Three of those inside a window of eight blocks the next call",
+      "and demands a different approach - but never blocks a `write`/`edit`, because the",
+      "fix is allowed to be a write."
+    ],
+    "window": 8,
+    "max_repeats": 3,
+    "signature_chars": 120
+  },
   "write_guard": {
     "enabled": true,
     "max_bytes": 12000,
@@ -164,6 +183,10 @@
       "EDIT_NO_MATCH": {
         "retryable": false,
         "next_action": "The oldText you sent is not in the file as written. Re-read the lines around the change and copy the exact text including whitespace, or use `write` if the file is small. Do not resend the same edit."
+      },
+      "ERROR_REPEAT": {
+        "retryable": false,
+        "next_action": "The same error has come back several times. Another variation of the same command will not fix it: read the exact lines the error names, then replace that block with `edit` or rewrite the file with `write`. If you cannot see the cause, say so instead of trying another incantation."
       },
       "UNKNOWN": {
         "retryable": false,

@@ -60,6 +60,7 @@ DEFAULT_POLICY: dict = {
         "generation_tools": ["write", "edit", "bash", "powershell"],
         "max_duplicates": 1,
     },
+    "error_repeat": {"enabled": True, "window": 8, "max_repeats": 3, "signature_chars": 120},
     "write_guard": {"enabled": True, "max_bytes": 12000, "max_lines": 320, "max_rewrites": 3},
     "progress_guard": {
         "enabled": True,
@@ -92,6 +93,7 @@ DEFAULT_POLICY: dict = {
             "VALIDATION_FAILED": {"retryable": False, "next_action": "Read the validator's actual message and patch the cause; do not resend the same code."},
             "WRITE_NOT_VERIFIED": {"retryable": False, "next_action": "The tool claimed success but the file on disk did not change. Re-read the file and retry the write with correct content."},
             "EDIT_NO_MATCH": {"retryable": False, "next_action": "The oldText you sent is not in the file as written. Re-read the lines around the change and copy the exact text including whitespace, or use `write` if the file is small. Do not resend the same edit."},
+            "ERROR_REPEAT": {"retryable": False, "next_action": "The same error has come back several times. Another variation of the same command will not fix it: read the exact lines the error names, then replace that block with `edit` or rewrite the file with `write`. If you cannot see the cause, say so instead of trying another incantation."},
             "UNKNOWN": {"retryable": False, "next_action": "Read the error text and change something before calling again."},
         },
         "patterns": [
@@ -474,6 +476,71 @@ class ProgressGuard:
             return
         self.inspections = 0
         self.mutations += 1
+
+
+def error_signature(text: str, code: str | None, policy: dict | None = None) -> str | None:
+    """Mirror of `errorSignature` in reliability-core.ts - see there for the reasoning."""
+    policy = policy or DEFAULT_POLICY
+    if not code or code == "UNKNOWN":
+        return None
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        return None
+    informative = next(
+        (line for line in lines
+         if re.search(r"error|failed|cannot|could not|not found|denied", line, re.I)),
+        lines[0],
+    )
+    normalised = re.sub(r"\s+", " ", informative.lower())[:policy["error_repeat"]["signature_chars"]]
+    return f"{code}:{normalised}"
+
+
+class ErrorRepeatGuard:
+    """Same rules as `ErrorRepeatGuard` in pi-extensions/reliability-core.ts."""
+
+    def __init__(self, policy: dict | None = None):
+        self.policy = policy or DEFAULT_POLICY
+        self.recent: list[str] = []
+        self.blocked = 0
+
+    def reset(self) -> None:
+        self.recent = []
+        self.blocked = 0
+
+    def observe(self, signature: str | None) -> None:
+        cfg = self.policy["error_repeat"]
+        if not cfg["enabled"]:
+            return
+        self.recent.append(signature or "")
+        while len(self.recent) > cfg["window"]:
+            self.recent.pop(0)
+
+    def before(self, tool_name: str) -> dict:
+        cfg = self.policy["error_repeat"]
+        if not cfg["enabled"]:
+            return {"decision": "allow"}
+        signature = self.recent[-1] if self.recent else ""
+        if not signature:
+            return {"decision": "allow"}
+        repeats = sum(1 for entry in self.recent if entry == signature)
+        if repeats < cfg["max_repeats"]:
+            return {"decision": "allow"}
+        if is_mutation(tool_name, self.policy):
+            return {"decision": "allow"}
+        self.blocked += 1
+        self.recent = []
+        cls = classify("", self.policy, hint="ERROR_REPEAT")
+        return {
+            "decision": "block",
+            "code": "ERROR_REPEAT",
+            "attempts": repeats,
+            "retryable": False,
+            "message": (
+                f"the same error came back {repeats} times in the last {cfg['window']} calls: "
+                f"\"{signature.split(':', 1)[-1]}\". Changing the command around it is not working."
+            ),
+            "next_action": cls["next_action"],
+        }
 
 
 # ---------------------------------------------------------------------------

@@ -239,6 +239,57 @@ def test_both_implementations_reach_the_same_progress_verdicts():
             raise AssertionError(f"progress scenario {name}: ts={expected} py={got}")
 
 
+def test_both_implementations_agree_on_repeated_errors():
+    """Three calls that all hit the same compiler error are a loop, whatever they looked like."""
+    parity = _node_parity()
+    policy = reliability.load_policy()
+    texts = [
+        "src/globals.d.ts(16,9): error TS1003: Identifier expected.",
+        "src/globals.d.ts(16,9): error TS1003: Identifier expected.",
+        "src/globals.d.ts(20,1): error TS1005: ';' expected.",
+        "EACCES: permission denied, open 'x'",
+    ]
+    got = [
+        reliability.error_signature(t, reliability.classify(t, policy)["code"], policy)
+        for t in texts
+    ]
+    if got != parity["signatures"]:
+        raise AssertionError(f"signatures: ts={parity['signatures']} py={got}")
+    same, other, denied = got[0], got[2], got[3]
+
+    def run(steps):
+        guard = reliability.ErrorRepeatGuard(policy)
+        verdict = None
+        for kind, value in steps:
+            if kind == "observe":
+                guard.observe(value)
+            else:
+                verdict = guard.before(value)
+        return {"decision": verdict["decision"], "code": verdict.get("code")}
+
+    scenarios = {
+        "blocks_the_third_same_error": [
+            ("observe", same), ("observe", same), ("observe", same), ("ask", "bash"),
+        ],
+        "allows_the_first_two": [("observe", same), ("observe", same), ("ask", "bash")],
+        "different_errors_do_not_accumulate": [
+            ("observe", same), ("observe", other), ("observe", denied), ("ask", "bash"),
+        ],
+        "never_blocks_a_write": [
+            ("observe", same), ("observe", same), ("observe", same), ("ask", "write"),
+        ],
+        "clears_itself_after_one_block": [
+            ("observe", same), ("observe", same), ("observe", same), ("ask", "bash"),
+            ("observe", same), ("observe", same), ("observe", same), ("ask", "bash"),
+        ],
+    }
+    for name, steps in scenarios.items():
+        expected = parity["repeats"][name]
+        got_verdict = run(steps)
+        if got_verdict != expected:
+            raise AssertionError(f"repeats scenario {name}: ts={expected} py={got_verdict}")
+
+
 def test_both_implementations_reach_the_same_duplicate_success_verdicts():
     """`write` twice is refused; a `bash` in between makes the retry legitimate again."""
     parity = _node_parity()

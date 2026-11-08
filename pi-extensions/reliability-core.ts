@@ -40,6 +40,7 @@ export type ErrorCode =
   | "VALIDATION_FAILED"
   | "WRITE_NOT_VERIFIED"
   | "EDIT_NO_MATCH"
+  | "ERROR_REPEAT"
   | "UNKNOWN";
 
 export interface CodePolicy {
@@ -70,6 +71,7 @@ export interface Policy {
     inspection_tools: string[];
     inspection_bash_prefixes: string[];
   };
+  error_repeat: { enabled: boolean; window: number; max_repeats: number; signature_chars: number };
   write_guard: { enabled: boolean; max_bytes: number; max_lines: number; max_rewrites: number };
   write_verification: { enabled: boolean; mtime_freshness_ms: number; tools: string[] };
   path_guard: { enabled: boolean; block_outside_repo: boolean; warn_outside_project: boolean };
@@ -94,6 +96,7 @@ export const DEFAULT_POLICY: Policy = {
     generation_tools: ["write", "edit", "bash", "powershell"],
     max_duplicates: 1,
   },
+  error_repeat: { enabled: true, window: 8, max_repeats: 3, signature_chars: 120 },
   write_guard: { enabled: true, max_bytes: 12000, max_lines: 320, max_rewrites: 3 },
   progress_guard: {
     enabled: true,
@@ -175,6 +178,11 @@ export const DEFAULT_POLICY: Policy = {
         retryable: false,
         next_action:
           "The oldText you sent is not in the file as written. Re-read the lines around the change and copy the exact text including whitespace, or use `write` if the file is small. Do not resend the same edit.",
+      },
+      ERROR_REPEAT: {
+        retryable: false,
+        next_action:
+          "The same error has come back several times. Another variation of the same command will not fix it: read the exact lines the error names, then replace that block with `edit` or rewrite the file with `write`. If you cannot see the cause, say so instead of trying another incantation.",
       },
       UNKNOWN: {
         retryable: false,
@@ -697,6 +705,93 @@ export class ProgressGuard {
     if (isError) return;
     this.inspections = 0;
     this.mutations += 1;
+  }
+}
+
+/**
+ * The signature of a failure, for spotting "the same error came back".
+ *
+ * Deliberately keeps file names and line numbers: `globals.d.ts(16,9)` three times is the
+ * signal, whereas three unrelated errors are not. Paths are not normalised away, because
+ * two different files failing the same way is still progress - the model moved on.
+ */
+export function errorSignature(
+  text: string,
+  code: string | null,
+  policy: Policy = DEFAULT_POLICY,
+): string | null {
+  if (!code || code === "UNKNOWN") return null;
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  if (lines.length === 0) return null;
+  const informative =
+    lines.find((line) => /error|failed|cannot|could not|not found|denied/i.test(line)) ?? lines[0];
+  const normalised = informative.toLowerCase().replace(/\s+/g, " ").slice(0, policy.error_repeat.signature_chars);
+  return `${code}:${normalised}`;
+}
+
+/**
+ * Blocks the third repetition of one error, whatever the calls looked like.
+ *
+ * Measured on the moon-exploration run: after breaking `globals.d.ts` the model made ten
+ * consecutive calls - `sed`, `grep`, `head`, `read` - all different, all aimed at the same
+ * `TS1003`. The loop guard saw ten distinct fingerprints; the progress guard was already
+ * disarmed by the writes. Nothing fired, and the run lost ten minutes to one missing colon.
+ *
+ * Fires once and then clears itself: the point is a nudge, not a wall. A `write`/`edit` is
+ * never blocked - the fix is allowed to be a rewrite.
+ */
+export class ErrorRepeatGuard {
+  private recent: string[] = [];
+  private blocked = 0;
+
+  private policy: Policy;
+
+  constructor(policy: Policy = DEFAULT_POLICY) {
+    this.policy = policy;
+  }
+
+  reset(): void {
+    this.recent = [];
+    this.blocked = 0;
+  }
+
+  get blockCount(): number {
+    return this.blocked;
+  }
+
+  /** Record the outcome of a call. `null` means "this call produced no error signature". */
+  observe(signature: string | null): void {
+    const cfg = this.policy.error_repeat;
+    if (!cfg.enabled) return;
+    this.recent.push(signature ?? "");
+    while (this.recent.length > cfg.window) this.recent.shift();
+  }
+
+  before(toolName: string): GuardVerdict {
+    const cfg = this.policy.error_repeat;
+    if (!cfg.enabled) return { decision: "allow" };
+    const signature = this.recent[this.recent.length - 1];
+    if (!signature) return { decision: "allow" };
+    const repeats = this.recent.filter((entry) => entry === signature).length;
+    if (repeats < cfg.max_repeats) return { decision: "allow" };
+    if (isMutation(toolName, this.policy)) return { decision: "allow" };
+    this.blocked += 1;
+    // One nudge, then a clean slate: repeating the block on every call would deadlock.
+    this.recent = [];
+    const cls = classify("", this.policy, "ERROR_REPEAT");
+    return {
+      decision: "block",
+      code: "ERROR_REPEAT",
+      attempts: repeats,
+      retryable: false,
+      message:
+        `the same error came back ${repeats} times in the last ${cfg.window} calls: ` +
+        `"${signature.split(":").slice(1).join(":")}". Changing the command around it is not working.`,
+      next_action: cls.next_action,
+    };
   }
 }
 
