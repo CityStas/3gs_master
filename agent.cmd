@@ -148,7 +148,7 @@ if not defined HAS_MODEL (
   rem --- no quotes around %PY% inside for/f: cmd would cut the command at the quote
   for /f "usebackq delims=" %%P in (`%PY% -c "import socket;s=socket.socket();s.settimeout(0.4);print(1 if s.connect_ex(('127.0.0.1',8080))==0 else 0)"`) do set "ROUTER=%%P"
   if "!ROUTER!"=="1" (
-    set "PI_ARGS=--model 3gs/qwen3.5-9b-distill-deepseek-v4.1-flash !PI_ARGS!"
+    set "PI_ARGS=--model 3gs/qwen3.5-4b !PI_ARGS!"
   ) else (
     set "PI_ARGS=--model ollama/qwen3.5-9b-distill-deepseek-v4.1-flash !PI_ARGS!"
   )

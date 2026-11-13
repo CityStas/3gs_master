@@ -2,7 +2,7 @@
   "$comment": [
     "What to download, where from, and how to prove it arrived intact.",
     "",
-    "The weights are ~39 GB and are NOT in git, so a fresh clone has code and nothing",
+    "The weights are ~36 GB and are NOT in git, so a fresh clone has code and nothing",
     "else. This file is the missing half: `gs models fetch` reads it, resolves the",
     "target through model_paths.py (GS_MODELS_ROOT, no drive letters anywhere) and",
     "downloads only what is absent. `gs models verify` re-hashes and fails loudly.",
@@ -49,11 +49,11 @@
   "files": [
     {
       "group": "llm",
-      "path": "Qwen_Qwen3.5-9B-Q4_K_M.gguf",
-      "repo": "bartowski/Qwen_Qwen3.5-9B-GGUF",
-      "file": "Qwen_Qwen3.5-9B-Q4_K_M.gguf",
-      "size": 6169341984,
-      "sha256": "d784ce9eda1a5a7b51e8f705a9e6310844bf4f173654d115823c775fdea56d43"
+      "path": "Qwen3.5-4B-Q4_K_M.gguf",
+      "repo": "unsloth/Qwen3.5-4B-GGUF",
+      "file": "Qwen3.5-4B-Q4_K_M.gguf",
+      "size": 2740937888,
+      "sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4"
     },
     {
       "group": "rag",

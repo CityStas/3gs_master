@@ -67,8 +67,9 @@ PI_PROFILES = ("pi-home", "pi-home-three", "pi-home-godot", "pi-home-unity",
 
 # The model the rest of the system already assumes: settings.json:defaultModel and the
 # `--alias` in older launchers. It has to keep this exact id or every session starts
-# against a model the router does not advertise.
-DEFAULT_ID = "qwen3.5-9b"
+# against a model the router does not advertise. 4B keeps the 8 GB card out of the
+# swap: 2.7 GB weights + KV leaves VRAM for the studio/browser, where the 9B pinned it.
+DEFAULT_ID = "qwen3.5-4b"
 
 # Default model for the pi profiles. `DEFAULT_ID` above is the router's alias, but
 # Ollama has no `qwen3.5-9b` manifest - a profile default pointing at it would fail
