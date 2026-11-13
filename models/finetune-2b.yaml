@@ -1,0 +1,43 @@
+# Обучение Qwen3.5-2B под четыре движка: маршрутизация RAG + локальные ассеты.
+# Полное объяснение каждого поля - models/FINETUNE.md, раздел 5.
+#
+# Запуск (кэши и ядра уже заперты на E: - см. E:\Programs\Unsloth\studio.cmd):
+#   E:\Programs\Unsloth\studio.cmd train --config models\finetune-2b.yaml --dry-run
+#   E:\Programs\Unsloth\studio.cmd train --config models\finetune-2b.yaml
+#
+# Для 4B на Colab/Kaggle: model -> Qwen/Qwen3.5-4B, batch_size: 1.
+# Локально 4B в 16 бит НЕ влезает в 8 ГБ (нужно ~10 ГБ).
+
+model: unsloth/Qwen3.5-2B
+
+data:
+  local_dataset:
+    - "F:/Pets/Projects/local_tools/3GS_Master/data/finetune/train.jsonl"
+  format_type: auto
+
+training:
+  training_type: lora
+  max_seq_length: 2048          # длиннее не влезет в 8 ГБ
+  load_in_4bit: false           # 2B в 16 бит влезает; QLoRA тут только вредит
+  num_epochs: 2
+  learning_rate: 0.0002
+  batch_size: 1
+  gradient_accumulation_steps: 8
+  warmup_steps: 5
+  output_dir: "E:/Programs/Unsloth/out/qwen35-2b-3gs"
+  train_on_completions: true    # учить только ответы, а не системный промпт и tool-результаты
+  packing: false                # с tool-call диалогами упаковка склеивает эпизоды
+  gradient_checkpointing: unsloth
+
+lora:
+  lora_r: 16
+  lora_alpha: 16
+  lora_dropout: 0.0
+  target_modules: "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj"
+  finetune_vision_layers: false   # Qwen3.5 - универсальный VLM, но зрение нам не нужно
+  finetune_language_layers: true
+  finetune_attention_modules: true
+  finetune_mlp_modules: true
+
+logging:
+  enable_tensorboard: true

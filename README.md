@@ -270,3 +270,4 @@ git ls-files projects
 - [`roblox/README.md`](roblox/README.md) - Roblox-стек (Luau, Studio MCP, корпус)
 - [`mcp/registry.json`](mcp/registry.json) - единственное описание MCP-серверов: pi, WorkBuddy и любые другие клиенты
 - [`mcp/clients.json`](mcp/clients.json) - куда и в какой форме рендерится реестр (Cursor, VS Code, Claude Code, opencode); новый клиент = одна запись здесь
+- [`models/FINETUNE.md`](models/FINETUNE.md) - как дообучить модель под четыре движка: чему учить, где брать данные, что влезает в 8 ГБ
