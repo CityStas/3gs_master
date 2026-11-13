@@ -67,9 +67,12 @@ PI_PROFILES = ("pi-home", "pi-home-three", "pi-home-godot", "pi-home-unity",
 
 # The model the rest of the system already assumes: settings.json:defaultModel and the
 # `--alias` in older launchers. It has to keep this exact id or every session starts
-# against a model the router does not advertise. 4B keeps the 8 GB card out of the
-# swap: 2.7 GB weights + KV leaves VRAM for the studio/browser, where the 9B pinned it.
-DEFAULT_ID = "qwen3.5-4b"
+# against a model the router does not advertise. 2B is the smallest build that still
+# holds the tool-call format (0.5B/0.8B do not - see LLM-MODELS.md), and it is the one
+# we actually fine-tune (`models/finetune-2b.yaml`), so the trained GGUF drops straight
+# in here. At Q8_0 that is ~2 GB of near-lossless weights - less than the 4B Q4_K_M it
+# replaces (2.7 GB) - which is what frees the 8 GB card for the studio and browser.
+DEFAULT_ID = "qwen3.5-2b"
 
 # Default model for the pi profiles. `DEFAULT_ID` above is the router's alias, but
 # Ollama has no `qwen3.5-9b` manifest - a profile default pointing at it would fail

@@ -51,16 +51,17 @@ rem --- Context. Per-model values now live in the preset; GS_LLM_CTX acts as a C
 rem --- applied during generation (tools\llm_models.py --ctx-cap), so exporting it
 rem --- shrinks every model at once instead of being silently ignored.
 rem ---
-rem Qwen3.5 is a HYBRID architecture: only 8 blocks use full attention
+rem Qwen3.5 is a HYBRID architecture: only some blocks use full attention
 rem (full_attention_interval=4), the rest are SSM with CONSTANT state. So the KV cache
-rem is charged for 8 layers, not for all of them: 17 KiB/token at q8_0 - the same for the
-rem 9B (8 of 33 blocks) and the 4B default (8 of 32).
+rem is charged for the attention layers only: 6.4 KiB/token at q8_0 for the 2B default
+rem (6 of 24 blocks, 2 KV heads) and 17 KiB/token for the 9B builds (8 of 33).
 rem
-rem Numbers below are the 9B example; the 4B default carries 2614 MB of weights, ~3 GiB less.
+rem Numbers below are the 2B default (1919 MB of Q8_0 weights); it needs ~1.6 GiB less
+rem VRAM than the 4B it replaced and generates ~1.4x faster (120 vs 87 tok/s, measured).
 rem
-rem   ctx  8192 -> KV   136 MiB | total VRAM ~5.6 GiB
-rem   ctx 65536 -> KV  1088 MiB | total VRAM ~6.4 GiB | ~1.0 GiB left for the browser
-rem   ctx 98304 -> KV  1632 MiB | total VRAM ~7.1 GiB | too tight
+rem   ctx  8192 -> KV    51 MiB | weights+KV ~1.9 GiB
+rem   ctx 65536 -> KV   407 MiB | weights+KV ~2.3 GiB | nvidia-smi shows 3005 MiB
+rem   ctx 98304 -> KV   611 MiB | weights+KV ~2.5 GiB | still leaving ~5 GiB free
 rem
 rem The numbers in the preset, pi-home-*\models.json:contextWindow and
 rem pi-home-*\settings.json:compaction.reserveTokens MUST agree: pi computes the

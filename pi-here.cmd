@@ -16,9 +16,10 @@ rem --- Model choice is not left to /model either: both providers exist in every
 rem --- profile (ollama :1234 = start-ollama.cmd, 3gs :8080 = serve-all.cmd), and the
 rem --- one whose port answers wins. :8080 first - it is the 3GS router with RAG.
 rem ---
-rem --- Default weights: qwen3.5-4b, not the 9B distill that used to be here. The
+rem --- Default weights: qwen3.5-2b, not the 9B distill that used to be here. The
 rem --- distill is 5512 MB on an 8 GB card, which left ~1 GB and pinned the GPU for the
-rem --- whole session; the 4B is the same qwen35 family at 2614 MB (4681 MiB resident).
+rem --- whole session; the 2B is the same qwen35 family at 1919 MB Q8_0 (3005 MiB
+rem --- resident, ~120 tok/s) and the build we actually fine-tune locally.
 rem --- Nothing was removed from the registry - the 9B builds under GS_LLM_MODELS_DIR
 rem --- included - so switching back is one argument, not an edit:
 rem ---
@@ -66,12 +67,12 @@ if /i "%ENGINE%"=="godot" (
 rem --- Router first: it is the only mode with RAG (:8081/:8083) and 64K contexts.
 set "ROUTER=0"
 for /f "usebackq delims=" %%P in (`%PY% -c "import socket;s=socket.socket();s.settimeout(0.4);print(1 if s.connect_ex(('127.0.0.1',8080))==0 else 0)"`) do set "ROUTER=%%P"
-rem --- Ollama keeps the distill id: the router's 4B is not in Ollama's manifests, so a
-rem --- 4B name here would 404 on the first request, and this branch is the fallback.
+rem --- Ollama keeps the distill id: the router's 2B is not in Ollama's manifests, so a
+rem --- 2B name here would 404 on the first request, and this branch is the fallback.
 set "PI_MODEL=--model ollama/qwen3.5-9b-distill-deepseek-v4.1-flash"
 set "SERVER=ollama :1234"
 if "%ROUTER%"=="1" (
-  set "PI_MODEL=--model 3gs/qwen3.5-4b"
+  set "PI_MODEL=--model 3gs/qwen3.5-2b"
   set "SERVER=3gs router :8080"
 )
 if defined GS_PI_MODEL set "PI_MODEL=--model %GS_PI_MODEL%"

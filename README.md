@@ -39,7 +39,7 @@ gs models --verify             :: пересчитать хеши
 
 | группа | размер | что это | нужна для |
 |---|---|---|---|
-| `llm` | 2.7 ГБ | Qwen3.5-4B Q4_K_M | агент (роутер :8080) |
+| `llm` | 1.9 ГБ | Qwen3.5-2B Q8_0 | агент (роутер :8080) |
 | `rag` | 1.1 ГБ | `bge-m3` + `bge-reranker-v2-m3` | поиск по документации |
 | `vlm` | 5.5 ГБ | Qwen2.5-VL-7B + mmproj | «посмотри на скриншот» (:8082) |
 | `image` | 6.5 ГБ | z-image-turbo + VAE + текстовый энкодер | текст → картинка (:8687) |
@@ -96,7 +96,7 @@ robocopy models D:\AI\Models /E /MOVE
 gs models --paths
 ```
 
-Раскладка внутри корня: `*.gguf` в корне (4B чат, `bge-m3`, `bge-reranker`),
+Раскладка внутри корня: `*.gguf` в корне (2B чат, `bge-m3`, `bge-reranker`),
 `vlm/Qwen2.5-VL-7B/`, `image/z-image-turbo/`, `text_image_3D/` (ComfyUI и его 3D-модели).
 Этот же корень читают все четыре движка, роутер llama.cpp на :8080, `vlm.cmd`,
 `sd-image.cmd`.

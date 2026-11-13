@@ -34,7 +34,7 @@ gdmaster/
 │
 ├─ bin/llama/           llama.cpp b11435 (CUDA 12.4 + cudart)
 ├─ bin/godot/           Godot 4.7.2 stable (своя копия)
-├─ models/              GGUF для роутера; по умолчанию 4B, список — `cmd\models.cmd`
+├─ models/              GGUF для роутера; по умолчанию 2B, список — `cmd\models.cmd`
 ├─ data/                индекс (SQLite + FTS5), active_project.txt, логи
 ├─ knowledge/           корпус: 810 XML class ref + 503 RST туториала + cookbook
 ├─ gdmaster/            код: RAG, Godot-слой, MCP-серверы

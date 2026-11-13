@@ -24,7 +24,7 @@ rem Port 8084. 8080 is the chat/coding model, 8081 the embedder, 8082 the Qwen2.
 rem vision server, 8083 the reranker - all four are taken.
 rem
 rem -ngl 0 is the DEFAULT on purpose. The card is 8 GB and the model on :8080 holds a
-rem large slice of it (4.7 GiB at 4B, 6.4 GiB at 9B, both at ctx 65536); a second
+rem large slice of it (2.9 GiB at the 2B default, 6.4 GiB at 9B, both at ctx 65536); a second
 rem resident model would not fit, and
 rem the voice is called episodically, so CPU latency is acceptable. On the
 rem i3-12100 that is roughly 15-25 tok/s, i.e. 5-8 s per reflection.

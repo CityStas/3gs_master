@@ -30,7 +30,7 @@ Layout inside the root
     vlm/Qwen2.5-VL-7B/       vision model + mmproj
     image/z-image-turbo/     diffusion + VAE + text encoder (sd-server, :8687)
     text_image_3D/           ComfyUI install and its 3D models (~45 GB)
-    *.gguf at the root       the 4B chat default, bge-m3 embedder, bge reranker
+    *.gguf at the root       the 2B chat default, bge-m3 embedder, bge reranker
 
 Everything here is *resolved*, never assumed: `find()` walks the roots, and the
 named helpers fall back to a glob when the canonical filename changed upstream.
@@ -54,7 +54,7 @@ REPO = Path(__file__).resolve().parent
 
 #: Canonical names. A missing file is reported by `report()`, not raised: half a
 #: stack is a normal state (you may only need the RAG today).
-DEFAULT_CHAT = "Qwen3.5-4B-Q4_K_M.gguf"
+DEFAULT_CHAT = "Qwen3.5-2B-Q8_0.gguf"
 EMBED_NAME = "bge-m3-q4_k_m.gguf"
 RERANK_NAME = "bge-reranker-v2-m3-Q8_0.gguf"
 VLM_DIR = "vlm/Qwen2.5-VL-7B"
