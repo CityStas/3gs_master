@@ -128,7 +128,9 @@ def main() -> int:
     cmd = [PI_CMD, "--append-system-prompt", sp]
     if args.no_session:
         cmd.append("--no-session")
-    cmd += ["--model", "qwen3.5-9b"]
+    # Тот же id, что передаёт agent.cmd, когда роутер (:8080) отвечает. Раньше здесь
+    # стоял голый `qwen3.5-9b` - id из 9B-эпохи, которого нет ни у одного провайдера.
+    cmd += ["--model", "3gs/qwen3.5-2b"]
 
     print(f"[run_pi] проект : {rel}")
     print(f"[run_pi] engine : {engine}  -> профиль {profile}")

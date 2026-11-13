@@ -58,7 +58,14 @@ PI_LAUNCHER = Path(os.path.expanduser("~")) / ".pi" / "agent" / "bin" / "pi-laun
 
 #: Router (:8080, `serve-all.cmd`) is preferred: it is the only mode with RAG.
 ROUTER_PORT = 8080
-ROUTER_MODEL = "3gs/qwen3.5-9b-distill-deepseek-v4.1-flash"
+#: The router's default, the same id agent.cmd / pi-here.cmd pass. The 9B distill sat
+#: here until the 4B replaced it and then the 2B: 5512 MB on an 8 GB card left ~1 GB
+#: free and pinned the GPU for the whole session. The 2B is lighter *and* the build we
+#: actually fine-tune (models/FINETUNE.md), and `tools/llm_models.py` owns this choice
+#: via DEFAULT_ID - keep the two in step.
+ROUTER_MODEL = "3gs/qwen3.5-2b"
+#: The Ollama fallback keeps the distill id deliberately: Ollama has no 2B manifest, so
+#: a 2B id would 404 on the first request of this branch.
 OLLAMA_MODEL = "ollama/qwen3.5-9b-distill-deepseek-v4.1-flash"
 
 

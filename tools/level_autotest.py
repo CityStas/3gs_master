@@ -489,7 +489,7 @@ def run_live(args, save_dir: Path | None) -> int:
 def main() -> int:
     p = argparse.ArgumentParser(description="Autotest 2D level generation with a local LLM.")
     p.add_argument("--live", action="store_true", help="score the model on :8080")
-    p.add_argument("--model", default="qwen3.5-9b", help="model id / alias on the server")
+    p.add_argument("--model", default="qwen3.5-2b", help="model id / alias on the server")
     p.add_argument("--thinking", dest="thinking", action="store_true", default=False,
                    help="enable thinking (default: OFF - the known-good setting)")
     p.add_argument("--timeout", type=float, default=600.0, help="per-task seconds")

@@ -55,7 +55,7 @@ def main() -> int:
     ap.add_argument("--target", default=".",
                     help="относительный путь, который просим записать ('web3d/...' и т.п.)")
     ap.add_argument("--timeout", type=int, default=300)
-    ap.add_argument("--model", default="qwen3.5-9b")
+    ap.add_argument("--model", default="3gs/qwen3.5-2b")
     args = ap.parse_args()
 
     repo = Path(__file__).resolve().parent.parent
