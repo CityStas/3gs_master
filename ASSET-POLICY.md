@@ -1,7 +1,7 @@
 # Политика генерации ассетов
 
 Правило для всех проектов внутри `F:\Pets\Projects\local_tools\3GS_Master`
-(в первую очередь `projects/games/**`). Читать до того, как рисовать, качать или
+(в первую очередь `projects/<engine>/**`). Читать до того, как рисовать, качать или
 генерировать что-либо. Относится и к локальным, и к облачным моделям-агентам
 одинаково: это правило проекта, а не предпочтение конкретного исполнителя.
 
@@ -476,7 +476,7 @@ Real-ESRGAN — исключение, он не считается.
 
 ```bash
 cd F:/Pets/Projects/local_tools/3GS_Master
-./.venv/Scripts/python.exe tools/generate.py --project projects/games/<name> --jobs <plan.json>
+./.venv/Scripts/python.exe tools/generate.py --project projects/three/<name> --jobs <plan.json>
 ```
 
 Поля задачи — в `threejs/assets/scheduler.py` (`Job.from_dict`) и в README.

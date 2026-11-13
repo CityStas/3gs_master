@@ -6,8 +6,8 @@ it straight back, so a project deleted since the last run would be resurrected o
 launch. The launcher needs to know that BEFORE it writes.
 
 The check lives here rather than in batch on purpose. The resolution rules (absolute path,
-repo-relative path, bare name under `projects/games/`, stale pointer -> error) are already
-owned by the three stacks via `resolve_project`; re-implementing them in `cmd` would drift
+repo-relative path, bare name under `projects/<engine>/`, stale pointer -> error) are already
+owned by the four stacks via `project_layout.py`; re-implementing them in `cmd` would drift
 from them, and drift is exactly how the stacks came to disagree about the pointer file.
 
     python tools/active_project.py            # validate the pointer file

@@ -16,7 +16,7 @@ rem --- Two gates, one verdict. tscheck.py is what a compiler can see; pagecheck
 rem --- what only a browser would otherwise discover - an import that 404s aborts the
 rem --- whole module graph and leaves a BLANK page with no visible error, and a missing
 rem --- asset is a sprite that silently never appears. Both exit 1 on trouble, so the
-rem --- worse one decides. Pass a name under projects\games\ (default: the one named in
+rem --- worse one decides. Pass a name under projects\<engine>\ (default: the one named in
 rem --- data\active_project.txt). Extra args pass through to tsc; pagecheck ignores the
 rem --- ones that are not its own:
 rem ---   check.cmd new_local_game --full

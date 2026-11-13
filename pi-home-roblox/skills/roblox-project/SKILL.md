@@ -96,7 +96,7 @@ rbx_studio_status / rbx_open_place
 From the shell (bash, from the repo root):
 
 ```bash
-./.venv/Scripts/python.exe roblox/tools/check.py projects/games/my_game
+./.venv/Scripts/python.exe roblox/tools/check.py projects/roblox/my_game
 ./.venv/Scripts/python.exe roblox/tools/check.py my_game --json
 gs roblox-check my_game
 ```

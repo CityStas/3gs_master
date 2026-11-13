@@ -96,6 +96,9 @@ export class LevelEditor {
     this.levelPath = (dir + levelFile).replace(/^\/+/, '');
 
     const json = await (await fetch('./' + levelFile, { cache: 'no-cache' })).json();
+    // Карта «путь узла -> ячейка в LEVELS». Её пишет генератор уровней; без
+    // неё игра не смогла бы применить правки (см. web3d/level_overlay.js).
+    this.pathMeta = (json.studio && json.studio.paths) || {};
     if (this.gs) { this.gs.scene.clear(); this.gs = null; }
     this.gs = new LevelScene(json);
     await this.gs.load(() => {});
@@ -293,17 +296,22 @@ export class LevelEditor {
     this.removed = j.remove || [];
     // Наложение на сцену: позиции.
     for (const [path, pos] of Object.entries(this.edits)) this._applyLocal(path, pos);
-    for (const a of this.added) this._spawnLocal(a);
+    // Последовательно: _spawnLocal грузит текстуры добавленных ассетов, и
+    // распараллеливать нечего — узлов обычно единицы, а порядок в дереве важен.
+    for (const a of this.added) await this._spawnLocal(a);
     for (const rm of this.removed) this.hideLocal(rm, true);
     if (this.cb.onChange) this.cb.onChange(this);
   }
 
-  /** Собрать конверт правок. `add`/`remove` — расширение формата. */
+  /** Собрать конверт правок. `add`/`remove`/`meta` — расширение формата.
+   *  `meta` копируется ВСЯ, а не только по изменённым путям: игра читает один
+   *  файл правок и должна знать адрес любого узла, а не угадывать его по имени. */
   toOverlay() {
     return {
       level: this.levelFile,
       nodes: Object.fromEntries(Object.entries(this.edits).map(
         ([k, v]) => [k, [round(v[0]), round(v[1])]])),
+      meta: this.pathMeta || {},
       ...(this.added && this.added.length ? { add: this.added } : {}),
       ...(this.removed && this.removed.length ? { remove: this.removed } : {}),
     };
@@ -357,12 +365,16 @@ export class LevelEditor {
   /**
    * Локальная копия добавляемого узла.
    *
-   * Это ТОЛЬКО показ в текущей сессии: в `level.json` узел попадает не отсюда, а
-   * через файл правок — секцию `add` разбирает `tools/level_edits.py` при
-   * пересборке. Копия нужна, чтобы человек увидел, что добавил, не дожидаясь
-   * сборки; расхождение с ней не страшно, потому что источник правды — файл.
+   * Источник правды — файл правок: спецификация узла уходит в секцию `add`,
+   * и её же накладывает игра при старте (web3d/level_overlay.js). Здесь узел
+   * только показывается в текущей сессии, чтобы человек сразу увидел, куда
+   * положил объект.
+   *
+   * АСИНХРОННАЯ: узел из библиотеки ассетов может иметь текстуру, которой
+   * в уровне ещё нет. Её надо загрузить, чтобы узнать РЕАЛЬНЫЙ размер
+   * плоскости — иначе новый спрайт окажется либо невидимым, либо 64×64.
    */
-  _spawnLocal(spec) {
+  async _spawnLocal(spec) {
     // Позиция приходит либо в новом `props` (вместе с остальными свойствами
     // узла), либо в старом плоском `position`. Второй вид надо принимать: файлы
     // правок, сохранённые до появления `props`, обязаны открываться.
@@ -370,21 +382,110 @@ export class LevelEditor {
     const pos = props.position || spec.position;
     const scale = props.scale || spec.scale;
     if (!pos) return null;
-    const clone = this._templateFor(spec.type, spec.texture || props.texture);
-    if (!clone) return null;
+
+    let clone;
+    if (spec.texture) {
+      const made = await this._makeSprite(spec);
+      if (!made) return null;
+      clone = made.obj;
+    } else {
+      clone = this._templateFor(spec.type, props.texture);
+      if (!clone) return null;
+    }
     clone.name = spec.path;
     if (scale) clone.scale.set(scale[0], scale[1], 1);
     clone.position.set(pos[0], -pos[1], this._depthFor(spec));
-    this.gs.root.add(clone);
-    const e = { path: spec.path, obj: clone, added: true, parent: spec.parent || null,
-      node: { path: spec.path, type: spec.type,
-              props: spec.props || { position: spec.position } } };
+    // Кладём в СЛОЙ, а не в корень: «в какой слой добавил» должно быть видно
+    // в дереве и в списке слоёв сразу, без перезагрузки студии.
+    const parent = this._layerGroup(spec.layer) || this.gs.root;
+    parent.add(clone);
+    const e = { path: spec.path, obj: clone, added: true, parent: spec.layer || spec.parent || null,
+      node: { path: spec.path, type: spec.type || 'Sprite2D',
+              props: { ...(spec.props || {}), texture: spec.texture,
+                       position: pos, scale: scale || [1, 1] } } };
     this.editable.push(e);
     this.editableByPath.set(spec.path, e);
-    this.orig[spec.path] = spec.position.slice();
+    this.orig[spec.path] = pos.slice();
     this.objByPath.set(spec.path, clone);
     this.rebuildPickable();
     return e;
+  }
+
+  /** Группа-слой по имени (корневые узлы-контейнеры из generators). */
+  _layerGroup(name) {
+    if (!name || !this.gs) return null;
+    return this.gs.root.children.find((c) =>
+      c.userData && c.userData.node && c.userData.node.name === name
+      && c.userData.node.type === 'Node2D') || null;
+  }
+
+  /** Текстура по ключу уровня (`res/...`). Уже загруженные берём из сцены. */
+  async _ensureTexture(key) {
+    if (this.gs.textures[key]) return this.gs.textures[key];
+    // `../` — тот же TEX_ROOT, что у scene.js: страница живёт в web3d/,
+    // а картинки лежат в <корень игры>/res/.
+    const tex = await new Promise((res) => {
+      new THREE.TextureLoader().load('../' + key, (t) => {
+        t.colorSpace = THREE.SRGBColorSpace;
+        t.minFilter = THREE.NearestFilter;
+        t.magFilter = THREE.NearestFilter;
+        t.generateMipmaps = false;
+        res(t);
+      }, undefined, () => res(null));
+    });
+    if (tex) this.gs.textures[key] = tex;
+    return tex;
+  }
+
+  /** Собрать Sprite2D «с нуля» из файла картинки. */
+  async _makeSprite(spec) {
+    const tex = await this._ensureTexture(spec.texture);
+    if (!tex) return null;
+    const img = tex.image;
+    const size = spec.size || [img && img.width || 64, img && img.height || 64];
+    // Размер нужен НЕ только студии: игра строит Sprite по [path, w, h].
+    // Записываем его обратно в спецификацию, чтобы он уехал в файл правок.
+    spec.size = size;
+    const obj = new THREE.Group();
+    obj.name = spec.path;
+    obj.userData.node = { path: spec.path, name: spec.path, type: 'Sprite2D',
+      props: { position: spec.position, scale: spec.scale || [1, 1],
+               texture: spec.texture, z_index: 0 } };
+    obj.userData.path = spec.path;
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(size[0], size[1]),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true,
+        depthWrite: false, side: THREE.DoubleSide, alphaTest: 0.004 }));
+    mesh.renderOrder = spec.z ?? 0;
+    mesh.position.set(0, 0, 0.01);
+    obj.add(mesh);
+    return { obj, size };
+  }
+
+  /**
+   * Добавить ассет из библиотеки в уровень. Клик по картинке теперь НЕ
+   * «просто показать картинку»: он кладёт спрайт в центр вида (или в активный
+   * слой), делает его выделенным и готовым к перетаскиванию.
+   */
+  async addAsset(asset, pos) {
+    if (!this.gs || !asset || !asset.path) return null;
+    const leaf = asset.path.split('/').pop().replace(/\.[^.]+$/, '')
+      .replace(/[^A-Za-z0-9_]/g, '_');
+    const path = `Added_${leaf}_${Math.floor(Math.random() * 9000 + 1000)}`;
+    const position = [Math.round(pos[0]), Math.round(pos[1])];
+    const spec = {
+      path, type: 'Sprite2D', texture: asset.path,
+      position, props: { position: [...position], texture: asset.path, scale: [1, 1] },
+      scale: [1, 1], z: 0,
+      layer: this.activeLayer || 'Объекты',
+    };
+    const e = await this._spawnLocal(spec);
+    if (!e) { if (this.cb.onLog) this.cb.onLog(`не загрузился ассет ${asset.path}`); return null; }
+    this.added.push(spec);
+    this.select(path);
+    if (this.cb.onLog) this.cb.onLog(`+ ${path} ← ${asset.path} (слой ${spec.layer})`);
+    if (this.cb.onChange) this.cb.onChange(this);
+    return path;
   }
 
   _templateFor(type, texKey) {
@@ -420,6 +521,7 @@ export class LevelEditor {
   /* --------------------------------------------------------------- выбор */
 
   select(path, opts = {}) {
+    if (this.activeLayer) this.clearLayerHl();
     if (this.sel && this.objByPath.get(this.sel)) this._setHl(this.sel, false);
     this.sel = path || null;
     if (this.sel) this._setHl(this.sel, true);
@@ -446,6 +548,45 @@ export class LevelEditor {
         o.material = o.userData._hlOrig.pop();
       }
     });
+  }
+
+  /* ---------------------------------------------------- выбор слоя (как в Godot)
+     Активный слой — это выделение ГРУППЫ узлов целиком: все узлы слоя
+     подсвечиваются в кадре жёлтым, а перетаскивание / стрелки сдвигают слой
+     разом. Щелчок по отдельному узлу (в дереве или в кадре) снимает выделение
+     слоя и возвращает редактирование одного узла. */
+
+  selectLayer(name) {
+    this.clearLayerHl();
+    this.select(null);
+    this.activeLayer = name;
+    for (const e of this.editable) {
+      if (this._layerOf(e.obj) === name) this._setHl(e.path, true);
+    }
+    if (this.cb.onSelect) this.cb.onSelect(null, this.layerInfo(name));
+    return name;
+  }
+
+  clearLayer() {
+    this.clearLayerHl();
+    if (this.cb.onSelect) this.cb.onSelect(null, null);
+  }
+
+  clearLayerHl() {
+    for (const e of this.editable) this._setHl(e.path, false);
+    this.activeLayer = null;
+  }
+
+  layerInfo(name) {
+    const l = this.layers.get(name);
+    return {
+      type: 'layer',
+      layer: name,
+      count: l ? l.count : 0,
+      visible: l ? l.visible : true,
+      locked: l ? l.locked : false,
+      active: true,
+    };
   }
 
   infoOf(path) {
@@ -526,6 +667,52 @@ export class LevelEditor {
   }
 
   moveTo(path, x, y) { this.setPos(path, round(x), round(y)); }
+
+  /**
+   * Сдвинуть ВЕСЬ слой (как перетаскивание группы узлов в Godot). Все узлы слоя
+   * получают одно и то же приращение; пары площадка/коллайдер тянутся вместе,
+   * даже если партнёр оказался в другом слое — иначе «слой сдвинулся, а
+   * невидимый коллайдер остался» и уровень перестаёт работать.
+   */
+  moveLayerBy(name, dx, dy, record = true) {
+    const lay = this.layers.get(name);
+    if (!lay || lay.locked) return;
+    const affected = new Set();
+    for (const e of this.editable) {
+      if (this._layerOf(e.obj) === name) {
+        affected.add(e.path);
+        const p = this.links.get(e.path);
+        if (p) affected.add(p);
+      }
+    }
+    if (!affected.size) return;
+    if (record) this.history.push(this._snap([...affected]));
+    for (const path of affected) {
+      const e = this.editableByPath.get(path);
+      if (!e) continue;
+      const p0 = this.levelPos(path);
+      const np = [round(p0[0] + dx), round(p0[1] + dy)];
+      this.edits[path] = np;
+      this._applyLocal(path, np, false);
+    }
+    this.dirty = true;
+    if (this.cb.onChange) this.cb.onChange(this);
+    if (this.cb.onSelect && this.activeLayer === name) {
+      this.cb.onSelect(null, this.layerInfo(name));
+    }
+  }
+
+  _layerPaths(name) {
+    const s = new Set();
+    for (const e of this.editable) {
+      if (this._layerOf(e.obj) === name) {
+        s.add(e.path);
+        const p = this.links.get(e.path);
+        if (p) s.add(p);
+      }
+    }
+    return [...s];
+  }
 
   /**
    * Отмена одного ШАГА. Шаг — это одно движение мышью, а оно пишет два пути
@@ -706,6 +893,16 @@ export class LevelEditor {
     const down = (ev) => {
       if (ev.button !== 0) return;
       if (this.mode === '3d') return;   // в 3D мышь принадлежит орбите
+      if (this.activeLayer) {
+        // Активный слой: перетаскивание сдвигает слой целиком. Простой клик по
+        // узлу внутри слоя (без движения) выбирает этот узел — чтобы можно
+        // было вернуться к правке одного узла.
+        const start = this.worldAt(ev, 0);
+        drag = { layer: this.activeLayer, start, downPath: this.pickAt(ev) };
+        moved = false;
+        this.canvas.style.cursor = 'grabbing';
+        return;
+      }
       const path = this.pickAt(ev);
       if (!path) { this.select(null); return; }
       this.select(path);
@@ -719,6 +916,18 @@ export class LevelEditor {
       if (!drag) {
         const p = this.pickAt(ev);
         this.canvas.style.cursor = p ? 'grab' : 'default';
+        return;
+      }
+      // Активный слой перетаскивается целиком.
+      if (drag.layer) {
+        if (ev.buttons === 0) { drag = null; this.canvas.style.cursor = 'default'; return; }
+        const cur = this.worldAt(ev, 0);
+        if (!cur) return;
+        const dx = cur.x - drag.start.x, dy = cur.y - drag.start.y;
+        if (!moved && Math.abs(dx) + Math.abs(dy) < 1) return;
+        if (!moved) { this.history.push(this._snap(this._layerPaths(drag.layer))); moved = true; }
+        this.moveLayerBy(drag.layer, round(dx), round(dy), false);
+        drag.start = cur;
         return;
       }
       // Кнопка уже отпущена, а `pointerup` мы не увидели — сбрасываем захват.
@@ -752,7 +961,13 @@ export class LevelEditor {
       }
       this.setPos(drag.path, round(drag.orig[0] + dx), round(drag.orig[1] + dy), false);
     };
-    const up = () => { drag = null; this.canvas.style.cursor = 'default'; };
+    const up = () => {
+      // Простой клик по узлу внутри активного слоя (без перетаскивания) —
+      // выбрать этот узел и снять выделение слоя.
+      if (drag && drag.layer && !moved && drag.downPath) this.select(drag.downPath);
+      drag = null;
+      this.canvas.style.cursor = 'default';
+    };
     this.canvas.addEventListener('pointerdown', down);
     addEventListener('pointermove', move);
     addEventListener('pointerup', up);
@@ -831,10 +1046,14 @@ export class LevelEditor {
       if (ev.target && /INPUT|TEXTAREA/.test(ev.target.tagName)) return;
       const step = ev.shiftKey ? 10 : 1;
       if (ev.code === 'KeyZ' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); this.undo(); return; }
-      if (!this.sel) return;
       const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[ev.code];
       if (!d) return;
       ev.preventDefault();
+      // Нет выделенного узла — стрелки сдвигают активный слой целиком (как в Godot).
+      if (!this.sel) {
+        if (this.activeLayer) this.moveLayerBy(this.activeLayer, d[0] * step, d[1] * step);
+        return;
+      }
       this.moveBy(this.sel, d[0] * step, d[1] * step);
     };
     addEventListener('keydown', this._keys);

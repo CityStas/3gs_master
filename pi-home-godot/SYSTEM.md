@@ -43,7 +43,7 @@ you are not in a Godot project.
 
 The working directory is the repository root. The active project is recorded in
 `data/active_project.txt` and in the launch prompt (`Active project: ... (engine: godot)`).
-Reach it with its relative path (`projects/games/<name>/`). Work only inside the active
+Reach it with its relative path (`projects/godot/<name>/`). Work only inside the active
 project; never create a sibling project unless the user names one.
 
 Never guess a project folder from the task wording. Never invent files: check with `ls`

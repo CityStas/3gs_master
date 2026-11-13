@@ -8,7 +8,8 @@ rem ---
 rem ---   dev.cmd test                 models + agent
 rem ---   dev.cmd test --studio        + studio in a PARALLEL window (live view)
 rem ---
-rem --- Argument is a game NAME in projects\games\ (a leading path is tolerated).
+rem --- Argument is a project NAME resolved by project_layout.py into
+rem --- projects\<engine>\<name> (a leading path is tolerated).
 rem --- The folder is created when missing, and NOTHING is put inside it: no
 rem --- scene.js, no levels.json, no tools\, no serve.py. The model lays down
 rem --- whatever it needs. Laying down the standard stack is a separate, explicit
@@ -55,10 +56,11 @@ if not defined GAMEARG (
 )
 
 rem --- bare name from whatever was typed: "test", "three\test", "projects\roblox\shop" --
-rem --- Resolution (cwd -> repo root -> projects/<engine>/<name> -> legacy projects/games)
+rem --- Resolution (cwd -> repo root -> projects/<path> -> projects/<engine>/<name>)
 rem --- is owned by project_layout.py; batch only asks it. A missing project is created
-rem --- EMPTY in the parent that resolver picked - `projects/three/` when the name came
-rem --- with that prefix, the legacy `projects/games` otherwise.
+rem --- EMPTY in the parent that resolver picked: the engine folder we are standing in,
+rem --- or projects/three/ for a bare name typed from the repo root. There is no
+rem --- legacy projects/games parent.
 for %%I in ("%GAMEARG%") do set "GAMENAME=%%~nI"
 set "PROJREL="
 for /f "usebackq delims=" %%P in (`%PY% "%GS_ROOT%tools\find_project.py" "%GAMEARG%" --create 2^>nul`) do set "PROJREL=%%P"

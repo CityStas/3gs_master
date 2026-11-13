@@ -1,39 +1,41 @@
 #!/usr/bin/env python
-"""Студия одним файлом: `studio.cmd` - и всё поднято в ОДНОМ окне.
+"""Студия одним файлом: двойной щелчок по `studio.cmd` — и всё готово.
 
-Зачем: раньше запуск требовал двух-трёх окон и знания путей -
-`serve-all.cmd` (модели, два окна) + `serve.py` (игра, третье окно) + браузер.
-Здесь это один двойной щелчок:
+    studio.cmd                 # ПУСТАЯ студия, проект выбирается в UI
+    studio.cmd three/my_game   # (совместимость) сразу открыть конкретный проект
+    studio.cmd three/my_game 8788
+    studio.cmd --models        # дополнительно поднять модели для консольного pi
 
-    studio.cmd                # единственный проект, все модели
-    studio.cmd test_game_1    # конкретный проект; папка должна существовать
-    studio.cmd my_game 8788   # другой порт
-    studio.cmd --no-models    # сразу, без моделей (студии они не нужны)
+Главное отличие от прежней версии: НИКАКОГО консольного меню выбора проекта.
+Раньше при нескольких проектах скрипт печатал список и ждал номер, а при
+запуске не из терминала молча брал «первый подходящий» — человек видел чужой
+проект и не понимал почему. Теперь сервер стартует в hub-режиме вообще без
+проекта (`serve.py --hub`), а страница сама спрашивает `/__projects` и
+показывает список ТОЛЬКО из `projects/three/` — это редактор three.js-сцен,
+проекты Roblox/Unity/Godot были бы в нём заведомо пустым выбором. Выбор
+уходит на `POST /__open`, сервер переключает корень НА ЖИВОМ соединении,
+студия перезагружается и полностью инициализирует проект (уровни, ассеты,
+игру, правки). Новый проект создаётся прямо в UI: `POST /__new` зовёт
+канонический `tools/project_init.py`, который раскладывает стек в
+`projects/three/<имя>`.
 
-Проект задаётся ИМЕНЕМ в `projects/games/`. Скелет НЕ создаётся: студия ничего
-не раскладывает по проекту. Нет папки - скажет об этом и предложит `newgame.cmd`.
-Пустой проект открывается пустой сценой - это нормальный случай, а не ошибка.
+Модели НЕ поднимаются по умолчанию: они нужны только консольному агенту
+`pi` (RAG и чат), а не студии. Раньше каждый запуск ждал ~30 с загрузки 9B,
+хотя в редакторе модели не используются. Кто работает и с агентом тоже —
+`dev.cmd` / `serve-all.cmd` поднимают модели сами; либо явный флаг `--models`.
 
-Агента в студии нет: модель работает только через консольный `pi`
-(`agent.cmd`), а студия - инструмент просмотра и ручной правки. Модели здесь
-поднимаются затем, что их использует консольный агент (RAG и чат), и удобно
-держать всё в одном окне.
+Что поднимается:
 
-Что поднимается и куда смотрит:
-
+    serve.py :8777   пустая студия -> выбранный проект, всё в одном окне
+                     (берётся из tools/web/, не из копии в проекте)
+    [только с --models]
     llama-server :8080  9B, для консольного pi  -> logs/studio-llm.log
     llama-server :8081  bge-m3, для RAG         -> logs/studio-embed.log
-    serve.py     :8777  студия и игра           -> вывод в это окно
-                        (берётся из tools/web/, не из копии в проекте)
 
-Модели стартуют БЕЗ своих окон (CREATE_NO_WINDOW) и в отдельной группе
-процессов: Ctrl+C в этом окне их не задевает, а гасит их этот скрипт - в
-`finally`, вместе с сервером игры. Поэтому закрывать нечего: одно окно, один
-Ctrl+C.
-
-Уже запущенные модели не поднимаются второй раз (проверка порта): повторный
-старт занял бы порт и умер, а старое окно продолжало бы отвечать - это
-выглядит как успех, но новые ручки не появились бы.
+Структура папок по движкам (`projects/<движок>/<имя>`, `godot/`, `threejs/`,
+`unity/`, `roblox/`, их RAG и `pi-home-*`) НЕ трогается вообще: студия только
+читает ОДНУ папку `projects/three/`. Новый проект появляется в списке сам,
+как только в этой папке появится его каталог.
 """
 from __future__ import annotations
 
@@ -50,9 +52,13 @@ import webbrowser
 TOOLS = pathlib.Path(__file__).resolve().parent
 REPO = TOOLS.parent
 sys.path.insert(0, str(TOOLS))
+# project_layout.py lives at the repository root, not in tools/. When studio.py
+# is launched as a script, sys.path[0] is tools/ and the CWD is NOT added, so
+# the root-level import below used to fail with ModuleNotFoundError.
+sys.path.insert(0, str(REPO))
 
 import project_init as new_game  # noqa: E402  (TargetError, the skeleton, engine rules)
-from project_layout import find_project, project_search_dirs  # noqa: E402
+from project_layout import find_project  # noqa: E402
 
 # Вывод должен появляться сразу. Под перенаправлением (лог, `| more`) Python
 # копит stdout в буфере, и баннер со ссылкой показался бы только после Ctrl+C -
@@ -195,59 +201,55 @@ def kill(p) -> None:
         p.terminate()
 
 
-def ensure_game(arg: str | None) -> pathlib.Path:
-    """Проект по имени. Папка должна существовать - скелет НЕ создаётся.
+def _proj_key(p: pathlib.Path) -> str:
+    """Имя проекта так, как его удобно набирать: `<движок>/<имя>`.
 
-    Раньше здесь звался `new_game.py`, если в папке не было
-    `web3d/levels.json`: одно имя тянуло за собой раскладку двадцати файлов.
-    Теперь проект - это просто каталог, и что в нём лежит, студия не решает.
-    Пустая папка - нормальный случай (пустая сцена); стек раскладывает
-    `newgame.cmd`, и только по явной просьбе.
+    Голого имени мало: `dedspace_three` и одноимённый проект в другом движке —
+    разные каталоги, и выбор «по имени» открыл бы не тот.
     """
-    if arg:
-        dst = find_project(arg)
-        if dst is None:
-            raise new_game.TargetError(
-                f"проекта нет: {arg}\n"
-                f"Создать пустую папку: mkdir \"{arg}\"\n"
-                f"Разложить стандартный стек: cmd\\init.cmd <каталог>")
-        return dst
+    return f"{p.parent.name}/{p.name}"
 
-    # Projects live in `projects/<engine>/<name>` since 2026-11-08; the legacy
-    # `projects/games` is searched too. The engine folders themselves are the
-    # parents, not projects, so only their children are listed.
-    parents = [d for d in project_search_dirs() if d.is_dir()]
-    if not parents:
+
+def ensure_game(arg: str | None) -> pathlib.Path | None:
+    """Явный проект по имени ИЛИ `None` = пустая студия (выбор в UI).
+
+    `None` здесь не ошибка и не «возьми первый попавшийся». Это штатный
+    старт: сервер поднимается в hub-режиме, а список проектов и выбор
+    живут в браузере. Консольное меню убрано полностью — см. докстринг
+    модуля. Скелет по-прежнему НЕ создаётся: студия ничего не раскладывает
+    по проекту, она только открывает то, что уже есть.
+    """
+    if not arg:
+        return None
+    dst = find_project(arg)
+    if dst is None:
         raise new_game.TargetError(
-            f"нет каталогов проектов: projects\\<engine>\\\n"
-            f"Создать: mkdir projects\\three\\my_game")
-    found = sorted((p for d in parents for p in d.iterdir()
-                    if p.is_dir() and not p.name.startswith((".", "_"))),
-                   key=lambda p: p.name)
-    if not found:
-        raise new_game.TargetError(
-            f"в {', '.join(str(d) for d in parents)} нет ни одного проекта\n"
-            f"(ни одной подпапки).\n"
-            f"Создать: mkdir projects\\three\\my_game")
-    if len(found) > 1:
-        print(f"проектов несколько, беру первый по алфавиту: {found[0].name}")
-        print(f"  другие: {', '.join(p.name for p in found[1:])}")
-        print(f"  выбрать другую: studio.cmd <имя>")
-    return found[0]
+            f"проекта нет: {arg}\n"
+            f"Создать пустую папку: mkdir \"{arg}\"\n"
+            f"Разложить стандартный стек: cmd\\init.cmd <каталог>")
+    return dst
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(
-        description="студия одним файлом: модели + сервер игры в одном окне")
+        description="студия одним файлом: пустой старт, проект выбирается в UI")
     ap.add_argument("game", nargs="?", default=None,
-                    help="имя проекта в projects/<engine>/ (по умолчанию - единственный)")
+                    help="(необязательно) сразу открыть projects/<движок>/<имя>")
     ap.add_argument("port", nargs="?", type=int, default=8777,
                     help="порт студии (по умолчанию 8777)")
+    ap.add_argument("--port", dest="port_opt", type=int, default=None,
+                    help="порт студии флагом: studio.cmd --port 8788")
+    ap.add_argument("--models", action="store_true",
+                    help="дополнительно поднять модели для консольного агента pi")
     ap.add_argument("--no-models", action="store_true",
-                    help="не поднимать модели: только студия (мгновенно)")
+                    help="(устаревший флаг, теперь это поведение по умолчанию)")
     ap.add_argument("--no-open", action="store_true",
                     help="не открывать браузер")
     a = ap.parse_args()
+    # Флаг удобнее позиционного: `studio.cmd --port 8788` не требует пустого
+    # первого аргумента (иначе «8788» приняли бы за ИМЯ проекта).
+    if a.port_opt is not None:
+        a.port = a.port_opt
 
     if not VENV_PY.is_file():
         print(f"[ОШИБКА] нет venv: {VENV_PY}\n"
@@ -260,15 +262,19 @@ def main() -> int:
         print(e)
         return 1
 
+    hub = game is None
     url = f"http://127.0.0.1:{a.port}/web3d/studio.html"
-    print("проект  : %s" % game)
+    if hub:
+        print("проект  : НЕ ВЫБРАН — список проектов откроется в студии")
+    else:
+        print("проект  : %s  (%s)" % (_proj_key(game), game))
     print("студия  : %s" % url)
 
     kids: list = []
     handles: list = []
     try:
-        if a.no_models:
-            print("модели  : пропущены (--no-models) - студии они и не нужны")
+        if not a.models:
+            print("модели  : не нужны студии (флаг --models — только для pi)")
         else:
             targets: list[tuple[str, str]] = []
             logs: list[tuple[str, pathlib.Path]] = []
@@ -314,13 +320,16 @@ def main() -> int:
 
         print()
         print("  СТУДИЯ : %s" % url)
+        if hub:
+            print("  ПРОЕКТ : выберите в окне студии — всё подгрузится само")
         print("  СТОП   : Ctrl+C в этом окне")
         print()
 
-        srv = subprocess.Popen(
-            [str(VENV_PY), str(serve), "--dir", str(game),
-             "--port", str(a.port)],
-            cwd=str(game), env=env)
+        # hub = сервер без --dir: проект приедет с POST /__open из UI.
+        # Явный аргумент сохраняет прежний путь (--dir) для скриптов и гейтов.
+        cmd = [str(VENV_PY), str(serve), "--port", str(a.port)]
+        cmd += ["--hub"] if hub else ["--dir", str(game)]
+        srv = subprocess.Popen(cmd, cwd=str(game or REPO), env=env)
         kids.append(srv)
         if not a.no_open:
             open_later(url, a.port)

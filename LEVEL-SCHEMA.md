@@ -9,7 +9,7 @@
 Проверка после записи:
 
 ```bash
-python tools/level_lint.py projects/games/<имя>/web3d/level.json
+python tools/level_lint.py projects/three/<имя>/web3d/level.json
 ```
 
 Линтер ловит всё из раздела «Три вещи, которые ломаются чаще всего» и возвращает  

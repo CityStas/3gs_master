@@ -19,7 +19,7 @@ rem --- swallows that loopback handshake, leaving the agent with no studios whil
 rem --- Studio's own Assistant setting still says "enabled".
 rem ---
 rem ---   roblox-open.cmd                 active project's first .rbxlx/.rbxl
-rem ---   roblox-open.cmd my_game         by name under projects\games\
+rem ---   roblox-open.cmd my_game         by name under projects\roblox\
 rem ---   roblox-open.cmd my_game --empty Studio without a place
 "%PY%" "%GS_ROOT%roblox\tools\open.py" %*
 exit /b %errorlevel%

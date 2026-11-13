@@ -115,36 +115,138 @@ dev.cmd my_game
 ```
 
 `setup.cmd` можно прервать и запустить снова - докачает с места обрыва. Отдельно
-`gs doctor` проверяет окружение целиком, `dev.cmd <игра>` поднимает нужные сервисы,
-проверяет окружение и открывает агента в папке игры. Флаг `--studio` добавляет
-редактор уровней (только для Three.js).
+`gs doctor` проверяет окружение целиком, `dev.cmd <имя>` поднимает модели
+(`serve-all.cmd`), проверяет окружение и открывает консольного агента `pi` в
+`projects/three/<имя>`; папка создаётся **пустой**, стек раскладывается отдельно.
+`dev.cmd <имя> --studio` вдобавок открывает редактор уровней в отдельном окне
+(`studio.cmd <имя> --no-models`) - это работает только для Three.js.
 
-## Новый проект
+**Веса нужны только агенту.** Студия стартует без моделей и без `setup.cmd`:
+достаточно `.venv` (`python -m venv .venv`) и `studio.cmd` - см. следующий раздел.
 
-Проект - это папка `projects/<движок>/<имя>`. Движок задаёт `engine.json` - на самой
-папке проекта или на папке движка, откуда он наследуется:
+## Студия Three.js: один файл
 
-| Движок | папка | `engine.json` | Что сделать перед запуском |
+Двойной щелчок по `studio.cmd` (или `gs studio`) поднимает **пустую** студию:
+без проекта, без консольного меню и без моделей. Проект выбирается уже в UI:
+
+- список содержит **только** `projects/three/<имя>` - это редактор three.js-сцен,
+  поэтому Roblox/Unity/Godot в нём не предлагаются;
+- выбор проекта уходит на `POST /__open`, сервер переключает корень **на живом
+  соединении**, страница перезагружается и загружает уровни, ассеты и игру;
+- `+ Создать и открыть` зовёт `POST /__new` -> канонический
+  `tools/project_init.py` раскладывает полный стек в `projects/three/<имя>`;
+- `✕` у селектора возвращает пустую студию (`POST /__close`).
+
+Адрес `http://127.0.0.1:8777/web3d/studio.html`; другой порт -
+`studio.cmd --port 8788`. Оболочка одна на все проекты и лежит в `studio/`
+репозитория: `launcher.js` не имеет импортов и работает вообще без проекта, а
+`app.js` (ему нужны `scene.js` и `vendor/three` из каталога игры) подгружается
+динамически **только после выбора**. Модели студии не нужны: флаг `--models`
+нужен лишь когда параллельно работает консольный агент `pi`.
+
+Совместимость сохранена: `studio.cmd three/my_game` сразу открывает конкретный
+проект, `studio.cmd three/my_game 8788` - тот же проект на другом порту.
+Подробности, вкладки и формат правок - [`STUDIO.md`](STUDIO.md).
+
+### Где лежат `.cmd` и что из них нужно
+
+Реальных лаунчеров 41: 10 в корне и 31 в `cmd\`. Все вызываются через единый
+фасад `gs.cmd` (`gs help` печатает полный список), напрямую запускать их не
+обязательно.
+
+| Где | Что | Зачем |
+| --- | --- | --- |
+| корень | `gs.cmd` | единый фасад, `gs <подкоманда>` |
+| корень | `studio.cmd`, `dev.cmd`, `agent.cmd`, `resume.cmd`, `serve-all.cmd`, `pi-here.cmd`, `setup.cmd` | повседневные лаунчеры |
+| корень | `local.env.example.cmd` / `local.env.cmd` | шаблон и локальная конфигурация (в git не попадает) |
+| `cmd\` | 31 сервисный лаунчер, включая `cmd\_env.cmd` | общие переменные, RAG, модели, генерация арта, проверки четырёх движков |
+| `archive\legacy\` (локально) | `web1.cmd`, `launch_studio.cmd`, `studio_new_test\` | устаревшие/тестовые: перенесены, **не удалены**, но `archive/` закрыт в `.gitignore` и в репозиторий не попадает |
+| `m2m\node_modules\.bin\`, `models\...\python_embeded\` | автогенерируемые shims npm/ComfyUI | не лаунчеры репозитория, не трогать |
+
+`web1.cmd` ссылался на несуществующий `projects/research/web_1`,
+`logs\launch_studio.cmd` - на жёстко зашитую версию RobloxStudioBeta.exe; оба
+нигде не упоминаются. В репозитории эти файлы удалены/перенесены, структура
+четырёх движков (`projects/{three,godot,unity,roblox}`, `knowledge/`,
+`godot/knowledge/`, `roblox/knowledge/`, `unity/knowledge/`, `pi-home-*`) не изменена.
+
+## Четыре движка: как это работает на самом деле
+
+Проект - папка `projects/<движок>/<имя>`. Раскладку знает **один** модуль
+[`project_layout.py`](project_layout.py): `ENGINE_FOLDERS = ("three", "godot", "unity", "roblox")`.
+Он же решает, куда положить новый проект по голому имени и какой профиль агента
+подключить. Второго, «legacy» родителя нет - `projects/games/` больше не ищется.
+
+| Движок | Папка | Маркер `engine.json` | Профиль `pi` | Как появляется скелет |
+| --- | --- | --- | --- | --- |
+| Three.js | `projects/three/<имя>` | `{ "engine": "threejs" }` | `pi-home-three` | `gs init projects\three\<имя> --engine threejs` или «+ Создать и открыть» в студии |
+| Godot 4 | `projects/godot/<имя>` | `{ "engine": "godot" }` | `pi-home-godot` | новый проект в Godot Project Manager в этой папке |
+| Unity 6 | `projects/unity/<имя>` | `{ "engine": "unity" }` | `pi-home-unity` | Unity Hub или MCP `unity_project_create` |
+| Roblox | `projects/roblox/<имя>` | `{ "engine": "roblox" }` | `pi-home-roblox` | `gs roblox-index`, затем `gs roblox-open` |
+
+Поле `version` (`"r186"`, `"4.7.2"`, `"6000.3"`) - **только подпись для человека**:
+ни лаунчеры, ни гейты его не читают, решение принимает одно поле `engine`.
+Четыре `projects/<движок>/engine.json` закоммичены как маркеры папок; для
+Godot/Unity/Roblox свой маркер в папке проекта обязателен (см. оговорку ниже).
+
+`cmd\init.cmd` инициализирует **по маркеру** и раскладывает three.js-стек ТОЛЬКО для
+`threejs`; для остальных движков он ничего не пишет, чтобы не засорять чужой проект.
+Голое имя разрешается относительно **текущего каталога**: `cmd\init.cmd my_game` из
+корня репозитория создаст `<repo>\my_game` вне `projects/` (скрипт предупредит, что
+студия и гейты его не увидят). Из корня передавайте полный путь
+`projects\three\<имя>`, либо создавайте проект кнопкой в студии - она подставляет
+корректный путь сама. `dev.cmd <имя>` создаёт папку пустой и вообще не раскладывает
+стек.
+
+**Движок → инструменты.** `agent.cmd` читает `<проект>/engine.json`, ставит
+`PI_CODING_AGENT_DIR=pi-home-<движок>` (оттуда `SYSTEM.md`, скиллы, `mcp.json`), а
+`pi-extensions/engine-gate.ts` по тому же маркеру регистрирует только MCP-серверы
+своего движка. Единственный реестр - [`mcp/registry.json`](mcp/registry.json) с
+полем `engines`; разложить его по профилям и WorkBuddy: `gs mcp-sync --apply`.
+`assets` доступен всем четырём, RAG-серверы (`threejs-rag`, `godot-rag`,
+`unity-rag`, `rbx-rag`) - только своему движку.
+
+**Оговорка про наследование.** `project_layout.nearest_engine()` (Python-стеки,
+MCP-серверы, `tools/pi_launch.py`, `tools/project_context.py`) умеет подняться к
+маркеру папки движка. Но `agent.cmd`, `pi-here.cmd` и `engine-gate.ts` читают маркер
+**самого проекта** и без него берут дефолт `threejs`. Поэтому проекту Godot/Unity/Roblox
+нужен собственный `engine.json`, иначе сессия получит Three.js-профиль, даже лёжа в
+`projects/godot/`. Подробности - [`projects/README.md`](projects/README.md).
+
+### RAG и команды по движкам
+
+| Движок | Корпус | В git | Индекс и проверки |
 | --- | --- | --- | --- |
-| Three.js | `projects/three/<имя>` | `{ "engine": "threejs", "version": "r186" }` | `cmd\init.cmd <имя>` — раскладывает three.js-стек по маркеру |
-| Godot 4 | `projects/godot/<имя>` | `{ "engine": "godot", "version": "4.7.2" }` | создать проект в Godot Project Manager в этой папке |
-| Unity 6 | `projects/unity/<имя>` | `{ "engine": "unity", "version": "6000.3" }` | создать проект в Unity Hub или дать это агенту |
-| Roblox | `projects/roblox/<имя>` | `{ "engine": "roblox" }` | `gs roblox-index`, затем `gs roblox-open` |
+| Three.js | `knowledge/` (r186 API, исходники, cookbook, правила) | да | `gs index`, `gs check <имя>` |
+| Godot 4 | `godot/knowledge/` | да | `.venv\Scripts\python.exe godot\tools\gdm.py index` (CLI: `doctor` / `status` / `search`); отдельной `gs`-подкоманды нет |
+| Unity 6 | `unity/knowledge/` | **нет** | `gs unity-fetch` → `gs unity-index` → `gs unity-check` / `gs unity-doctor` |
+| Roblox | `roblox/knowledge/` (2456 `.md`) | да | `gs roblox-index` (индекс ~249 МБ, в git не входит), `gs roblox-check` / `gs roblox-doctor` / `gs roblox-save` |
 
-Документация движков лежит в репозитории отдельно от проектов, по папке на движок:
-`knowledge/` (Three.js), `roblox/knowledge/` (Roblox). Это не данные проекта, а корпус,
-общий для всех проектов движка, поэтому он и не копируется в каждую папку. Клон уже
-содержит корпус Roblox целиком - 2432 страницы; докачивать нужно только индекс
-(`gs roblox-index`), он в git не входит (249 МБ). `gs roblox-fetch` нужен лишь чтобы
-обновить корпус до свежего.
+Корпус общий для всех проектов движка и в папку проекта не копируется.
+`gs roblox-fetch` / `gs unity-fetch` нужны лишь чтобы обновить корпус; у Unity без
+`unity-fetch` корпуса нет вообще.
 
-У Unity корпус в git не лежит - там `gs unity-fetch` действительно обязателен.
+Встроенный MCP Studio включается **внутри Roblox Studio**: Assistant → … →
+Manage MCP Servers → Enable Studio as MCP server. Из репозитория это не настраивается.
 
-Встроенный MCP Studio включается **внутри Studio**: Assistant → … → Manage MCP Servers
-→ Enable Studio as MCP server. Из репозитория это не настраивается.
+Дальше - `dev.cmd <имя>` (модели + `doctor` + агент). Инструменты движка появляются
+у агента только под проект с соответствующим `engine.json`.
 
-Дальше - `dev.cmd <имя>`. Инструменты движка появляются у агента только под проект
-с соответствующим `engine.json`.
+## Что попадает в репозиторий
+
+**Никаких готовых игр в репозитории нет.** Клон получает код, корпуса знаний и пустой
+скелет `projects/`:
+
+```cmd
+git ls-files projects
+```
+
+Ровно шесть строк: `projects/.gitignore`, `projects/README.md` и четыре `engine.json`.
+Содержимое `projects/*` закрыто в [`.gitignore`](.gitignore), исключения открывают
+только маркеры. Также не версионируются `models/`, `bin/`, `.venv/`, `logs/`,
+`data/active_project.txt`, `local.env.cmd`, индексы `data/sqlite/`,
+`unity/knowledge/`, `roblox/data/`, `output/`, `m2m/` и локальный `archive/`.
+Поэтому свежий клон всегда стартует с **пустым списком проектов в студии** - это
+норма, а не потеря данных; проект создаётся в UI или командами выше.
 
 ## Документация
 
@@ -152,6 +254,8 @@ dev.cmd my_game
 - [`AGENTS.md`](AGENTS.md) - правила агента
 - [`ASSET-POLICY.md`](ASSET-POLICY.md) - откуда берутся ассеты
 - [`LEVEL-SCHEMA.md`](LEVEL-SCHEMA.md), [`STUDIO.md`](STUDIO.md) - уровни и студия (Three.js)
+- [`projects/README.md`](projects/README.md), [`project_layout.py`](project_layout.py) - раскладка проектов и маркеры движков
+- [`godot/README.md`](godot/README.md) - Godot-стек (gdmaster)
 - [`unity/README.md`](unity/README.md) - Unity-стек
 - [`roblox/README.md`](roblox/README.md) - Roblox-стек (Luau, Studio MCP, корпус)
 - [`mcp/registry.json`](mcp/registry.json) - единственное описание MCP-серверов для pi и WorkBuddy

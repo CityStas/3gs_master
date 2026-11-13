@@ -56,6 +56,12 @@ if /i "%SUB%"=="reliability" set "T=cmd\reliability.cmd"
 if /i "%SUB%"=="rel"   set "T=cmd\reliability.cmd"
 if /i "%SUB%"=="pi"      set "T=cmd\pi.cmd"
 if /i "%SUB%"=="pi-shim" set "T=cmd\pi-shim.cmd"
+rem --- These four used to be runnable only by their full path. They are real
+rem --- tools (not duplicates), so `gs` now covers every launcher in the repo.
+if /i "%SUB%"=="setup"       set "T=setup.cmd"
+if /i "%SUB%"=="pi-here"     set "T=pi-here.cmd"
+if /i "%SUB%"=="leveltest"   set "T=cmd\leveltest.cmd"
+if /i "%SUB%"=="roblox-save" set "T=cmd\roblox-save.cmd"
 if /i "%SUB%"=="help"    goto :usage
 if /i "%SUB%"=="-h"      goto :usage
 if /i "%SUB%"=="--help"  goto :usage
@@ -78,9 +84,11 @@ echo   dev       models + doctor + agent in one go  ^<game^> [--studio]
 echo   agent     interactive pi session        [project] [@brief]
 echo   ask       one-shot pi task              "task text"
 echo   resume    continue a pi session         project [@brief]
-echo   studio    studio in one window          [game] [port]
+echo   studio    EMPTY studio, pick a project in the UI   [game] [port]
+echo   setup     first-time install             [--no-models] [--mirror]
 echo.
 echo   init      scaffold by engine.json         [dir] [--engine ...] [--sync]
+echo   leveltest offline level autotest         [--live]
 echo   gen       asset pack (generate.py)      -p ^<game^> -j ^<plan^>
 echo   img       text-to-image                 "prompt" [out] [steps] [w] [h]
 echo   check     tsc gate                      ^<game^> [--full^|--json^|--code ^<code^>]
@@ -106,7 +114,9 @@ echo   roblox-index  build the Roblox RAG index   [--vectors^|--only^|--force]
 echo   roblox-check  lint a Roblox project's Luau   ^<project^> [--json^|--errors-only]
 echo   roblox-doctor Roblox stack environment check ^(Studio, corpus, index^)
 echo   roblox-open   open Roblox Studio on a place   [project] [--empty]
+echo   roblox-save   copy Studio's AutoRecovery dump into the project
 echo.
+echo   pi-here       pi with this project's profile  (run inside a project)
 echo   mcp-sync      render mcp\registry.json into the pi profiles and WorkBuddy
 echo   reliability   loop-guard log, run state, policy selftest (alias: rel)
 echo                 ^(dry run; --apply writes, --print ^<engine^> dumps one^)
@@ -115,6 +125,8 @@ echo   pi            pi with the profile of the engine you are standing in
 echo                 ^(cd projects\three\my_game ^&^& gs pi^)
 echo   pi-shim       make the bare word `pi` do that too  [--install^|--uninstall]
 echo.
-echo Day-to-day launchers (up/agent/resume/studio) live in the repo root;
+echo Day-to-day launchers (up/agent/resume/studio/setup) live in the repo root;
 echo the rest live in cmd\ - `gs` is just a front door to both.
+echo Two stale launchers (web1.cmd, logs\launch_studio.cmd) and the throwaway
+echo test project were moved to archive\legacy\ - nothing was deleted.
 exit /b 2

@@ -21,7 +21,6 @@ application/octet-stream, из-за чего браузер отказывает
 usage: python serve.py [--dir .] [--port 8777]
 """
 import argparse
-import functools
 import http.server
 import json
 import os
@@ -66,6 +65,73 @@ EXT_ROOTS: dict[str, pathlib.Path] = {}
 # в каждую игру, любая правка интерфейса требовала обойти все игры, и «сто игр»
 # означали сто копий одного файла. Теперь правка здесь видна сразу всем.
 STUDIO_DIR: pathlib.Path | None = None
+
+# Активный КАТАЛОГ ИГРЫ. Раньше он замораживался при старте:
+# `functools.partial(Handler, directory=str(root))` клал строку в КАЖДЫЙ
+# обработчик, и переключить проект можно было только перезапуском сервера.
+# Теперь студия стартует ПУСТОЙ (`root = None`), проект выбирается в UI, и
+# Handler.directory читает STATE на каждом запросе. Ни один путь при этом не
+# меняется: `/web3d/...`, `/res/...` и все `/__*` остаются прежними, просто
+# указывают на другой каталог игры.
+STATE: dict = {
+    "root": None,   # pathlib.Path | None; None = проект не выбран
+    "repo": None,   # pathlib.Path — корень репозитория (реестр проектов)
+}
+LAST_PROJECT = None   # logs/studio-project.txt, проставляется в main()
+
+
+# Единственный движок, который умеет ЭТА студия. Roblox / Unity / Godot
+# проекты лежат рядом в projects/, но редактору three.js-сцен в них делать
+# нечего: у них нет web3d/levels.json, и открытие давало бы пустой кадр.
+# Папки четырёх движков, их RAG и pi-home-* НЕ трогаем — просто читаем одну.
+THREE_DIR = "three"
+
+
+def list_projects(repo):
+    """Проекты ТОЛЬКО из `projects/three/<имя>`.
+
+    Новый проект появляется в списке сам, как только в projects/three/
+    появится его папка: реестр читается с диска при каждом /__projects.
+    """
+    base = repo / "projects" / THREE_DIR
+    out = []
+    if not base.is_dir():
+        return out
+    for proj in sorted((p for p in base.iterdir()
+                        if p.is_dir() and not p.name.startswith((".", "_"))),
+                       key=lambda p: p.name):
+        key = f"{THREE_DIR}/{proj.name}"
+        man = proj / "web3d" / "levels.json"
+        count = 0
+        if man.is_file():
+            try:
+                count = len(json.loads(man.read_text(encoding="utf-8")).get("levels") or {})
+            except (OSError, ValueError):
+                count = -1
+        out.append({
+            "id": key, "engine": THREE_DIR, "name": proj.name,
+            "title": f"{proj.name}  ·  three",
+            "levels": count, "hasLevels": man.is_file(),
+            "hasGame": (proj / "index.html").is_file(),
+        })
+    # Готовые к работе сверху, пустые папки снизу.
+    out.sort(key=lambda p: (not p["hasLevels"], p["name"]))
+    return out
+
+
+def project_by_key(repo, key):
+    return next((p for p in list_projects(repo) if p["id"] == key), None)
+
+
+def save_last_project(key):
+    """Запомнить выбор, чтобы следующий запуск открыл тот же проект."""
+    if LAST_PROJECT is None:
+        return
+    try:
+        LAST_PROJECT.parent.mkdir(parents=True, exist_ok=True)
+        LAST_PROJECT.write_text(key, encoding="utf-8")
+    except OSError:
+        pass
 
 
 def studio_target(rel: str):
@@ -129,6 +195,23 @@ def find_repo_root(start):
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
+    # `SimpleHTTPRequestHandler.__init__` сам присваивает self.directory.
+    # Перехватываем оба направления: запись игнорируем, чтение всегда берём
+    # из STATE. Так смена проекта из UI (/__open) видна ВСЕМ ручкам сразу —
+    # и статике, и /__assets, и /__save, и /__build — без перезапуска сервера.
+    @property
+    def directory(self):
+        root = STATE["root"]
+        if root is not None:
+            return str(root)
+        # Несуществующий путь ВНУТРИ репозитория. Важно не вернуть "" или
+        # os.getcwd(): тогда пустая студия молча отдала бы файлы репозитория.
+        return str(STATE["repo"] / "__studio_no_project__")
+
+    @directory.setter
+    def directory(self, _value):
+        pass
+
     def guess_type(self, path):
         p = str(path).lower()
         for ext, mime in EXTRA.items():
@@ -301,6 +384,62 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         from urllib.parse import urlparse, parse_qs
         u = urlparse(self.path)
+        # Браузер всегда просит /favicon.ico, а у игр его обычно нет. Один
+        # такой 404 в консоли маскирует настоящие ошибки загрузки ассетов —
+        # отвечаем 204 без тела, когда своего файла у проекта нет.
+        if u.path == "/favicon.ico":
+            root = STATE["root"]
+            if root is None or not (root / "favicon.ico").is_file():
+                self.send_response(204)
+                self.end_headers()
+                return
+        # Реестр проектов для ПУСТОЙ студии. Это единственное, что нужно
+        # странице до выбора проекта: всё остальное (уровни, ассеты, игра)
+        # появляется только после POST /__open.
+        # Есть ли у проекта страница игры. Одним 200 вместо трёх HEAD-проб:
+        # у нового проекта страницы ещё нет, и раньше каждый промах давал
+        # 404 в консоли, которую читают гейты («свежий проект упал»).
+        if u.path == "/__gamepage":
+            page = None
+            if STATE["root"] is not None:
+                for cand in ("index.html", "play.html", "web3d/play.html"):
+                    if (STATE["root"] / cand).is_file():
+                        page = cand
+                        break
+            self._send_json({"page": page, "hub": STATE["root"] is None})
+            return
+        if u.path == "/__projects":
+            active = None
+            if STATE["root"] is not None:
+                try:
+                    active = STATE["root"].relative_to(
+                        STATE["repo"] / "projects").as_posix()
+                except ValueError:
+                    active = STATE["root"].name
+            projects = list_projects(STATE["repo"])
+            ids = {p["id"] for p in projects}
+            last = ""
+            if LAST_PROJECT is not None:
+                try:
+                    last = LAST_PROJECT.read_text(encoding="utf-8").strip()
+                except OSError:
+                    pass
+            # Проект могли удалить или перенести в архив: не предлагать мёртвый
+            # ключ как «последний открытый», иначе UI покажет несуществующий
+            # проект сразу после чистки репозитория.
+            if last and last not in ids:
+                last = ""
+                try:
+                    LAST_PROJECT.write_text("", encoding="utf-8")
+                except OSError:
+                    pass
+            self._send_json({"projects": projects,
+                             "active": active, "last": last or None,
+                             "engine": THREE_DIR,
+                             "engineRoot": f"projects/{THREE_DIR}",
+                             "repo": str(STATE["repo"]),
+                             "hub": STATE["root"] is None})
+            return
         # Список ассетов для рабочей области студии: картинки (превью генерации)
         # и GLB (3D-просмотрщик). Отдельная ручка, а не обход каталога из
         # браузера: у статики нет листинга, а гадать имена нельзя - файл,
@@ -309,6 +448,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         # Отдаём ОТНОСИТЕЛЬНЫЕ пути от корня сервера: их можно сразу подставить
         # в <img src> / fetch, не зная, откуда открыта страница.
         if u.path == "/__assets":
+            if STATE["root"] is None:
+                # Пустая студия: ассетов игры нет по определению, но это
+                # нормальный ответ 200, а не 404 в консоли браузера.
+                self._send_json({"images": [], "glbs": [], "root": None,
+                                 "game": None, "hub": True})
+                return
             root = pathlib.Path(self.directory).resolve()
             imgs, glbs = [], []
 
@@ -398,6 +543,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         # консоль как ошибку. Прогон читает консоль, и «норма» выглядела бы как
         # падение. Здесь отсутствие файла - это 200 и пустой список правок.
         if u.path == "/__edits":
+            if STATE["root"] is None:
+                self._send_json({"nodes": {}})
+                return
             name = (parse_qs(u.query).get("file") or [""])[0]
             dest = self._safe_json_name(name)
             if dest is None:
@@ -411,6 +559,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         # Проверка формата уровня. См. `_lint`: «создан» и «работает» — разное,
         # и второе видно только прогоном линтера.
         if u.path == "/__lint":
+            if STATE["root"] is None:
+                self._send_json({"ok": False, "code": 409, "level": "",
+                                 "file": "", "out": "проект не выбран"})
+                return
             self._lint((parse_qs(u.query).get("level") or [""])[0])
             return
         # Файл из внешнего корня: `/__ext/<имя>/<относительный путь>`.
@@ -440,6 +592,87 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         from urllib.parse import urlparse, parse_qs
         u = urlparse(self.path)
+        # Выбор проекта ИЗ UI. Ключ — `<движок>/<имя>`; голое имя нельзя:
+        # одноимённые проекты в разных движках открыли бы не тот каталог.
+        # Сверяем со freshly прочитанным реестром, а не доверяем строке —
+        # иначе `/__open` стал бы чтением произвольного каталога диска.
+        if u.path in ("/__open", "/__close"):
+            key = None
+            if u.path == "/__open":
+                try:
+                    body = json.loads(self._read_body().decode("utf-8") or "{}")
+                except (ValueError, UnicodeDecodeError):
+                    body = {}
+                key = body.get("project") if isinstance(body, dict) else None
+                if not isinstance(key, str) or not key:
+                    self._send_json({"ok": False, "error": "нужен project"}, 400)
+                    return
+                if project_by_key(STATE["repo"], key) is None:
+                    self._send_json({"ok": False,
+                                     "error": f"проекта нет: {key}"}, 404)
+                    return
+                STATE["root"] = STATE["repo"] / "projects" / key
+                save_last_project(key)
+            else:
+                STATE["root"] = None
+            active = (STATE["root"].relative_to(
+                STATE["repo"] / "projects").as_posix()
+                if STATE["root"] is not None else None)
+            print(f"[serve] активный проект: {active or '— (пустая студия)'}",
+                  flush=True)
+            self._send_json({"ok": True, "active": active,
+                             "root": str(STATE["root"]) if STATE["root"] else None})
+            return
+        # Новый проект ПРЯМО ИЗ UI: папка в projects/three/ + полная
+        # инициализация каноническим tools/project_init.py. Не изобретаем
+        # второй скелет: стек (web3d/vendor, scene.js, level_lint.py, ...),
+        # levels.json, level.json, engine.json и профиль движка раскладывает
+        # тот же инструмент, что используют cmd\init.cmd и агент.
+        if u.path == "/__new":
+            try:
+                body = json.loads(self._read_body().decode("utf-8") or "{}")
+            except (ValueError, UnicodeDecodeError):
+                body = {}
+            name = body.get("name") if isinstance(body, dict) else None
+            # Один сегмент пути, без разделителей и '..': иначе запрос мог бы
+            # создать папку где угодно на диске.
+            if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", name):
+                self._send_json({"ok": False,
+                                 "error": "имя: латиница, цифры, '_' и '-', без путей"}, 400)
+                return
+            target = STATE["repo"] / "projects" / THREE_DIR / name
+            if target.exists():
+                self._send_json({"ok": False,
+                                 "error": f"папка уже есть: {THREE_DIR}/{name}"}, 409)
+                return
+            init = STATE["repo"] / "tools" / "project_init.py"
+            if not init.is_file():
+                self._send_json({"ok": False,
+                                 "error": "нет tools/project_init.py"}, 500)
+                return
+            try:
+                p = subprocess.run(
+                    [sys.executable, str(init), str(target), "--engine", "threejs"],
+                    cwd=str(STATE["repo"]), capture_output=True, text=True,
+                    encoding="utf-8", errors="replace", timeout=120)
+            except (OSError, subprocess.TimeoutExpired) as exc:
+                self._send_json({"ok": False,
+                                 "error": f"инициализация не удалась: {exc}"}, 500)
+                return
+            if p.returncode != 0:
+                tail = ((p.stderr or "") + (p.stdout or "")).strip()[-700:]
+                self._send_json({"ok": False,
+                                 "error": "инициализация не удалась: " + tail}, 500)
+                return
+            key = f"{THREE_DIR}/{name}"
+            print(f"[serve] создан проект {key} -> {target}", flush=True)
+            self._send_json({"ok": True, "project": key, "root": str(target)})
+            return
+        if STATE["root"] is None:
+            # Писать правки и запускать сборку некуда. 409, а не тихий 500
+            # из-за несуществующего cwd.
+            self._send_json({"ok": False, "error": "проект не выбран"}, 409)
+            return
         if u.path == "/__build":
             # Пересборка уровня. Нужна редактору («Сохранить и пересобрать») и
             # гейту: правка расстановки живёт в отдельном файле, и «доехала ли
@@ -533,7 +766,9 @@ def main() -> None:
     game_dir = pathlib.Path(__file__).resolve().parents[2]
     ap.add_argument("--dir", default=str(game_dir))
     ap.add_argument("--port", type=int, default=8777)
-    ap.add_argument("--bind", default="127.0.0.1")    # Внешние корни ассетов: `имя=путь`, можно несколько раз. По умолчанию
+    ap.add_argument("--bind", default="127.0.0.1")
+    ap.add_argument("--hub", action="store_true",
+                    help="стартовать ПУСТУЮ студию: проект выбирается в UI")    # Внешние корни ассетов: `имя=путь`, можно несколько раз. По умолчанию
     # подключаем то, что есть в репозитории, - модели и сгенерированные арты.
     # Дефолт нужен, чтобы студия показывала GLB сразу, без флагов: пустая
     # панель «Доступные GLB» выглядит как поломка, а не как «забыли --assets».
@@ -548,6 +783,13 @@ def main() -> None:
     # остаётся пустым, и панель ассетов молча показывает одни PNG без единого
     # GLB. Ошибка тихая и потому неприятная — ровно как с прежним дефолтом `web`.
     repo = find_repo_root(root) or game_dir.parents[1]
+    # Единое состояние сервера. В hub-режиме проекта нет вообще: страница
+    # студии отдаётся из общего каталога, а уровни/ассеты появляются после
+    # POST /__open. LAST_PROJECT — тот же файл, что читает tools/studio.py.
+    global LAST_PROJECT
+    LAST_PROJECT = repo / "logs" / "studio-project.txt"
+    STATE["repo"] = repo
+    STATE["root"] = None if a.hub else root
     # Общий каталог студии: страница и её скрипты, ОДНИ на все игры. См.
     # `studio_target`. Если каталога нет (репозиторий старее этой правки), или в
     # нём нет страницы, остаётся прежнее поведение — студия из самой игры.
@@ -577,12 +819,14 @@ def main() -> None:
     # Строгость сохранена: `--dir <игра>/web3d` по-прежнему падает, потому что
     # там нет `web3d/levels.json` — а именно эту ошибку проверка и ловила.
     manifest = root / "web3d" / "levels.json"
-    if not manifest.is_file():
+    if not a.hub and not manifest.is_file():
         sys.exit(f"{root}: не похоже на каталог игры - нет web3d/levels.json.\n"
                  f"Запускайте из корня игры или укажите --dir <каталог игры> "
                  f"(не `web`: веб-рантайм лежит в web3d/).\n"
                  f"Новая игра: newgame.cmd <имя> создаёт скелет.")
-    handler = functools.partial(Handler, directory=str(root))
+    # Корень больше НЕ замораживается в partial: он живёт в STATE и меняется
+    # из UI. См. свойство Handler.directory.
+    handler = Handler
     # Windows разрешает ВТОРОЙ bind на тот же порт при allow_reuse_address, и
     # тогда два сервера начинают ДЕЛИТЬ соединения: часть запросов уходит
     # старому (без новых эндпоинтов) и отвечает 404/501, часть - новому. Симптом
@@ -596,7 +840,11 @@ def main() -> None:
               f"порт.", flush=True)
     probe.close()
     with Server((a.bind, a.port), handler) as httpd:
-        print(f"serving {root} on http://{a.bind}:{a.port}/", flush=True)
+        where = "ПУСТАЯ СТУДИЯ (проект выбирается в UI)" if a.hub else str(root)
+        print(f"serving {where} on http://{a.bind}:{a.port}/", flush=True)
+        if a.hub:
+            print(f"  найдено проектов: {len(list_projects(repo))}"
+                  f"  ->  /__projects", flush=True)
         if EXT_ROOTS:
             for nm, d in EXT_ROOTS.items():
                 print(f"  ext:{nm} -> {d}", flush=True)

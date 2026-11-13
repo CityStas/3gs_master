@@ -23,9 +23,10 @@ rem --- a flag is not a project: `agent.cmd --help` once wrote "--help" into act
 if "%PROJ:~0,1%"=="-" set "PROJ="
 rem --- `agent.cmd three/test_space` and `agent.cmd skateshop` both have to mean the
 rem --- folder: projects live in projects/<engine>/<name> since 2026-11-08, and the
-rem --- resolution rules (absolute, cwd, repo root, projects/<engine>/, legacy
-rem --- projects/games/) are owned by project_layout.py. Batch must not re-implement
-rem --- them - it calls the same resolver the stacks use.
+rem --- resolution rules (absolute, cwd, repo root, projects/<path>,
+rem --- projects/<engine>/<name>) are owned by project_layout.py. There is NO
+rem --- legacy projects/games/ parent any more. Batch must not re-implement the
+rem --- rules - it calls the same resolver the stacks use.
 if not "%PROJ%"=="" if not exist "%PROJ%" (
   for /f "usebackq delims=" %%P in (`%PY% "%GS_ROOT%tools\find_project.py" "%PROJ%" 2^>nul`) do set "PROJ=%%P"
 )
@@ -96,7 +97,7 @@ cd /d "%GS_ROOT%"
 rem --- Pin the active game into the SYSTEM PROMPT, not just the environment.
 rem --- pi starts in the repo root and never reads THREE_PROJECT, so without this
 rem --- the model only knows <cwd>=repo-root: it cannot tell which game it is in,
-rem --- guesses a folder from the task wording ("demo" -> projects/games/demo) and invents
+rem --- guesses a folder from the task wording ("demo" -> projects/three/demo) and invents
 rem --- files it was never told about. `--append-system-prompt` is applied on every
 rem --- launch, so the answer does not depend on the model remembering to read a file.
 rem ---
@@ -124,7 +125,7 @@ if /i "%ENGINE%"=="godot" (
 )
 
 set "PI_SP="
-if not "%PROJ%"=="" set "PI_SP=Active project: %PROJ% (engine: %ENGINE%) - work ONLY inside it; never create another project or a sibling folder unless the user asks for one by name. The working dir stays the repo root; reach the project with a relative path such as projects/games/<name>/ - that is where your files go. data\active_project.txt and THREE_PROJECT hold the same value."
+if not "%PROJ%"=="" set "PI_SP=Active project: %PROJ% (engine: %ENGINE%) - work ONLY inside it; never create another project or a sibling folder unless the user asks for one by name. The working dir stays the repo root; reach the project with a relative path such as projects/<engine>/<name>/ - that is where your files go. data\active_project.txt and THREE_PROJECT hold the same value."
 if not "%PROJ%"=="" (
   rem --- also keep the file in sync so the studio and any in-session read agree
   >"%GS_ROOT%data\active_project.txt" echo %PROJ%

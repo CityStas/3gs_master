@@ -29,20 +29,26 @@
 
 ## Раскладка: `projects/<engine>/<project>` и голый `pi`
 
-С 2026-11-08 проекты лежат по движкам, и `engine.json` может стоять как на самом
-проекте, так и на папке движка:
+С 2026-11-08 проекты лежат по движкам. `engine.json` может стоять как на самом
+проекте, так и на папке движка — но **наследование работает не везде**:
 
-    projects/three/<name>/engine.json     {"engine":"threejs"}
-    projects/godot/<name>/                наследует projects/godot/engine.json
-    projects/unity/<name>/                наследует projects/unity/engine.json
-    projects/roblox/<name>/               наследует projects/roblox/engine.json
+    projects/three/<name>/                {"engine":"threejs"}  (или дефолт)
+    projects/godot/<name>/engine.json     {"engine":"godot"}    ← нужен свой
+    projects/unity/<name>/engine.json     {"engine":"unity"}    ← нужен свой
+    projects/roblox/<name>/engine.json    {"engine":"roblox"}   ← нужен свой
 
-Раскладка описана **в одном месте** — `project_layout.py` в корне. Его читают все
-четыре стека (`threejs/config.py`, `godot/gdmaster/config.py`,
-`unity/unimaster/config.py`, `roblox/rbxmaster/config.py`), `tools/find_project.py`
-(через него — `agent.cmd` и `dev.cmd`) и `tools/pi_launch.py`. Старый
-`projects/games/<name>` продолжает резолвиться как legacy, но это не второй источник
-правды: нового там не появляется.
+`project_layout.nearest_engine()` поднимается к маркеру папки движка, и его читают
+все четыре стека (`threejs/config.py`, `godot/gdmaster/config.py`,
+`unity/unimaster/config.py`, `roblox/rbxmaster/config.py`), `tools/find_project.py`,
+`tools/pi_launch.py` и MCP-серверы. Но `agent.cmd`, `pi-here.cmd` и
+`pi-extensions/engine-gate.ts` открывают маркер **самого проекта** напрямую и без
+него берут дефолт `threejs`. Поэтому у Godot/Unity/Roblox проекта свой `engine.json`
+обязателен, иначе сессия получит Three.js-профиль.
+
+Раскладка описана **в одном месте** — `project_layout.py` в корне. Старого
+`projects/games/` больше нет ни как родителя, ни как legacy-фолбэка: `find_project()`
+ищет только cwd, корень репозитория, `projects/<path>` и `projects/<engine>/<name>`.
+Второй источник правды удалён намеренно.
 
 **Голый `pi` внутри проекта = `agent.cmd` для этого проекта.** `cmd\pi.cmd`
 (ставится как `pi` через `cmd\pi-shim.cmd --install`, forwarder живёт в
@@ -76,7 +82,10 @@
 ## Где работать: только активный проект, новых не создавать
 
 **Агент работает ВНУТРИ активного проекта.** Папку заводит лаунчер
-(`dev.cmd <имя>`, `studio.cmd <имя>`) и записывает её в `data/active_project.txt`.
+`dev.cmd <имя>` и записывает её в `data/active_project.txt`. `studio.cmd`
+без аргументов теперь стартует ПУСТОЙ и ничего не создаёт: проект выбирается
+в UI (только `projects/three/`), а новый проект создаётся там же через
+`POST /__new`.
 Внутри может быть **пусто** — это нормальный старт: лаунчер ничего не
 раскладывает, файлы создаёт сам агент. Если пользователь не сказал словами
 «создай новый проект X» — создавать нечего.
@@ -403,19 +412,29 @@ cd /d F:\Pets\Projects\local_tools\3GS_Master && serve-all.cmd && cmd\doctor.cmd
 
 **Студия — отдельный инструмент, и агента в ней нет.** Модель работает только
 через консольный `pi`, а студия (`studio.cmd`) — живой просмотр и ручная правка:
-уровень 2D/3D, превью картинок и просмотрщик GLB. Она **необязательна** и
-запускается **параллельно, в любой момент, независимо** от агента — отдельным
-окном:
+дерево слоёв и узлов, 2D-вьюпорт, инспектор, библиотека ассетов, картинки и GLB.
+Она **необязательна** и запускается **параллельно, в любой момент, независимо**
+от агента — одним файлом, двойным щелчком:
 
 ```cmd
-cd /d F:\Pets\Projects\local_tools\3GS_Master && studio.cmd <игра>
+cd /d F:\Pets\Projects\local_tools\3GS_Master && studio.cmd
 ```
+
+Студия стартует **пустой** (`serve.py --hub`): никакого консольного меню и
+никаких моделей. `GET /__projects` показывает ТОЛЬКО `projects/three/<имя>`,
+выбор уходит на `POST /__open` и переключает корень сервера на живом соединении,
+`POST /__new` создаёт новый проект каноническим `tools/project_init.py`,
+`POST /__close` возвращает пустую студию. `studio/launcher.js` работает без
+импортов и без проекта; `studio/app.js` (ему нужны `scene.js` и `vendor/three`
+из каталога игры) грузится динамически только после выбора. Флаг `--models`
+нужен лишь когда рядом работает `pi`; порт — `studio.cmd --port 8788`.
+Совместимость: `studio.cmd three/my_game` сразу открывает проект.
 
 Смысл связки: агент правит `level*.json` в консоли, а студия показывает
 результат — открой или перезагрузи страницу, и видно, что он изменил; там же
 это можно поправить мышью. Ни чата, ни ручки `/__ask` у сервера студии нет:
 браузер не порождает процессы, а запускать агента, умеющего писать файлы, из
-сервера незачем. Подробности в `README.md` («Быстрый старт») и `STUDIO.md`.
+сервера незачем. Подробности в `README.md` («Студия Three.js») и `STUDIO.md` (§0).
 
 Если `serve-all.cmd` не открыл окна — это не поломка: оба порта уже заняты
 (осиротевший `llama-server` пережил закрытие консоли). Кто держит:

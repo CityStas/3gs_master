@@ -10,17 +10,23 @@ if not exist "%PY%" (
 )
 
 
-rem --- The whole studio in ONE window: the models (:8080, :8081) and the game
-rem --- server (:8777) run as children of this console, so a single Ctrl+C stops
-rem --- everything. See tools/studio.py for the details.
+rem === 3GS STUDIO — ОДИН ФАЙЛ, ОДИН ДВОЙНОЙ ЩЕЛЧОК =======================
+rem --- Студия стартует ПУСТОЙ: без проекта, без консольного меню, без моделей.
+rem --- Интерфейс показывает ТОЛЬКО проекты из projects\three\ (это редактор
+rem --- three.js-сцен). Здесь же, в UI, можно создать НОВЫЙ проект — студия
+rem --- сам разложит канонический стек в projects\three\<имя>.
+rem --- После выбора сервер переключает корень на живом соединении и студия
+rem --- полностью инициализирует выбранный проект.
 rem ---
-rem ---   studio.cmd                  a game from projects\games\ (the only one)
-rem ---   studio.cmd test_game_1      a specific game; the folder must exist
-rem ---   studio.cmd my_game 8788     another port
-rem ---   studio.cmd --no-models      studio only, no models (starts instantly)
+rem ---   studio.cmd                       пустая студия + выбор проекта в UI
+rem ---   studio.cmd three/my_game         (совместимость) сразу открыть проект
+rem ---   studio.cmd three/my_game 8788    другой порт
+rem ---   studio.cmd --models              + модели для консольного агента pi
 rem ---
-rem --- Nothing is created: a missing folder is an error, an empty one opens an
-rem --- empty scene. The standard stack is laid down by newgame.cmd, on purpose.
+rem --- Ничего не создаётся: студия только открывает то, что уже лежит в
+rem --- projects\. Скелет раскладывает cmd\init.cmd, и только по явной просьбе.
+rem --- Сервер (:8777) — ребёнок этого окна: один Ctrl+C гасит всё.
+rem --- Подробности: tools\studio.py, tools\web\serve.py (флаг --hub).
 
 "%PY%" "%GS_ROOT%tools\studio.py" %*
 set "RC=%errorlevel%"

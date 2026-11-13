@@ -19,7 +19,7 @@ agent_created: true
 # Локальная генерация — в первую очередь
 
 Правило проекта. Внутри `F:\Pets\Projects\local_tools\3GS_Master` (в первую
-очередь `projects/games/<name>/`) свой арт делается **своей** связкой. Скачать готовое —
+очередь `projects/<engine>/<name>/`) свой арт делается **своей** связкой. Скачать готовое —
 не грех, но это **второй** эшелон.
 
 **Канонический источник правила — сам проект:**
@@ -99,7 +99,7 @@ Real-ESRGAN, headless-прогон держит сотни МБ и стоит р
 
 ```bash
 cd F:/Pets/Projects/local_tools/3GS_Master
-./.venv/Scripts/python.exe tools/generate.py --project projects/games/<name> --jobs <plan.json>
+./.venv/Scripts/python.exe tools/generate.py --project projects/three/<name> --jobs <plan.json>
 ./.venv/Scripts/python.exe tools/generate.py --status     # кто держит карту
 ```
 
@@ -115,7 +115,7 @@ cd F:/Pets/Projects/local_tools/3GS_Master
 
 ```json
 {
-  "project": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\projects\games\\my_game",
+  "project": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\projects\\three\\my_game",
   "jobs": [
     { "kind": "image", "name": "far-back-2", "prompt": "…",
       "aspect_ratio": "21:9 (Ultrawide)", "megapixels": 1.5, "steps": 8, "seed": 11,

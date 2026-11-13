@@ -72,7 +72,7 @@ a Unity project.
 
 The working directory is the repository root. The active project is recorded in
 `data/active_project.txt` and in the launch prompt (`Active project: ... (engine: unity)`).
-Reach it with its relative path (`projects/games/<name>/`) or the absolute path the user gave.
+Reach it with its relative path (`projects/unity/<name>/`) or the absolute path the user gave.
 Work only inside the active project; never create a sibling project unless the user names one.
 
 Never guess a project folder from the task wording. Never invent files: check with `ls` or

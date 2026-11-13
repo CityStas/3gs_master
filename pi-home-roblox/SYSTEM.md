@@ -98,7 +98,7 @@ the licence, and never ship an asset whose licence you did not read.
 
 The working directory is the repository root. The active project is recorded in
 `data/active_project.txt` and in the launch prompt (`Active project: ... (engine: roblox)`).
-Reach it with its relative path (`projects/games/<name>/`). Work only inside the active
+Reach it with its relative path (`projects/roblox/<name>/`). Work only inside the active
 project; never create a sibling project unless the user names one.
 
 Never guess a project folder from the task wording. Never invent files: `rbx_list_files` or

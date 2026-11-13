@@ -5,35 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>3GS Studio — редактор сцен на Three</title>
 <!--
-  Студия — это ИНСТРУМЕНТ ПРОСМОТРА И РУЧНОЙ ПРАВКИ уровня: визуальный редактор
-  2D/3D, превью сгенерированных картинок и 3D-просмотрщик GLB. Агента здесь
-  НЕТ: модель работает только через консольный `pi` (`agent.cmd`), а студия
-  показывает результат — открывается в любой момент независимо от агента.
+  Студия — инструмент просмотра и ручной правки уровня: визуальный редактор
+  2D/3D, превью картинок и 3D-просмотрщик GLB. Агента здесь НЕТ.
 
-  Почему одна страница, а не три. Панели делят ОДНО состояние: выбрать узел в
-  списке, посмотреть его текстуру в превью, проверить связанную модель в 3D —
-  это один рабочий ход, а не три разных. Разнеся их по страницам, пришлось бы
-  таскать состояние через URL и терять его при каждом переходе.
+  Раскладка намеренно повторяет профессиональный редактор уровней
+  (PB3D/Unity-подобный): сверху шапка с действиями, под ней тулбар вида,
+  слева дерево сцены, в центре вьюпорт, справа инспектор, снизу библиотека
+  ассетов, в самом низу статус-строка. Плотно, без «воздуха»: в редакторе
+  каждый пиксель занят работой, а не отступами.
 
-  Favicon — data-URI. Это не украшение: файла нет, а запрошенный, но
-  отсутствующий файл даёт ошибку в консоли, и её читают гейты (см. MEMORY:
-  «просимый, но отсутствующий файл = ошибка консоли, и из JS её не подавить»).
+  Favicon — data-URI: запрошенный, но отсутствующий файл даёт ошибку в
+  консоли, и её читают гейты.
 -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23202838'/%3E%3Cpath d='M16 5 27 11.5v13L16 31 5 24.5v-13z' fill='none' stroke='%236fd3ff' stroke-width='2'/%3E%3Cpath d='M16 5v13l11-6.5M16 18v13' fill='none' stroke='%236fd3ff' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2315181e'/%3E%3Cpath d='M16 5 27 11.5v13L16 31 5 24.5v-13z' fill='none' stroke='%2379b8f2' stroke-width='2'/%3E%3Cpath d='M16 5v13l11-6.5M16 18v13' fill='none' stroke='%2379b8f2' stroke-width='2'/%3E%3C/svg%3E">
 <!--
-  Import map — не украшение, а необходимое звено.
-
-  GLTFLoader и OrbitControls взяты из аддонов three 0.186.1 (тот же номер, что у
-  сборки в `games/jelly/node_modules`). Аддоны импортируют three БАРЕ-именем
-  (`import {...} from 'three'`), а в браузере без карты импорта баре-имя не
-  резолвится вовсе: «Failed to resolve module specifier "three"». Карта
-  указывает на наш ВЕНДОРНЫЙ файл — тот самый, что грузит scene.js, поэтому в
-  сцене не появляется второй копии three (а две копии несовместимы по
-  `instanceof`, и объекты одной выглядят для другой чужими).
-
-  `three/addons/` добавлен для тех же аддонов: их собственные импорты соседей
-  идут через него (`../utils/SkeletonUtils.js` резолвится относительно файла, но
-  документация и часть кода используют баре-путь).
+  Import map — не украшение: аддоны three импортируют `three` баре-именем, а
+  без карты импорта браузер это имя не резолвит вовсе.
 -->
 <script type="importmap">
 {
@@ -45,354 +32,617 @@
 </script>
 <style>
 :root{
-  /* ---- МАСШТАБ ИНТЕРФЕЙСА ----------------------------------------------
-     Раньше ВСЕ размеры были в px (шрифты 9.5–14, панели константами), и от окна
-     зависели только ширины панелей. На большом мониторе это читалось как мелкий
-     шрифт: подписи 11 px не растут вместе с экраном. Теперь размеры текста и
-     панелей — в rem, а rem задаёт ОДНА переменная `--ui-size`, то есть одна
-     величина увеличивает весь интерфейс разом: подписи, кнопки, дерево, лог.
+  /* Масштаб всего интерфейса — ОДНА переменная. Все размеры в rem, поэтому
+     A−/A+ меняют разом шрифты, панели, дерево, карточки. */
+  --ui-size: clamp(12px, 0.36vw + 8.2px, 16px);
 
-     По умолчанию `--ui-size` текучая: от 13 px на узком окне до 19 px на
-     широком (0.42vw + 8.4px). Кнопки «A−/A+» в шапке переопределяют её вручную
-     и запоминаются в localStorage (см. app.js). */
-  --ui-size: clamp(13px, 0.42vw + 8.4px, 19px);
-
-  /* Ширины панелей — от ОКНА и в rem, чтобы росли вместе с масштабом.
-     `flex:0 0 auto` у правой колонки раньше не давал ей сжиматься, и на узком
-     окне (или при браузерном зуме, который уменьшает число CSS-пикселей) она
-     вылезала за край. */
-  --bg:#0f1116; --bg2:#151922; --bg3:#1b2130; --bg4:#222a3a;
-  --fg:#e6ecf5; --fg2:#9fb0c8; --dim:#6b7a90;
-  --ac:#6fd3ff; --ac2:#7ee0a8; --warn:#ffb454; --err:#ff6a6a; --hot:#ffd45a;
-  --line:#26303f;
+  /* Палитра — как у редактора уровней: почти чёрный фон, панели на полтона
+     светлее, стальной синий акцент, зелёный «живой» индикатор. */
+  --bg:#0e1014; --bg2:#15181e; --bg3:#1b1f27; --bg4:#232833; --bg5:#2b313d;
+  --fg:#dfe4ec; --fg2:#98a3b4; --dim:#66707f;
+  --ac:#79b8f2; --ac2:#59d99a; --warn:#e8a35c; --err:#e2584c; --hot:#ffd166;
+  --line:#2a303b;
   --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
-}
-*{box-sizing:border-box}
-/* `font-size` только на html: если задать его и на body, `rem` внутри body
-   начнёт считаться от body, и масштаб перестанет быть единым.
 
-   `height:100%` здесь ОБЯЗАТЕЛЕН, и это не формальность. У `body` стоит
-   `height:100%`, а процентная высота считается от высоты родителя; у `html`
-   высота была `auto`, то есть «по содержимому». Круг замыкался: содержимое
-   мерилось по body, body — по html. В итоге `#app` получал не высоту окна, а
-   сумму шапки и журнала (~188 px), `flex:1` у `.panes` отдавал остаток, а
-   остатка не было — кадр уровня сжимался в 0 px, и в студии НЕ БЫЛО
-   ОТОБРАЖЕНИЯ: канвас оставался дефолтным 300x150 и его обрезало.
-   Симптом выглядел как «scene.js сломался», хотя сцена строилась нормально. */
-html{font-size:var(--ui-size);height:100%}
-body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--fg);
-  font:1rem/1.45 system-ui, "Segoe UI", Roboto, sans-serif}
-/* ------------------------------------------------------------- раскладка */
-/* Агента в студии больше нет, поэтому левой колонки-чата нет и в разметке:
-   остаётся рабочая область (кадр + правая боковая панель). Разделитель ширины
-   и переменная `--left` тоже ушли — они делили именно чат и кадр.
-   `--side` — правая панель конкретной вкладки (инспектор уровня, панель GLB);
-   `--asset` — панель картинок. Обе текучие и в rem, чтобы расти вместе с
-   масштабом интерфейса. */
-:root{
-  --side: clamp(15.4rem, 19vw, 24.6rem);
+  /* Ширины панелей — в rem: растут вместе с масштабом интерфейса. */
+  --scene: clamp(14rem, 17vw, 20rem);
+  --side: clamp(15rem, 17.5vw, 20.5rem);
   --asset: clamp(17rem, 24vw, 30.8rem);
 }
+*{box-sizing:border-box}
+/* height:100% на html обязателен: у body height:100%, а процент считается от
+   родителя. С `auto` у html круг замыкался, #app получал не высоту окна, и
+   кадр уровня сжимался в 0 px. */
+html{font-size:var(--ui-size);height:100%}
+body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--fg);
+  font:1rem/1.4 system-ui, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing:antialiased}
 #app{display:flex;height:100%;overflow:hidden}
+#right{flex:1 1 0;display:flex;flex-direction:column;min-width:0;overflow:hidden;position:relative}
 
-/* -------------------------------------------------------- правая область */
-/* `flex:1 1 0` + `min-width:0`: без нулевого минимума флекс-элемент не даёт
-   себя сжать ниже содержимого, и правая часть выталкивала себя за окно.
-   `overflow:hidden` на всех уровнях — чтобы переполнение ОБРЕЗАЛОСЬ, а не
-   рисовалось поверх соседней панели. */
-#right{flex:1 1 0;display:flex;flex-direction:column;min-width:0;overflow:hidden}
-.topbar{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid var(--line);
-  background:var(--bg2);flex-wrap:wrap}
-/* Логотип переехал в шапку: раньше он открывал левую колонку-чат, которой больше
-   нет. Здесь он просто называет инструмент и не занимает отдельной полосы. */
-.brand{display:flex;align-items:baseline;gap:7px;margin-right:10px;padding-right:10px;
-  border-right:1px solid var(--line)}
-.brand b{font-size:1.077rem;letter-spacing:.3px}
-.brand .tag{font-size:0.808rem;color:var(--dim);font-family:var(--mono)}
-/* Каталог игры. Показываем всегда: без этого на новой игре нельзя понять, данные
-   какой игры открыты, и правка ушла бы не туда. Подпись «каталог: …» ставит JS. */
-#gamepath{font-family:var(--mono);font-size:0.808rem;color:var(--dim);
-  max-width:38ch;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#gamepath b{color:var(--fg);font-weight:600}
-.tabs{display:flex;gap:4px;margin-right:8px}
-.tab{padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg3);
-  color:var(--fg2);cursor:pointer;font-size:0.962rem}
-.tab.on{background:var(--ac);border-color:var(--ac);color:#06222f;font-weight:600}
-#sideToggle{margin-left:auto}
-/* Вердикт линтера. Красный — это не «мелочь»: уровень со ссылкой на файл,
-   которого нет, не нарисует НИЧЕГО, и без этой кнопки отчёт агента «готово»
-   ничем не отличался от правды. */
-.lint{border-color:var(--line);color:var(--fg2)}
-.lint.ok{border-color:var(--ac2);color:var(--ac2)}
-.lint.bad{border-color:var(--err);color:var(--err);font-weight:600}
-/* Масштаб интерфейса — компактная группа из трёх кнопок рядом с «Панель». */
-.uiscale{display:flex;align-items:center;gap:2px;margin-left:8px}
-.uiscale button{padding:5px 7px;font-size:0.846rem}
-.uilabel{min-width:3.6rem;font-family:var(--mono);color:var(--fg2)}
+/* ================================================================ шапка */
+.topbar{display:flex;align-items:center;gap:6px;padding:4px 8px;min-height:2.5rem;
+  border-bottom:1px solid var(--line);background:var(--bg2);flex-wrap:nowrap;overflow:hidden}
+.brand{display:flex;align-items:center;gap:6px;padding-right:9px;margin-right:2px;
+  border-right:1px solid var(--line);flex:0 0 auto}
+.brand .logo{width:1.3rem;height:1.3rem;flex:0 0 auto;border-radius:4px;
+  background:linear-gradient(135deg,var(--ac),#3d6ea8);position:relative}
+.brand .logo::after{content:"";position:absolute;inset:3px;border:1.5px solid #0e1014;
+  border-radius:2px;transform:rotate(45deg)}
+.brand b{font-size:0.95rem;letter-spacing:.02em;font-weight:700}
+.brand .tag{font-size:0.72rem;color:var(--dim);font-family:var(--mono);text-transform:uppercase;
+  letter-spacing:.09em}
+.menus{display:flex;align-items:center;gap:3px;flex:0 0 auto}
+.menus button{padding:4px 8px;font-size:0.8rem;background:transparent;border:1px solid transparent}
+.menus button:hover{background:var(--bg4);border-color:var(--line);color:var(--fg)}
+.menus button.hot{background:var(--hot);border-color:var(--hot);color:#2a2000;font-weight:700}
+.menus .vsep{width:1px;height:1.2rem;background:var(--line);margin:0 3px}
+.tabs{display:flex;align-items:stretch;gap:1px;margin-left:6px;flex:0 0 auto}
+.tab{padding:5px 11px;color:var(--fg2);cursor:pointer;font-size:0.82rem;
+  border-bottom:2px solid transparent;border-radius:3px 3px 0 0;user-select:none}
+.tab:hover{background:var(--bg3);color:var(--fg)}
+.tab.on{color:var(--fg);background:var(--bg3);border-bottom-color:var(--ac)}
+.spacer{flex:1 1 auto;min-width:0}
+#gamepath{font-family:var(--mono);font-size:0.74rem;color:var(--dim);
+  max-width:30ch;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+#gamepath b{color:var(--fg2);font-weight:600}
+.uiscale{display:flex;align-items:center;gap:1px;flex:0 0 auto;margin-left:4px}
+.uiscale button{padding:3px 6px;font-size:0.76rem;background:transparent;border-color:transparent;color:var(--fg2)}
+.uiscale button:hover{background:var(--bg4);border-color:var(--line)}
+.uilabel{min-width:3.1rem;font-family:var(--mono);color:var(--dim)}
+#sideToggle{margin-left:4px;flex:0 0 auto;font-size:0.78rem;padding:4px 8px}
+
+/* ================================================================ панели */
 .panes{flex:1;position:relative;min-height:0;min-width:0;overflow:hidden}
 .pane{position:absolute;inset:0;display:none;min-height:0;min-width:0;overflow:hidden}
 .pane.on{display:flex}
-/* Свёрнутая боковая колонка — весь кадр под уровень/модель. Кнопка «Панель». */
-#app.hide-side .side,#app.hide-side #assetPane{display:none}
+.pane[data-pane="level"].on{flex-direction:column}
+.pane[data-pane="game"].on{flex-direction:column}
+#app.hide-side .side,#app.hide-side .scene{display:none}
 
-/* -------------------------------------------------------- уровень: кадр */
+/* ===================================================== вкладка «Сцена» */
+/* Тулбар вида — вторая строка после шапки, как в редакторе уровней. */
+.toolbar{display:flex;align-items:center;gap:5px;padding:4px 7px;flex:0 0 auto;
+  border-bottom:1px solid var(--line);background:var(--bg2);overflow:hidden}
+/* Группа кнопок тулбара. Класс НЕ `tgroup`: он уже занят группой дерева
+   сцены, и `display:flex` отсюда склеивал строки дерева в одну. */
+.vgroup{display:flex;align-items:center;gap:2px;padding:1px;border-radius:5px;background:var(--bg)}
+.vgroup button{background:transparent;border-color:transparent;padding:3px 7px;font-size:0.79rem;color:var(--fg2)}
+.vgroup button:hover{background:var(--bg4);border-color:var(--line);color:var(--fg)}
+.vgroup button.on{background:var(--ac);border-color:var(--ac);color:#08131f;font-weight:600}
+.tlabel{font-size:0.7rem;text-transform:uppercase;letter-spacing:.09em;color:var(--dim);
+  font-family:var(--mono);padding:0 2px 0 6px;flex:0 0 auto}
+#levelSel{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:5px;
+  padding:3px 6px;font:0.79rem var(--mono);max-width:26ch;min-width:12ch;flex:0 1 auto}
+#levelSel:focus{outline:none;border-color:var(--ac)}
+#secSel{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:5px;
+  padding:3px 4px;font:0.75rem var(--mono);max-width:13ch;flex:0 0 auto}
+#secSel:focus{outline:none;border-color:var(--ac)}
+#secPrev,#secNext{padding:3px 6px}
+#levelTag{font-family:var(--mono);font-size:0.73rem;color:var(--ac2);
+  padding:1px 6px;border:1px solid #2f4a3d;background:#122019;border-radius:4px;
+  white-space:nowrap;flex:0 0 auto}
+#viewInfo{font-family:var(--mono);font-size:0.73rem;color:var(--dim);white-space:nowrap;
+  margin-left:auto;padding-right:4px;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis}
+.vsep{width:1px;height:1.25rem;background:var(--line);margin:0 3px;flex:0 0 auto}
+
+/* Рабочая область: дерево | вьюпорт | инспектор */
 #lvWrap{flex:1;display:flex;min-height:0;min-width:0;overflow:hidden}
-#cvLevel{flex:1 1 0;position:relative;min-width:0;overflow:hidden;background:#0b0d12;cursor:default}
+
+/* --- левая колонка: сцена ------------------------------------------------ */
+.scene{flex:0 0 var(--scene);width:var(--scene);min-width:0;display:flex;flex-direction:column;
+  border-right:1px solid var(--line);background:var(--bg2);overflow:hidden}
+.phead{display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--bg4);
+  border-bottom:1px solid var(--line);flex:0 0 auto}
+.ptitle{font-size:0.7rem;letter-spacing:.11em;text-transform:uppercase;color:var(--fg2);
+  font-family:var(--mono);font-weight:600}
+.pcount{margin-left:auto;font-size:0.72rem;color:var(--dim);font-family:var(--mono)}
+.ptabs{display:flex;flex:0 0 auto;border-bottom:1px solid var(--line);background:var(--bg2)}
+.ptab{padding:4px 11px;font-size:0.79rem;color:var(--dim);cursor:pointer;
+  border-bottom:2px solid transparent;user-select:none}
+.ptab:hover{color:var(--fg2);background:var(--bg3)}
+.ptab.on{color:var(--fg);border-bottom-color:var(--ac);background:var(--bg3)}
+.pfilter{padding:5px 6px;border-bottom:1px solid var(--line);flex:0 0 auto}
+.pbody{flex:1 1 auto;min-height:0;overflow:auto;padding:3px 4px}
+.pbody[hidden]{display:none}
+.pfoot{display:flex;gap:4px;padding:4px 6px;border-top:1px solid var(--line);flex:0 0 auto}
+.pfoot button{flex:1;font-size:0.78rem;padding:4px 6px}
+
+/* Дерево: строка = цветная точка + имя + счётчик (как в редакторе уровней). */
+#tree{font-family:var(--mono);font-size:0.8rem}
+.tgroup{margin-bottom:2px}
+.tname{padding:2px 4px;font-size:0.75rem;color:var(--fg2)}
+.tname.grp{display:flex;align-items:center;gap:5px;color:var(--fg);cursor:pointer;
+  border-radius:4px;padding:3px 5px;font-weight:600}
+.tname.grp::before{content:"";width:0.5rem;height:0.5rem;border-radius:2px;flex:0 0 auto;
+  background:var(--dot,var(--ac))}
+.tname.grp:hover{background:var(--bg4)}
+.tname.grp.on{background:#1d2b3a;box-shadow:inset 2px 0 0 var(--ac)}
+.tname.grp .lcnt{margin-left:auto;color:var(--dim);font-size:0.7rem;font-family:var(--mono)}
+.tname.root{color:var(--ac2);padding:3px 5px;display:flex;gap:5px;align-items:center}
+.n{display:flex;align-items:center;gap:5px;padding:2px 5px 2px 14px;border-radius:4px;
+  cursor:pointer;color:var(--fg2);white-space:nowrap;overflow:hidden}
+.n::before{content:"";width:0.35rem;height:0.35rem;border-radius:50%;flex:0 0 auto;
+  background:var(--dot,var(--dim));opacity:.75}
+.n>span{overflow:hidden;text-overflow:ellipsis}
+.n:hover{background:var(--bg4);color:var(--fg)}
+.n.sel{background:var(--ac);color:#08131f;font-weight:600}
+.n.sel::before{background:#08131f;opacity:1}
+.n.edited::after{content:"●";color:var(--hot);font-size:0.7rem;margin-left:auto}
+.n.added::after{content:"+";color:var(--ac2);font-weight:700;margin-left:auto}
+
+/* Слои: строка с глазом, замком, именем и числом узлов. */
+.lrow{display:flex;align-items:center;gap:4px;padding:2px 3px;border-radius:4px;
+  font-size:0.8rem;cursor:pointer}
+.ldot{width:0.45rem;height:0.45rem;border-radius:2px;flex:0 0 auto;
+  background:var(--dot,var(--dim))}
+.lrow:hover{background:var(--bg4)}
+.lrow.active{background:#1d2b3a;box-shadow:inset 2px 0 0 var(--ac)}
+.lrow.active .lname{color:var(--ac)}
+.icn{width:1.6rem;flex:0 0 auto;padding:1px;text-align:center;background:transparent;
+  border-color:transparent;color:var(--dim);font-size:0.85rem}
+.icn.on{color:var(--ac2)}
+.icn:hover{background:var(--bg5);border-color:var(--line)}
+.lname{flex:1;font-family:var(--mono);font-size:0.78rem;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.lcnt{color:var(--dim);font-size:0.72rem;font-family:var(--mono);padding-right:3px}
+.ltag{font-size:0.65rem;color:var(--warn);border:1px solid #5a4520;border-radius:3px;padding:0 3px}
+
+/* --- центр: вьюпорт ------------------------------------------------------ */
+#vp{flex:1 1 0;position:relative;min-width:0;min-height:0;overflow:hidden;background:#0b0d12}
+#cvLevel{position:absolute;inset:0;overflow:hidden;cursor:default}
 #cvLevel canvas{display:block}
-/* Инспектор сжимается (`flex-shrink:1`) и не имеет права вылезти: при узком
-   окне он уступает кадру, а на совсем узком — уходит вниз (см. медиазапросы). */
-.side{flex:0 1 var(--side);width:var(--side);min-width:0;max-width:50vw;
-  border-left:1px solid var(--line);background:var(--bg2);
-  overflow:auto;padding:8px;display:flex;flex-direction:column;gap:10px}
-.sec{border:1px solid var(--line);border-radius:9px;background:var(--bg3);overflow:hidden}
-.sec>h4{margin:0;padding:7px 9px;font-size:0.885rem;letter-spacing:.4px;text-transform:uppercase;
-  color:var(--fg2);background:var(--bg4);border-bottom:1px solid var(--line);display:flex;gap:6px;align-items:center}
-.sec>h4 .mini{margin-left:auto;font-size:0.808rem;color:var(--dim);text-transform:none;letter-spacing:0;font-family:var(--mono)}
-.secbody{padding:7px 9px;display:flex;flex-direction:column;gap:5px}
-.tools{display:flex;gap:5px;padding:7px 9px;flex-wrap:wrap}
-button{padding:5px 9px;border:1px solid var(--line);border-radius:7px;background:var(--bg4);
-  color:var(--fg);cursor:pointer;font-size:0.923rem}
-button:hover{border-color:var(--ac);color:var(--ac)}
-button:disabled{opacity:.4;cursor:not-allowed}
-button.on{background:var(--ac);border-color:var(--ac);color:#06222f;font-weight:600}
+/* HUD — подсказка о режиме и координатах, как строка TRANSFORM в референсе. */
+.vhud{position:absolute;left:8px;bottom:8px;display:flex;align-items:center;gap:7px;
+  padding:4px 8px;border:1px solid var(--line);border-radius:5px;background:rgba(22,26,34,.92);
+  font-family:var(--mono);font-size:0.72rem;color:var(--fg2);pointer-events:none;
+  max-width:calc(100% - 16px);white-space:nowrap;overflow:hidden}
+.vhud b{color:var(--ac);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.vhud .kk{color:var(--dim)}
+.vhud .dot{width:0.4rem;height:0.4rem;border-radius:50%;background:var(--ac2);flex:0 0 auto}
+.vhud .hs{width:1px;height:0.9rem;background:var(--line);flex:0 0 auto}
+/* Подсказка по клавишам — правый нижний угол, гаснет на узком кадре. */
+.vkeys{position:absolute;right:8px;bottom:8px;font-family:var(--mono);font-size:0.68rem;
+  color:#4d5663;pointer-events:none;text-align:right;line-height:1.5}
+.vmode{position:absolute;right:8px;top:8px;font-family:var(--mono);font-size:0.7rem;
+  color:var(--dim);padding:2px 7px;border:1px solid var(--line);border-radius:4px;
+  background:rgba(22,26,34,.85);pointer-events:none;letter-spacing:.08em}
+
+/* --- правая колонка: инспектор ------------------------------------------ */
+.side{flex:0 0 var(--side);width:var(--side);min-width:0;max-width:46vw;
+  border-left:1px solid var(--line);background:var(--bg2);display:flex;
+  flex-direction:column;overflow:hidden}
+.pscroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding:7px 8px}
+.sec{border-top:1px solid var(--line);background:var(--bg2);flex:0 0 auto}
+.sec:first-child{border-top:none}
+.sec>h4{margin:0;padding:5px 8px;font-size:0.7rem;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--fg2);background:var(--bg4);border-bottom:1px solid var(--line);
+  display:flex;gap:6px;align-items:center;cursor:pointer;user-select:none;font-family:var(--mono)}
+.sec>h4 .fold{display:inline-block;color:var(--dim);transition:transform .12s ease;font-size:0.7rem}
+.sec.collapsed>h4 .fold{transform:rotate(-90deg)}
+.sec.collapsed> *:not(h4){display:none}
+.sec>h4 .mini{margin-left:auto;font-size:0.68rem;color:var(--dim);text-transform:none;
+  letter-spacing:0;font-family:var(--mono)}
+.secbody{padding:6px 8px;display:flex;flex-direction:column;gap:5px}
+
+/* ========================================================= кнопки/поля */
+button{padding:4px 8px;border:1px solid var(--line);border-radius:5px;background:var(--bg4);
+  color:var(--fg);cursor:pointer;font-size:0.8rem;font-family:inherit;line-height:1.35}
+button:hover{border-color:#3a4553;background:var(--bg5);color:var(--fg)}
+button:disabled{opacity:.35;cursor:not-allowed}
+button.on{background:var(--ac);border-color:var(--ac);color:#08131f;font-weight:600}
 button.hot{background:var(--hot);border-color:var(--hot);color:#2a2000;font-weight:700}
 button.danger:hover{border-color:var(--err);color:var(--err)}
-
-#tree{max-height:min(38vh,26.2rem);overflow:auto;font-family:var(--mono);font-size:0.923rem;padding:4px}
-.tgroup{margin-bottom:5px}
-.tname{color:var(--fg2);padding:3px 4px;font-size:0.846rem}
-.tname.grp{color:var(--ac);background:#152030;border-radius:6px}
-.tname.root{color:var(--ac2)}
-.n{padding:3px 6px 3px 16px;border-radius:5px;cursor:pointer;color:var(--fg2);white-space:nowrap}
-.n:hover{background:var(--bg4);color:var(--fg)}
-.n.sel{background:var(--ac);color:#06222f;font-weight:600}
-.n.edited::after{content:" ●";color:var(--hot)}
-.n.added::after{content:" +";color:var(--ac2);font-weight:700}
-.lrow{display:flex;align-items:center;gap:5px;padding:2px 3px;border-radius:5px;font-size:0.923rem}
-.lrow:hover{background:var(--bg4)}
-.icn{width:1.85rem;padding:2px;text-align:center;background:transparent;border-color:transparent}
-.icn.on{color:var(--ac)}
-.lname{flex:1;font-family:var(--mono);font-size:0.885rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lcnt{color:var(--dim);font-size:0.808rem;font-family:var(--mono)}
-.ltag{font-size:0.731rem;color:var(--warn);border:1px solid var(--warn);border-radius:4px;padding:0 3px}
-
-.irow{display:flex;gap:8px;align-items:baseline;padding:2px 0;font-size:0.923rem}
-.ik{color:var(--dim);flex:0 0 8.3rem;font-size:0.885rem}
-.iv{flex:1;font-family:var(--mono);font-size:0.885rem;word-break:break-word}
-.iv.mono{font-family:var(--mono)}
-.irow.mono .iv{font-family:var(--mono)}
-.irow.link .iv{color:var(--ac2)}
-i.warn,.warn{display:block;color:var(--warn);font-size:0.885rem;padding:5px 7px;background:#2a2214;
-  border:1px solid #5a4520;border-radius:6px;line-height:1.4}
-.dim{color:var(--dim);font-size:0.885rem;padding:4px 0}
-input.num{width:5.5rem;background:var(--bg);color:var(--fg);border:1px solid var(--line);
-  border-radius:5px;padding:3px 5px;font:0.885rem var(--mono)}
+input.num{width:5.2rem;background:var(--bg);color:var(--fg);border:1px solid var(--line);
+  border-radius:4px;padding:2px 5px;font:0.78rem var(--mono)}
 input.num:focus{outline:none;border-color:var(--ac)}
 input.txt{width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--line);
-  border-radius:6px;padding:4px 7px;font:0.885rem var(--mono)}
+  border-radius:4px;padding:3px 7px;font:0.78rem var(--mono)}
 input.txt:focus{outline:none;border-color:var(--ac)}
-.iacts{display:flex;gap:6px;margin-top:8px}
-.iacts button{flex:1}
-#viewInfo{font-family:var(--mono);font-size:0.846rem;color:var(--dim)}
+input.txt::placeholder{color:#4d5663}
 
-/* ---------------------------------------------------------- превью картинок */
-#assetFilter{padding:5px 7px;border-bottom:1px solid var(--line)}
+/* ====================================================== инспектор: строки */
+.irow{display:flex;gap:8px;align-items:baseline;padding:2px 0;font-size:0.8rem;
+  border-bottom:1px dashed rgba(42,48,59,.55)}
+.irow:last-child{border-bottom:none}
+.ik{color:var(--dim);flex:0 0 6.6rem;font-size:0.73rem;text-transform:uppercase;
+  letter-spacing:.04em;font-family:var(--mono)}
+.iv{flex:1;font-family:var(--mono);font-size:0.78rem;word-break:break-word;
+  overflow-wrap:anywhere;min-width:0}
+.iv.mono{font-family:var(--mono)}
+.irow.link .iv{color:var(--ac2)}
+.warn{display:block;color:var(--warn);font-size:0.75rem;padding:5px 7px;background:#241d12;
+  border:1px solid #4a3a1c;border-radius:5px;line-height:1.4}
+.dim{color:var(--dim);font-size:0.76rem;padding:3px 0}
+.iacts{display:flex;gap:5px;margin-top:7px}
+.iacts button{flex:1}
+/* Пустой инспектор — не «ничего не выбрано», а справка по управлению. */
+.empty{color:var(--dim);font-size:0.76rem;line-height:1.7}
+.empty h5{margin:0 0 6px;font-size:0.72rem;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--fg2);font-family:var(--mono);font-weight:600}
+.empty kbd{display:inline-block;min-width:1.2rem;text-align:center;padding:0 3px;
+  border:1px solid var(--line);border-radius:3px;background:var(--bg3);
+  font:0.7rem var(--mono);color:var(--fg2);flex:0 0 auto;margin-right:7px}
+.empty .er{display:flex;gap:0;align-items:baseline;padding:1px 0}
+.empty .er>span{flex:1;min-width:0;font-size:0.74rem}
+
+/* ====================================================== библиотека ассетов */
+#assetBar{flex:0 0 auto;height:clamp(8.5rem, 22vh, 13.5rem);display:flex;flex-direction:column;
+  border-top:1px solid var(--line);background:var(--bg2);min-height:0}
+.abhead{display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg4);
+  border-bottom:1px solid var(--line);flex:0 0 auto}
+.abhead input.txt{max-width:16rem}
+.abhead .sp{flex:1}
+#lvAssetGrid{flex:1;overflow:auto;padding:6px;display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(5.6rem,1fr));gap:5px;align-content:start;
+  grid-auto-rows:max-content}
+.acard{border:1px solid var(--line);border-radius:4px;overflow:hidden;cursor:pointer;
+  background:var(--bg3);min-width:0}
+.acard:hover{border-color:var(--ac);background:var(--bg4)}
+.acard img{width:100%;height:2.8rem;object-fit:contain;display:block;
+  background:repeating-conic-gradient(#1d222a 0% 25%, #171b22 0% 50%) 0/14px 14px}
+.acard .cap{padding:2px 3px 0;font-size:0.66rem;font-family:var(--mono);color:var(--fg2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acard .sub{padding:0 3px 2px;font-size:0.6rem;font-family:var(--mono);color:#4d5663;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acard.bad{opacity:.3}
+
+/* =========================================================== статус-строка */
+#statusbar{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:2px 8px;
+  min-height:1.45rem;border-top:1px solid var(--line);background:var(--bg4);
+  font:0.7rem var(--mono);color:var(--dim);white-space:nowrap;overflow:hidden}
+#statusbar .dot{width:0.45rem;height:0.45rem;border-radius:50%;background:var(--ac2);flex:0 0 auto}
+#statusbar .dot.busy{background:var(--warn)}
+#statusbar b{color:var(--fg2);font-weight:600}
+#statusbar .sp{flex:1}
+#logToggle{background:transparent;border-color:transparent;color:var(--dim);
+  padding:0 6px;font:0.7rem var(--mono)}
+#logToggle:hover{color:var(--ac);background:transparent;border-color:transparent}
+
+/* ============================================================== журнал */
+/* Журнал — выдвижной ящик поверх контента: в статус-строке он не помещается,
+   а постоянно занимать 120 px в редакторе нельзя. */
+#logbox{position:absolute;left:0;right:0;bottom:1.45rem;height:30vh;z-index:60;
+  border-top:1px solid var(--line);background:var(--bg2);display:flex;flex-direction:column;
+  transform:translateY(calc(100% + 2rem));transition:transform .16s ease;
+  box-shadow:0 -8px 24px rgba(0,0,0,.45)}
+#logbox.open{transform:none}
+#logbox h4{margin:0;padding:4px 9px;font-size:0.7rem;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--fg2);background:var(--bg4);border-bottom:1px solid var(--line);
+  font-family:var(--mono);display:flex;align-items:center;gap:6px}
+#logbox h4 .mini{margin-left:auto;color:var(--dim);text-transform:none;letter-spacing:0}
+#logbox h4 button{padding:1px 6px;font-size:0.7rem}
+#log{flex:1;overflow:auto;padding:4px 9px;font-family:var(--mono);font-size:0.75rem}
+.logline{padding:1px 0;color:var(--fg2);white-space:pre-wrap;border-bottom:1px solid rgba(42,48,59,.35)}
+.logline.warn{color:var(--warn)}
+.logline.err{color:var(--err)}
+
+/* ================================================== превью картинок */
 #previewWrap{flex:1 1 0;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
 #previewBig{flex:1;display:flex;align-items:center;justify-content:center;overflow:auto;
   min-height:0;background:#0b0d12;padding:12px}
 #previewBig img{max-width:100%;max-height:100%;image-rendering:pixelated;
-  background:repeating-conic-gradient(#20242c 0% 25%, #171a20 0% 50%) 0/22px 22px;border-radius:6px}
-#previewInfo{padding:6px 10px;border-top:1px solid var(--line);font-family:var(--mono);font-size:0.885rem;color:var(--fg2)}
-#assetPane{flex:0 1 var(--asset);width:var(--asset);min-width:0;max-width:50vw;
+  background:repeating-conic-gradient(#20242c 0% 25%, #171a20 0% 50%) 0/22px 22px;border-radius:4px}
+#previewInfo{padding:4px 10px;border-top:1px solid var(--line);font-family:var(--mono);
+  font-size:0.75rem;color:var(--fg2)}
+#assetPane{flex:0 0 var(--asset);width:var(--asset);min-width:0;max-width:50vw;
   border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow:hidden;
   background:var(--bg2)}
-#assetFilterBar{display:flex;gap:6px;align-items:center;padding:6px 7px;border-bottom:1px solid var(--line)}
-#assetFilterBar .dim{white-space:nowrap;font-family:var(--mono);font-size:0.808rem}
-#assetGrid{flex:1;overflow:auto;padding:7px;display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(7.5rem,1fr));gap:6px;align-content:start;
-  /* `grid-auto-rows` задан ЯВНО, и это не украшение. С `auto` строки схлопывались
-     до 2px: у карточки `overflow:hidden` (нужен, чтобы картинка не вылезала за
-     скругление), а такой элемент для раскладки сетки вносит min-content = 0, и
-     Chromium считал высоту строки по нему. Карточка сжималась до рамки, а `img`
-     внутри (74px) обрезался — панель выглядела как список мелких подписей без
-     превью. `max-content` берёт высоту по содержимому и снимает вопрос. */
+#assetFilterBar{display:flex;gap:6px;align-items:center;padding:5px 7px;
+  border-bottom:1px solid var(--line);background:var(--bg4)}
+#assetFilterBar .dim{white-space:nowrap;font-family:var(--mono);font-size:0.72rem}
+#assetGrid{flex:1;overflow:auto;padding:6px;display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(7.2rem,1fr));gap:5px;align-content:start;
+  /* grid-auto-rows:auto схлопывал строки до 2px (overflow:hidden + min-content=0). */
   grid-auto-rows:max-content}
-.card{border:1px solid var(--line);border-radius:7px;overflow:hidden;cursor:pointer;background:var(--bg3)}
+.card{border:1px solid var(--line);border-radius:4px;overflow:hidden;cursor:pointer;background:var(--bg3)}
 .card:hover{border-color:var(--ac)}
 .card.bad{opacity:.35}
-.card img{width:100%;height:5.7rem;object-fit:contain;display:block;
+.card img{width:100%;height:5.4rem;object-fit:contain;display:block;
   background:repeating-conic-gradient(#20242c 0% 25%, #171a20 0% 50%) 0/18px 18px}
-.card .cap{padding:3px 4px;font-size:0.731rem;font-family:var(--mono);color:var(--fg2);
+.card .cap{padding:2px 4px;font-size:0.68rem;font-family:var(--mono);color:var(--fg2);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* ------------------------------------------------------------------- GLB */
+/* ================================================================ GLB */
 #glbWrap{flex:1;display:flex;min-width:0;min-height:0;overflow:hidden}
 #cvGlb{flex:1 1 0;min-width:0;overflow:hidden;background:#14161c;position:relative}
 #cvGlb canvas{display:block}
-.glrow{display:flex;gap:6px;padding:5px 6px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:0.885rem}
+/* Панель GLB — обычный скролл: секций больше, чем высоты окна. */
+#glbWrap .side{overflow:auto;display:block}
+.glrow{display:flex;gap:6px;padding:3px 6px;border-radius:4px;cursor:pointer;
+  font-family:var(--mono);font-size:0.78rem;border-bottom:1px dashed rgba(42,48,59,.5)}
 .glrow:hover{background:var(--bg4);color:var(--ac)}
 .glname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.glsz{color:var(--dim);font-size:0.808rem}
-.ovr{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px}
-.ovr label{display:flex;gap:5px;align-items:center;font-size:0.885rem;color:var(--fg2);cursor:pointer}
+.glsz{color:var(--dim);font-size:0.72rem}
+.ovr{display:grid;grid-template-columns:1fr 1fr;gap:2px 8px}
+.ovr label{display:flex;gap:5px;align-items:center;font-size:0.78rem;color:var(--fg2);cursor:pointer}
 .ovr input{accent-color:var(--ac)}
+#gameBar{display:flex;gap:6px;align-items:center;padding:5px 8px;border-bottom:1px solid var(--line);
+  background:var(--bg2)}
+#gameBar input.txt{max-width:22rem}
 
-/* ------------------------------------------------------------------- лог */
-/* Высота журнала — от высоты окна: на низком экране 118 px съедали кадр. */
-#logbox{height:clamp(7.1rem, 15vh, 13.1rem);flex:0 0 auto;border-top:1px solid var(--line);background:var(--bg2);
-  display:flex;flex-direction:column;min-height:0}
-#logbox h4{margin:0;padding:4px 10px;font-size:0.808rem;text-transform:uppercase;letter-spacing:.4px;
-  color:var(--dim);background:var(--bg4);border-bottom:1px solid var(--line)}
-#log{flex:1;overflow:auto;padding:4px 10px;font-family:var(--mono);font-size:0.846rem}
-.logline{padding:1px 0;color:var(--fg2);white-space:pre-wrap}
-.logline.warn{color:var(--warn)}
-.logline.err{color:var(--err)}
-
-/* ------------------------------------------------------------ адаптация
-   Раньше здесь не было НИ ОДНОГО медиазапроса: все ширины были константами
-   (420 / 296 / 352 px), и как только окно становилось уже их суммы — правая
-   колонка вылезала за край, а кадр уровня сжимался в полоску. Студия должна
-   работать и в половине экрана, и в четверти, и в браузерном зуме 150 % (он
-   уменьшает число CSS-пикселей ровно так же, как узкое окно).
-
-   Порядок уступок: сначала сужается инспектор, потом панель ассетов, и только
-   в самом конце инспектор уходит ПОД кадр. Кадр уровня не отдаём никогда — это
-   главное в студии. Инспектор под кадром держим как последнее средство:
-   уровень — длинная горизонтальная полоса, и ему ширина важнее высоты. */
+/* =========================================================== адаптация */
 @media (max-width:1500px){
-  :root{--side:clamp(15.4rem, 18vw, 22.3rem); --asset:clamp(17rem, 22vw, 26.2rem)}
+  :root{--scene:clamp(13.5rem, 16vw, 18rem); --side:clamp(14.5rem, 17vw, 19rem)}
 }
-@media (max-width:1240px){
-  :root{--side:clamp(14.6rem, 20vw, 20rem); --asset:clamp(15.4rem, 22vw, 23.1rem)}
+@media (max-width:1200px){
+  :root{--scene:clamp(13rem, 16vw, 16rem); --side:clamp(14rem, 17vw, 17rem)}
+  #gamepath{display:none}
+  .brand .tag{display:none}
+  /* Узкий инспектор: «ключ — значение» в две колонки не влезает, значения
+     начинали рвать слова посередине («renderOr der»). Складываем в столбик. */
+  .irow{flex-direction:column;gap:0;padding:3px 0}
+  .ik{flex:0 0 auto}
 }
-@media (max-width:1080px){
-  :root{--side:clamp(13.8rem, 22vw, 18.5rem); --asset:clamp(14.6rem, 24vw, 20rem)}
-  #tree{max-height:min(30vh,18.5rem)}
+@media (max-width:760px){
+  /* Инспектор уходит под вьюпорт: уровень — длинная полоса, ему ширина важнее.
+     Порог 760, а не 980: на 800-980 px инспектор ещё влезает справа, а под
+     кадром он превращался в широкую низкую полосу с обрезанной справкой. */
+  #lvWrap{flex-wrap:wrap}
+  .scene{order:1}
+  #vp{order:2;flex:1 1 55%}
+  .side{order:3;flex:0 0 100%;width:auto;max-width:none;max-height:34%;border-left:none;
+    border-top:1px solid var(--line)}
+  #assetBar{height:7rem}
 }
-/* Совсем узко — инспектор уходит под кадр. */
-@media (max-width:620px){
-  #lvWrap,#glbWrap{flex-direction:column}
-  #cvLevel,#cvGlb{flex:1 1 55%;min-height:0}
-  .side{flex:0 0 auto;width:auto;max-width:none;max-height:45%;
-    border-left:none;border-top:1px solid var(--line)}
-  #logbox{height:5.4rem}
+@media (max-width:700px){
+  .menus button[data-low]{display:none}
+  .uiscale{display:none}
+  #statusbar .low{display:none}
 }
 @media (max-height:620px){
-  #logbox{height:6.5rem}
-  #tree{max-height:24vh}
+  #assetBar{height:6.6rem}
+}
+
+/* ============================ выбор проекта (пустой старт) ==============
+   Студия поднимается вообще без проекта. Пока его нет, поверх редактора
+   лежит этот экран; после выбора сервер переключает корень (/__open) и
+   страница перезагружается — уровни, ассеты, игра инициализируются заново. */
+.projpick{display:flex;align-items:center;gap:3px;flex:0 0 auto;
+  padding:2px 3px 2px 6px;border:1px solid var(--line);border-radius:5px;background:var(--bg)}
+.projpick .plabel{font-size:0.7rem;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+#projSel{max-width:17rem;min-width:9rem;font-size:0.78rem}
+.projpick button{padding:2px 6px;font-size:0.76rem;background:transparent;
+  border-color:transparent;color:var(--dim)}
+.projpick button:hover{background:var(--bg4);color:var(--fg)}
+
+.projoverlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;
+  justify-content:center;padding:2rem;background:radial-gradient(ellipse at 50% 35%,
+  #1b2130 0%, #0e1014 68%);overflow:auto}
+.projoverlay[hidden]{display:none}
+.projcard{width:min(52rem,100%);background:var(--bg2);border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 24px 70px #000a;overflow:hidden}
+.projhead{display:flex;align-items:center;gap:12px;padding:16px 20px;
+  border-bottom:1px solid var(--line);background:var(--bg3)}
+.projhead .logo{width:2.2rem;height:2.2rem;flex:0 0 auto;border-radius:6px;
+  background:linear-gradient(135deg,var(--ac),#3d6ea8);position:relative}
+.projhead .logo::after{content:"";position:absolute;inset:6px;border:2px solid #0e1014;
+  border-radius:3px;transform:rotate(45deg)}
+.projhead h1{margin:0;font-size:1.15rem;letter-spacing:.02em}
+.projhead p{margin:2px 0 0;font-size:0.8rem;color:var(--fg2)}
+.projlist{padding:12px 20px;max-height:min(26rem,60vh);overflow:auto}
+.projengine{font-size:0.7rem;color:var(--dim);text-transform:uppercase;
+  letter-spacing:.1em;margin:14px 0 6px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.projengine:first-child{margin-top:0}
+.projrow{display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:4px;
+  background:var(--bg3);border:1px solid var(--line);border-radius:6px;cursor:pointer}
+.projrow:hover{background:var(--bg4);border-color:var(--ac)}
+.projrow .pico{width:1.8rem;height:1.8rem;flex:0 0 auto;border-radius:4px;
+  display:grid;place-items:center;background:var(--bg5);color:var(--ac);
+  font-family:var(--mono);font-size:0.8rem;font-weight:700}
+.projrow .pinfo{flex:1 1 auto;min-width:0}
+.projrow .pname{font-size:0.92rem;font-weight:600;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.projrow .pmeta{font-size:0.74rem;color:var(--dim);font-family:var(--mono)}
+.projrow .plast{font-size:0.68rem;color:var(--ac2);border:1px solid var(--ac2);
+  border-radius:3px;padding:1px 5px;white-space:nowrap}
+.projrow .pgo{font-size:0.78rem;color:var(--fg2);white-space:nowrap}
+.projrow.empty{opacity:.6}
+.projfoot{display:flex;align-items:center;gap:10px;padding:10px 20px;
+  border-top:1px solid var(--line);background:var(--bg);font-size:0.76rem;color:var(--dim)}
+.projfoot span{flex:1 1 auto}
+.projnew{display:flex;align-items:center;gap:8px;padding:10px 20px;
+  border-top:1px solid var(--line);background:var(--bg3);font-size:0.78rem}
+.projnew label{color:var(--fg2);white-space:nowrap}
+.projnew label b{color:var(--ac);font-family:var(--mono);font-weight:600}
+.projnew input{flex:1 1 auto;min-width:5rem;max-width:16rem;font-family:var(--mono);
+  font-size:0.8rem;padding:4px 7px;color:var(--fg);background:var(--bg);
+  border:1px solid var(--line);border-radius:4px}
+.projnew input:focus{outline:none;border-color:var(--ac)}
+.projnew button{padding:4px 10px;white-space:nowrap;font-size:0.78rem}
+@media (max-width:600px){
+  .projnew{flex-wrap:wrap}
+}
+@media (max-width:600px){
+  .projpick .plabel{display:none}
+  #projSel{min-width:6rem}
 }
 </style>
 </head>
 <body>
 <div id="app">
 
-  <!-- ========================================= справа: рабочая область -->
   <main id="right">
+
+    <!-- ======================================================= шапка -->
     <div class="topbar">
-      <div class="brand"><b>3GS Studio</b><span class="tag">three</span></div>
+      <div class="brand"><span class="logo"></span><b>3GS Studio</b><span class="tag">three</span></div>
+
+      <div class="menus">
+        <button id="saveBtn" title="Сохранить правки в &lt;level&gt;_edit.json">Сохранить</button>
+        <button id="buildBtn" title="Сохранить правки и перезапустить игру с ними">В игру ▶</button>
+        <button id="lintBtn" class="lint" title="Проверка формата уровня: все ли файлы на месте">формат: —</button>
+        <span class="vsep"></span>
+        <button id="revBtn" class="danger" data-low title="Сбросить все правки уровня">Сброс</button>
+      </div>
+
       <div class="tabs">
-        <div class="tab on" data-tab="level">Уровень</div>
+        <div class="tab on" data-tab="level">Сцена</div>
         <div class="tab" data-tab="preview">Картинки</div>
         <div class="tab" data-tab="glb">3D / GLB</div>
         <div class="tab" data-tab="game">Игра</div>
       </div>
-      <span id="gamepath" title="Каталог игры: чьи уровни и ассеты открыты">каталог: …</span>
-      <span id="viewInfo"></span>
-      <!-- Вердикт линтера формата. «Уровень создан» и «уровень работает» —
-           разные вещи, и вторая видна только прогоном. Уровень со ссылками на
-           несгенерированные файлы выглядит готовым, а кадр у него пустой. -->
-      <button id="lintBtn" class="lint" title="Проверка формата уровня">формат: —</button>
-      <!-- Масштаб интерфейса. Весь UI в rem, поэтому эти две кнопки меняют его
-           целиком. Рядом — текущий размер, он же кнопка «сбросить к текучему»
-           (двойной клик). Выбор запоминается в localStorage. -->
-      <span class="uiscale" title="Масштаб интерфейса (весь UI). Двойной клик по значению — вернуть автомат">
+
+      <span class="spacer"></span>
+
+      <div class="projpick" title="Активный проект студии. Список — только projects\three\">
+        <span class="plabel">Проект</span>
+        <select id="projSel" title="Переключить проект (уровни и ассеты загрузятся заново)"></select>
+        <button id="projClose" title="Закрыть проект и вернуться к пустой студии">✕</button>
+      </div>
+
+      <span id="gamepath" title="Каталог игры: чьи уровни и ассеты открыты">каталог: ...</span>
+
+      <span class="uiscale" title="Масштаб интерфейса. Клик по значению — вернуть автомат">
         <button id="uiMinus" title="Мельче">A−</button>
         <button id="uiLabel" class="uilabel" title="Сбросить к автомату">100%</button>
         <button id="uiPlus" title="Крупнее">A+</button>
       </span>
-      <button id="sideToggle" title="Свернуть боковую панель — кадр займёт всё окно (Ctrl+B)">Панель</button>
+
+      <button id="sideToggle" title="Свернуть боковые панели — кадр займёт всё окно (Ctrl+B)">Панели</button>
     </div>
 
     <div class="panes">
 
-      <!-- ------------------------------------------------ редактор уровня -->
+      <!-- ============================================ вкладка «Сцена» -->
       <section class="pane on" data-pane="level">
-        <div id="lvWrap">
-          <div id="cvLevel"></div>
-          <div class="side">
 
-            <div class="sec">
-              <h4>Уровень <span class="mini" id="levelFileMini"></span></h4>
-              <div class="secbody">
-                <select id="levelSel" class="txt"></select>
-                <div id="editableWarn" class="warn" style="display:none">
-                  Уровень помечен <code>editable: false</code> — сохранение выключено:
-                  у части узлов нет поля <code>path</code>, адресовать их нечем.
-                </div>
-              </div>
-            </div>
+        <!-- тулбар вида: уровень, проекция, зум, оверлеи -->
+        <div class="toolbar">
+          <span class="tlabel">Уровень</span>
+          <select id="levelSel" title="Открыть уровень"></select>
+          <span id="levelTag" style="display:none">—</span>
 
-            <div class="sec">
-              <h4>Вид</h4>
-              <div class="tools">
-                <button id="mode2d" class="on">2D</button>
-                <button id="mode3d">3D</button>
-                <button id="zin" title="Приблизить">＋</button>
-                <button id="zout" title="Отдалить">－</button>
-                <button id="fit" title="Показать весь уровень">Fit</button>
-              </div>
-              <div class="tools">
-                <button id="toggleCol" title="Показать коллайдеры (AABB и профиль рельефа)">Коллайдеры</button>
-                <button id="togglePar" title="Показать слои параллакса">Параллакс</button>
-              </div>
-            </div>
+          <span class="vsep"></span>
 
-            <div class="sec">
-              <h4>Узлы <span class="mini">клик — выбрать, двойной — приблизить</span></h4>
-              <div class="secbody" style="padding-bottom:0">
-                <input id="treeFilter" class="txt" placeholder="фильтр по имени…">
-              </div>
-              <div id="tree"></div>
-              <div class="tools">
-                <button id="addBtn" title="Добавить копию выделенного узла по центру вида">＋ Добавить</button>
-                <button id="delBtn" class="danger" title="Удалить выделенный узел">Удалить</button>
-              </div>
-            </div>
-
-            <div class="sec">
-              <h4>Инспектор</h4>
-              <div class="secbody" id="insp"></div>
-            </div>
-
-            <div class="sec">
-              <h4>Слои</h4>
-              <div class="secbody" id="layers"></div>
-            </div>
-
-            <div class="sec">
-              <h4>Правки</h4>
-              <div class="tools">
-                <button id="undoBtn" title="Ctrl+Z">Отменить</button>
-                <button id="revBtn" class="danger">Сбросить всё</button>
-              </div>
-              <div class="tools">
-                <button id="saveBtn">Сохранить правки</button>
-                <button id="buildBtn">Пересобрать</button>
-              </div>
-              <div class="secbody">
-                <div class="hint">
-                  Правки живут в <code>&lt;level&gt;_edit.json</code> рядом с уровнем и накладываются
-                  поверх сборки: уровень может быть собран из таблиц арта, и правка «в нём»
-                  исчезла бы при первой же пересборке.
-                </div>
-              </div>
-            </div>
-
+          <div class="vgroup" title="Проекция кадра">
+            <button id="mode2d" class="on">2D</button>
+            <button id="mode3d">3D</button>
           </div>
+
+          <div class="vgroup" title="Масштаб">
+            <button id="zin">+</button>
+            <button id="zout">−</button>
+            <button id="fit">Fit</button>
+          </div>
+
+          <div class="vgroup" title="Участок уровня: камера на один экран игры">
+            <button id="secPrev" title="Предыдущий участок">◀</button>
+            <select id="secSel" title="Перейти к участку"></select>
+            <button id="secNext" title="Следующий участок">▶</button>
+          </div>
+
+          <div class="vgroup" title="Оверлеи">
+            <button id="toggleCol">Коллайдеры</button>
+            <button id="togglePar">Параллакс</button>
+          </div>
+
+          <span id="viewInfo"></span>
+        </div>
+
+        <div id="lvWrap">
+
+          <!-- ---------------- слева: дерево сцены и слои ---------------- -->
+          <aside class="scene">
+            <div class="phead">
+              <span class="ptitle">Сцена</span>
+              <span class="pcount" id="treeCount">0</span>
+            </div>
+            <div class="ptabs">
+              <div class="ptab on" data-ptab="tree" title="Иерархия: слой → узлы">Объекты</div>
+              <div class="ptab" data-ptab="layers" title="Слои с видимостью и замком">Слои</div>
+            </div>
+            <div class="pfilter">
+              <input id="treeFilter" class="txt" placeholder="поиск: имя / слой…">
+            </div>
+            <div class="pbody" id="paneTree">
+              <div id="tree"></div>
+            </div>
+            <div class="pbody" id="paneLayers" hidden>
+              <div id="layers"></div>
+            </div>
+            <div class="pfoot">
+              <button id="addBtn" title="Добавить копию выделенного узла по центру вида">+ Объект</button>
+              <button id="delBtn" class="danger" title="Удалить выделенный узел">Удалить</button>
+            </div>
+          </aside>
+
+          <!-- ---------------- центр: кадр уровня ---------------- -->
+          <div id="vp">
+            <div id="cvLevel"></div>
+            <div class="vhud" id="hud">
+              <span class="dot"></span>
+              <b>Transform</b><span id="hudTool">select</span>
+              <span class="hs"></span>
+              <span class="kk">X</span><span id="hudX">—</span>
+              <span class="kk">Y</span><span id="hudY">—</span>
+              <span class="hs"></span>
+              <span id="hudSel">ничего не выбрано</span>
+            </div>
+            <div class="vmode" id="vmode">PERSP</div>
+            <div class="vkeys">ЛКМ — выбрать / тащить<br>←↑↓→ — сдвиг · Shift ×10</div>
+          </div>
+
+          <!-- ---------------- справа: инспектор ---------------- -->
+          <aside class="side">
+            <div class="phead">
+              <span class="ptitle">Инспектор</span>
+              <span class="pcount" id="inspKind">—</span>
+            </div>
+            <div class="pscroll">
+              <div id="editableWarn" class="warn" style="display:none;margin-bottom:6px">
+                Уровень помечен <code>editable: false</code> — сохранение выключено:
+                у части узлов нет поля <code>path</code>, адресовать их нечем.
+              </div>
+              <div id="insp"></div>
+            </div>
+            <div class="sec">
+              <h4>Правки <span class="mini" id="editCount">0</span></h4>
+              <div class="secbody">
+                <div class="iacts" style="margin-top:0">
+                  <button id="undoBtn" title="Ctrl+Z">Отменить</button>
+                  <button id="dirtyTag" style="flex:0 0 auto;pointer-events:none;font-family:var(--mono);font-size:0.72rem">—</button>
+                </div>
+                <div class="dim" style="line-height:1.5">
+                  Правки лежат в <code>&lt;level&gt;_edit.json</code> рядом с уровнем
+                  и накладываются поверх сборки.
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        <!-- ---------------- снизу: библиотека ассетов ---------------- -->
+        <div id="assetBar">
+          <div class="abhead">
+            <span class="ptitle">Библиотека</span>
+            <span class="ptitle" style="color:#5e6b7d;font-size:0.66rem;letter-spacing:0">клик — добавить в уровень · Shift — посмотреть</span>
+            <input id="lvAssetFilter" class="txt" placeholder="поиск ассета…">
+            <span id="lvAssetCount" class="dim" style="font-family:var(--mono);font-size:0.7rem"></span>
+            <span class="sp"></span>
+            <button id="lvAssetAll" title="Открыть полную библиотеку картинок">Все ассеты →</button>
+          </div>
+          <div id="lvAssetGrid"></div>
+        </div>
+
+        <!-- ---------------- статус-строка ---------------- -->
+        <div id="statusbar">
+          <span class="dot" id="stDot"></span>
+          <span><b id="stState">готово</b></span>
+          <span class="low">·</span>
+          <span class="low">уровень <b id="stLevel">—</b></span>
+          <span class="low" id="stFile" style="display:none"></span>
+          <span>·</span>
+          <span>узлов <b id="stNodes">0</b></span>
+          <span class="low">· слоёв <b id="stLayers">0</b></span>
+          <span>· правок <b id="stEdits">0</b></span>
+          <span class="sp"></span>
+          <span id="stView">—</span>
+          <button id="logToggle" title="Показать журнал">Журнал ▴</button>
         </div>
       </section>
 
-      <!-- ------------------------------------------- превью картинок -->
+      <!-- ======================================== превью картинок -->
       <section class="pane" data-pane="preview">
         <div id="previewWrap">
           <div id="previewBig"></div>
@@ -407,29 +657,27 @@ input.txt:focus{outline:none;border-color:var(--ac)}
         </div>
       </section>
 
-      <!-- ------------------------------------------------ игра (страница целиком) -->
-      <!-- Открывает HTML-страницу игры как есть, в iframe. Студия не переписывает
-           её код: страница сама грузит свой importmap и ассеты относительно своего
-           адреса. Адрес задаётся в app.js (поле ввода + кнопка «Открыть»). -->
+      <!-- ======================================== игра -->
       <section class="pane" data-pane="game">
-        <div id="gameBar" style="display:flex;gap:8px;align-items:center;padding:6px 8px">
-          <input id="gamePage" class="txt" value="ninja.html" placeholder="страница игры, например ninja.html">
+        <div id="gameBar">
+          <input id="gamePage" class="txt" value="index.html" placeholder="страница игры, например index.html">
           <button id="gameOpen">Открыть</button>
           <span id="gameInfo" class="dim"></span>
         </div>
         <iframe id="gameFrame" title="Игра" style="flex:1;width:100%;border:0;background:#000"></iframe>
       </section>
 
-      <!-- ------------------------------------------------ 3D просмотрщик -->
+      <!-- ======================================== 3D просмотрщик -->
       <section class="pane" data-pane="glb">
         <div id="glbWrap">
           <div id="cvGlb"></div>
           <div class="side">
+            <div class="phead"><span class="ptitle">3D / GLB</span></div>
             <div class="sec">
               <h4>Файл</h4>
               <div class="secbody">
                 <input type="file" id="glbFile" accept=".glb,.gltf" class="txt">
-                <div class="hint">Модели репозитория — в <code>assets/3d/</code> (40–130 МБ).</div>
+                <div class="dim">Модели репозитория — в <code>assets/3d/</code>.</div>
               </div>
             </div>
             <div class="sec">
@@ -439,14 +687,14 @@ input.txt:focus{outline:none;border-color:var(--ac)}
             <div class="sec">
               <h4>Сетки и оверлеи</h4>
               <div class="secbody ovr">
-                <label><input type="checkbox" id="bboxGrid" checked> габарит (AABB)</label>
-                <label><input type="checkbox" id="grid"> мировая сетка</label>
-                <label><input type="checkbox" id="axes"> оси X/Y/Z</label>
+                <label><input type="checkbox" id="bboxGrid" checked> габарит</label>
+                <label><input type="checkbox" id="grid"> сетка</label>
+                <label><input type="checkbox" id="axes"> оси</label>
                 <label><input type="checkbox" id="wire"> каркас</label>
                 <label><input type="checkbox" id="normals"> нормали</label>
                 <label><input type="checkbox" id="vcol"> цвет вершин</label>
               </div>
-              <div class="tools"><button id="glbReset">Кадрировать</button></div>
+              <div class="secbody"><button id="glbReset">Кадрировать</button></div>
             </div>
             <div class="sec">
               <h4>Доступные GLB</h4>
@@ -458,10 +706,44 @@ input.txt:focus{outline:none;border-color:var(--ac)}
 
     </div>
 
-    <div id="logbox"><h4>Журнал</h4><div id="log"></div></div>
+    <!-- журнал: выдвижной ящик -->
+    <div id="logbox">
+      <h4>Журнал <span class="mini">последние события</span><button id="logClose">Скрыть</button></h4>
+      <div id="log"></div>
+    </div>
+
   </main>
 </div>
 
-<script type="module" src="./studio/app.js"></script>
+<!-- Пустой старт: проект ещё не выбран. Заполняет app.js из /__projects. -->
+<div id="projOverlay" class="projoverlay" hidden>
+  <div class="projcard">
+    <div class="projhead">
+      <span class="logo"></span>
+      <div>
+        <h1>3GS Studio</h1>
+        <p>Выберите проект — студия загрузит его уровни, ассеты и игру.</p>
+      </div>
+    </div>
+    <div id="projList" class="projlist"><div class="dim">читаю список проектов…</div></div>
+    <div class="projfoot">
+      <span id="projHint">Показываются только проекты three.js — остальные движки не трогаем.</span>
+      <button id="projDismiss" hidden>← К редактору</button>
+      <button id="projRefresh" title="Перечитать папку projects\three">Обновить</button>
+    </div>
+    <div class="projnew">
+      <label for="projNewName">Новый проект в <b id="projRoot">projects\three</b></label>
+      <input id="projNewName" type="text" maxlength="48" placeholder="my_game"
+             autocomplete="off" spellcheck="false"
+             title="Имя папки: латиница, цифры, _ и -. Студия разложит полный three.js-стек.">
+      <button id="projNew">+ Создать и открыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- Сначала лёгкий launcher (без импортов): он показывает список проектов
+     в ПУСТОЙ студии. app.js импортируется им динамически, только когда
+     проект уже выбран — иначе scene.js/three.js из каталога игры дадут 404. -->
+<script type="module" src="./studio/launcher.js"></script>
 </body>
 </html>

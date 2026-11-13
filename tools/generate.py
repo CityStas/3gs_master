@@ -2,8 +2,8 @@
 """Run an asset pack from the command line - the same scheduler the agent uses.
 
     python tools/generate.py --status
-    python tools/generate.py --project projects/games/my_game --jobs plan.json
-    python tools/generate.py --project projects/games/my_game --jobs plan.json --json
+    python tools/generate.py --project projects/three/my_game --jobs plan.json
+    python tools/generate.py --project projects/three/my_game --jobs plan.json --json
 
 `cmd/gen.cmd` at the repo root is a thin wrapper around this, with the venv and the
 proxy bypass already set. Both paths take the same lock, so a hand-run pack and an
@@ -147,7 +147,7 @@ def show_report(report: dict, project: Path) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Serialised asset generation for 3GS_Master.")
-    ap.add_argument("--project", "-p", default="", help="project directory, or a name under projects/games/")
+    ap.add_argument("--project", "-p", default="", help="project directory, or a name under projects/<engine>/")
     ap.add_argument("--jobs", "-j", default="", help="JSON plan file (array of jobs)")
     ap.add_argument("--status", action="store_true", help="report GPU ownership and exit")
     ap.add_argument("--keep-comfy", action="store_true",

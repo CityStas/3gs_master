@@ -35,7 +35,7 @@ Three.js profile and has none of them.
 ## Active project
 
 `data/active_project.txt` holds the path the agent was launched with; `dev.cmd <name>` writes
-it. Reach the project with its relative path (`projects/games/<name>/`) or the absolute path the
+it. Reach the project with its relative path (`projects/unity/<name>/`) or the absolute path the
 user gave — never guess the folder from the task wording.
 
 `unity_project_info()` reports editor version, package list and counts. It is the first call in

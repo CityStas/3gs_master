@@ -37,6 +37,9 @@ const S = {
   assets: { images: [], glbs: [] },
   tab: 'level',
   dirty: false,
+  sector: 0,          // -1 = весь уровень (Fit)
+  sectors: [],
+  edZoom: 0.7,        // читаемый зум «на один экран игры»
 };
 
 function log(msg, kind = 'info') {
@@ -47,6 +50,12 @@ function log(msg, kind = 'info') {
   box.scrollTop = box.scrollHeight;
   while (box.children.length > 400) box.removeChild(box.firstChild);
 }
+
+/* Выбор проекта живёт в launcher.js, а не здесь: app.js тянет за собой
+ * scene.js и three.js из КАТАЛОГА ИГРЫ, поэтому в пустой студии его нельзя
+ * грузить вообще. launcher.js показываёт список и импортирует этот файл
+ * только после POST /__open. См. комментарий в launcher.js.
+ */
 
 /* ============================================================ уровень */
 
@@ -60,7 +69,9 @@ async function loadManifest() {
   const sel = $('levelSel');
   sel.innerHTML = '';
   for (const l of S.levels) {
-    const o = el('option', null, `${l.title || l.id}  —  ${l.file}`);
+    // В списке — только человеческое имя: файл показан чипом рядом и в
+    // статус-строке, дублировать его в каждой строке незачем.
+    const o = el('option', null, `${l.title || l.id}`);
     o.value = l.id;
     // «Нередактируемый» уровень не прячем из списка, а помечаем: он открывается
     // на просмотр, и это нужный сценарий («посмотреть, как собрано»). Прятать —
@@ -122,8 +133,8 @@ async function openLevel(id) {
   host.innerHTML = '';
   S.ed = new LevelEditor(host, {
     onReady: () => { log(`уровень ${def.id} открыт (${S.ed.editable.length} правимых узлов)`); },
-    onChange: () => { S.dirty = true; $('saveBtn').classList.add('hot'); renderTree(); },
-    onSelect: (path, info) => renderInspector(info),
+    onChange: () => { S.dirty = true; $('saveBtn').classList.add('hot'); renderTree(); updateStatus(); },
+    onSelect: (path, info) => { renderInspector(info); renderLayers(S.ed.layerList()); renderTree(); },
     onLayers: (list) => renderLayers(list),
     onView: () => renderView(),
     onLog: (m) => log(m),
@@ -134,12 +145,20 @@ async function openLevel(id) {
   $('saveBtn').classList.remove('hot');
   $('editableWarn').style.display = def.editable ? 'none' : '';
   $('saveBtn').disabled = !def.editable;
-  $('levelFileMini').textContent = def.file;
+  // Имя файла уровня — всегда на виду: в тулбаре чипом и в статус-строке.
+  const lt = $('levelTag');
+  if (lt) { lt.textContent = def.file; lt.style.display = ''; }
   renderTree();
   renderLayers(S.ed.layerList());
   renderInspector(null);
   renderView();
+  updateStatus();
   S.ed.start();
+  // Не оставляем Fit «на весь уровень»: по умолчанию камера стоит на первом
+  // участке в масштабе одного экрана, как в Godot.
+  S.sector = 0;
+  computeSectors();
+  gotoSector(0);
   // Вердикт линтера — сразу при открытии, а не по кнопке: иначе человек
   // видит пустой кадр и не знает, что причина в отсутствующих ассетах.
   lintLevel();
@@ -147,32 +166,54 @@ async function openLevel(id) {
 
 /* ------------------------------------------------------------- дерево */
 
+/* Цвета маркеров слоёв. Раньше дерево было монохромным, и глаз не цеплялся
+   за границу слоя: строки шли сплошняком. Цвет повторяет порядок слоёв в
+   дереве (см. renderLayers), поэтому «красный» в дереве и в списке слоёв —
+   один и тот же слой. */
+const LAYER_COLORS = ['#e2584c', '#e8a35c', '#79b8f2', '#59d99a',
+  '#c792ea', '#ffd166', '#66d9e8', '#f78fb3'];
+
+function layerColor(name) {
+  const i = S.ed ? S.ed.layerOrder.indexOf(name) : -1;
+  return LAYER_COLORS[(i < 0 ? 0 : i) % LAYER_COLORS.length];
+}
+
 function renderTree() {
   const box = $('tree');
   box.innerHTML = '';
   if (!S.ed) return;
   const q = ($('treeFilter').value || '').toLowerCase();
   const root = el('div', 'tnode');
-  root.appendChild(el('div', 'tname root', `Main — ${S.level.file}`));
+  const head = el('div', 'tname root');
+  head.appendChild(el('span', null, `Main — ${S.level.file}`));
+  root.appendChild(head);
   const groups = new Map();
   for (const e of S.ed.editable) {
     const lay = S.ed._layerOf(e.obj);
     if (!groups.has(lay)) groups.set(lay, []);
     groups.get(lay).push(e);
   }
+  let shown = 0;
   for (const lay of S.ed.layerOrder) {
     const items = groups.get(lay) || [];
     const g = el('div', 'tgroup');
-    const h = el('div', 'tname grp', `${lay}  (${items.length})`);
+    g.style.setProperty('--dot', layerColor(lay));
+    // Заголовок слоя — тоже «выбиратель» слоя: клик подсвечивает все его узлы
+    // и разрешает тащить их разом, как группу в Godot.
+    const h = el('div', 'tname grp' + (S.ed.activeLayer === lay ? ' on' : ''));
+    h.appendChild(el('span', null, lay));
+    h.appendChild(el('span', 'lcnt', String(items.length)));
+    h.title = 'Клик — выбрать слой целиком (сдвинуть все узлы сразу)';
+    h.onclick = () => selectLayerToggle(lay);
     g.appendChild(h);
-    let n = 0;
     for (const e of items) {
       if (q && !e.path.toLowerCase().includes(q)) continue;
-      n++;
+      shown++;
       const row = el('div', 'n' + (S.ed.sel === e.path ? ' sel' : '') +
         (e.added ? ' added' : '') + (S.ed.edits[e.path] ? ' edited' : ''));
-      row.textContent = e.path;
+      row.appendChild(el('span', null, e.path));
       row.dataset.path = e.path;
+      row.style.setProperty('--dot', layerColor(lay));
       row.onclick = () => {
         S.ed.select(e.path);
         focusPath(e.path);
@@ -180,10 +221,15 @@ function renderTree() {
       row.ondblclick = () => zoomToPath(e.path);
       g.appendChild(row);
     }
-    if (n === 0 && q) return;
+    // `continue`, а не `return`: пустой слой при активном фильтре не должен
+    // обрывать отрисовку всех СЛЕДУЮЩИХ слоёв.
+    if (!items.length && q) continue;
     root.appendChild(g);
   }
   box.appendChild(root);
+  const cnt = $('treeCount');
+  if (cnt) cnt.textContent = q ? `${shown} / ${S.ed.editable.length}` : String(S.ed.editable.length);
+  updateStatus();
 }
 
 function focusPath(path) {
@@ -212,11 +258,34 @@ function zoomToPath(path) {
 function renderInspector(info) {
   const box = $('insp');
   box.innerHTML = '';
+  const kind = $('inspKind');
   if (!S.ed) return;
+  if (kind) kind.textContent = info ? (info.type === 'layer' ? 'слой' : (info.type || 'узел')) : '—';
   if (!info) {
-    box.appendChild(el('div', 'dim', 'Ничего не выбрано. Клик по объекту в кадре или строке списка.'));
+    // Пустой инспектор — не «ничего не выбрано», а справка: в редакторе это
+    // единственное место, где человек узнаёт, что вообще можно делать.
+    const e = el('div', 'empty');
+    e.appendChild(el('h5', null, 'Ничего не выбрано'));
+    const rows = [
+      ['ЛКМ', 'выбрать узел в кадре'],
+      ['ЛКМ + тащить', 'сдвинуть узел (или весь слой)'],
+      ['↑ ↓ ← →', 'сдвиг на 1 · Shift — на 10'],
+      ['Двойной клик', 'приблизить к узлу'],
+      ['Ctrl+Z', 'отменить правку'],
+      ['Ctrl+B', 'свернуть панели'],
+    ];
+    for (const [k, v] of rows) {
+      const r = el('div', 'er');
+      r.appendChild(el('kbd', null, k));
+      r.appendChild(el('span', null, v));
+      e.appendChild(r);
+    }
+    box.appendChild(e);
+    updateHud();
     return;
   }
+  // Строка «ключ — значение» (объявлена до веток, иначе TDZ при вызове в
+  // ветке слоя, которая идёт выше объявления).
   const row = (k, v, cls) => {
     const r = el('div', 'irow ' + (cls || ''));
     r.appendChild(el('span', 'ik', k));
@@ -224,6 +293,28 @@ function renderInspector(info) {
     box.appendChild(r);
     return r;
   };
+  // Выбран СЛОЙ целиком (Godot-режим «перетащить группу»).
+  if (info.type === 'layer') {
+    box.appendChild(el('div', 'dim', `Слой: ${info.layer}`));
+    row('узлов в слое', String(info.count));
+    row('видимость', info.visible ? 'включена' : 'скрыт');
+    row('заморозка', info.locked ? 'заблокирован' : 'правится');
+    const acts = el('div', 'iacts');
+    const bVis = el('button', info.visible ? 'on' : '', info.visible ? 'Скрыть слой' : 'Показать слой');
+    bVis.onclick = () => { S.ed.setLayerVisible(info.layer, !info.visible); renderLayers(S.ed.layerList()); renderInspector(S.ed.layerInfo(info.layer)); };
+    const bLock = el('button', info.locked ? 'on' : '', info.locked ? 'Разморозить' : 'Заморозить');
+    bLock.onclick = () => { S.ed.setLayerLocked(info.layer, !info.locked); renderLayers(S.ed.layerList()); renderInspector(S.ed.layerInfo(info.layer)); };
+    acts.appendChild(bVis); acts.appendChild(bLock);
+    box.appendChild(acts);
+    box.appendChild(el('div', 'warn',
+      'Слой активен: перетащите в кадре или стрелками ←→↑↓, чтобы сдвинуть ВСЕ узлы слоя сразу. ' +
+      'Shift — шаг 10. Клик по отдельному узлу в кадре/дереве вернёт правку одного узла.'));
+    const bClear = el('button', '', 'Снять выделение слоя');
+    bClear.onclick = () => { S.ed.clearLayer(); renderLayers(S.ed.layerList()); renderTree(); renderInspector(null); };
+    box.appendChild(bClear);
+    updateHud();
+    return;
+  }
   row('путь', info.path, 'mono');
   row('тип', info.type || '—');
   row('слой', info.layer);
@@ -260,6 +351,7 @@ function renderInspector(info) {
   b2.onclick = () => removeNode(info.path);
   acts.appendChild(b1); acts.appendChild(b2);
   box.appendChild(acts);
+  updateHud();
 }
 
 /* ------------------------------------------------------------- слои */
@@ -268,80 +360,194 @@ function renderLayers(list) {
   const box = $('layers');
   box.innerHTML = '';
   for (const l of list) {
-    const r = el('div', 'lrow');
+    const r = el('div', 'lrow' + (l.active ? ' active' : ''));
+    r.style.setProperty('--dot', layerColor(l.name));
+    r.dataset.layer = l.name;
+    r.title = 'Клик — выбрать слой целиком (сдвинуть все узлы сразу). Глаз — видимость, замок — запрет правки.';
+    const dot = el('span', 'ldot');
     const eye = el('button', 'icn' + (l.visible ? ' on' : ''), l.visible ? '◉' : '◌');
     eye.title = 'Видимость слоя';
-    eye.onclick = () => S.ed.setLayerVisible(l.name, !l.visible);
+    eye.onclick = (e) => { e.stopPropagation(); S.ed.setLayerVisible(l.name, !l.visible); };
     const lock = el('button', 'icn' + (l.locked ? ' on' : ''), l.locked ? '🔒' : '🔓');
     lock.title = 'Заморозить слой (запрет правки)';
-    lock.onclick = () => S.ed.setLayerLocked(l.name, !l.locked);
+    lock.onclick = (e) => { e.stopPropagation(); S.ed.setLayerLocked(l.name, !l.locked); };
     const name = el('span', 'lname', l.name);
     const cnt = el('span', 'lcnt', String(l.count));
-    r.appendChild(eye); r.appendChild(lock); r.appendChild(name); r.appendChild(cnt);
-    // Параллакс-слоям добавляем свой тумблер: их позиция вычисляется, и
-    // «показать/скрыть, чтобы посмотреть, что под ними» — единственная
-    // осмысленная операция.
+    r.appendChild(dot); r.appendChild(eye); r.appendChild(lock); r.appendChild(name); r.appendChild(cnt);
+    // Параллакс-слоям — метка: их позиция вычисляется из камеры, двигать нельзя.
     const isPar = /Backdrop|Parallax|Far|Mid/.test(l.name);
     if (isPar) {
       const tag = el('span', 'ltag', 'par');
       tag.title = 'Слой параллакса: позиция вычисляется из камеры';
       r.appendChild(tag);
     }
+    r.onclick = () => selectLayerToggle(l.name);
     box.appendChild(r);
   }
+  updateStatus();
+}
+
+/** Клик по слою в панели «Слои»: выбрать слой целиком (как в Godot выбрать
+ *  группу) или снять выделение, если он уже активен. */
+function selectLayerToggle(name) {
+  if (!S.ed) return;
+  if (S.ed.activeLayer === name) S.ed.clearLayer();
+  else S.ed.selectLayer(name);
+  renderLayers(S.ed.layerList());
+  renderTree();
 }
 
 function renderView() {
   if (!S.ed) return;
-  $('viewInfo').textContent =
-    `${S.ed.mode.toUpperCase()} · zoom ${S.ed.zoom.toFixed(2)} · ` +
-    `pan ${Math.round(S.ed.pan.x)}, ${Math.round(S.ed.pan.y)}`;
+  const host = $('cvLevel');
+  const vw = host.clientWidth / Math.max(0.001, S.ed.zoom);
+  const x0 = Math.round(S.ed.pan.x - vw / 2), x1 = Math.round(S.ed.pan.x + vw / 2);
+  const v = `${S.ed.mode.toUpperCase()} · zoom ${S.ed.zoom.toFixed(2)} · ` +
+    `панорама ${Math.round(S.ed.pan.x)}, ${Math.round(S.ed.pan.y)} · ` +
+    `x ${x0}..${x1}`;
+  const vi = $('viewInfo');
+  if (vi) vi.textContent = v;
+  const sv = $('stView');
+  if (sv) sv.textContent = v;
+  updateHud();
+}
+
+/* ------------------------------------------------------------ статус/HUD */
+
+/** Статус-строка: то, что в редакторе читают боковым зрением — что открыто,
+ *  сколько узлов, есть ли несохранённое. */
+function updateStatus() {
+  const ed = S.ed;
+  const nodes = ed ? ed.editable.length : 0;
+  const layers = ed ? ed.layerOrder.length : 0;
+  const edits = ed ? Object.keys(ed.edits || {}).length : 0;
+  const set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
+  set('stNodes', String(nodes));
+  set('stLayers', String(layers));
+  set('stEdits', String(edits));
+  set('editCount', String(edits));
+  set('stLevel', S.level ? (S.level.title || S.level.id) : '—');
+  set('stFile', S.level ? S.level.file : '');
+  const st = $('stState');
+  if (st) st.textContent = S.dirty ? 'есть правки' : 'готово';
+  const dot = $('stDot');
+  if (dot) dot.classList.toggle('busy', !!S.dirty);
+  const dt = $('dirtyTag');
+  if (dt) {
+    dt.textContent = S.dirty ? 'не сохранено' : 'сохранено';
+    dt.classList.toggle('hot', !!S.dirty);
+  }
+}
+
+/** HUD кадра: режим, координаты выделенного узла, подпись выбора. */
+function updateHud() {
+  const set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
+  const ed = S.ed;
+  const vm = $('vmode');
+  if (vm && ed) vm.textContent = ed.mode === '3d' ? 'PERSP' : 'ORTHO';
+  if (!ed) { set('hudTool', 'select'); set('hudX', '—'); set('hudY', '—'); return; }
+  const info = ed.sel ? ed.infoOf(ed.sel) : null;
+  if (info) {
+    set('hudTool', 'move');
+    set('hudX', String(info.pos[0]));
+    set('hudY', String(info.pos[1]));
+    set('hudSel', info.path);
+  } else if (ed.activeLayer) {
+    set('hudTool', 'move layer');
+    set('hudX', '—');
+    set('hudY', '—');
+    set('hudSel', 'слой: ' + ed.activeLayer);
+  } else {
+    set('hudTool', 'select');
+    set('hudX', '—');
+    set('hudY', '—');
+    set('hudSel', 'ничего не выбрано');
+  }
+}
+
+/* ================================================ участки уровня (секторы) */
+
+/**
+ * Уровень шириной ~3700 px при Fit превращается в тонкую полоску: «открыл
+ * редактор — ничего не видно». Godot так не работает: там камера стоит на
+ * ОДНОМ экране, а по уровню ходят. Поэтому по умолчанию показываем участок
+ * ~1 экран игры с читаемым зумом, аFit остаётся отдельной кнопкой.
+ */
+function computeSectors() {
+  const ed = S.ed;
+  if (!ed) return;
+  const host = $('cvLevel');
+  S.edZoom = Math.max(0.35, Math.min(1.1,
+    Math.min(host.clientHeight / 780, host.clientWidth / 1450)));
+  let min = Infinity, max = -Infinity;
+  for (const e of ed.editable) {
+    const p = ed.levelPos(e.path);
+    if (!p) continue;
+    if (p[0] < min) min = p[0];
+    if (p[0] > max) max = p[0];
+  }
+  if (!isFinite(min)) { min = 0; max = 1280; }
+  const step = Math.max(900, Math.round((host.clientWidth / S.edZoom) * 0.9));
+  // Первый участок начинаем с нуля, а не с «минус одного шага»: отрицательные
+  // x есть у фона и стен, и без этого сектор 1 показывал бы пустоту левее
+  // уровня — ровно та же жалоба «открыл и вижу кусок ниоткуда».
+  const start = Math.max(0, Math.floor(min / step) * step);
+  const n = Math.max(1, Math.ceil((max + 200 - start) / step));
+  S.sectors = Array.from({ length: n }, (_, i) => ({
+    start: start + i * step, end: start + (i + 1) * step,
+  }));
+  updateSectorSel();
+}
+
+function updateSectorSel() {
+  const sel = $('secSel');
+  if (!sel) return;
+  sel.innerHTML = '';
+  const all = el('option', null, 'весь уровень');
+  all.value = '-1';
+  sel.appendChild(all);
+  S.sectors.forEach((s, i) => {
+    const o = el('option', null, `участок ${i + 1} · x ${Math.round(s.start)}–${Math.round(s.end)}`);
+    o.value = String(i);
+    sel.appendChild(o);
+  });
+  sel.value = String(S.sector);
+}
+
+function gotoSector(i) {
+  const ed = S.ed;
+  if (!ed) return;
+  if (i === -1) { S.sector = -1; fitLevel(); updateSectorSel(); return; }
+  if (!S.sectors.length) computeSectors();
+  S.sector = Math.max(0, Math.min(S.sectors.length - 1, i));
+  const s = S.sectors[S.sector];
+  ed.zoom = S.edZoom;
+  ed.pan.x = (s.start + s.end) / 2;
+  ed.pan.y = 360;                     // центр виртуального кадра 1280×720
+  ed.applyView();
+  updateSectorSel();
 }
 
 /* ====================================================== добавление узла */
 
 /**
- * Добавление узла. Конверт: `add: [{path, type, parent, props, from}]`.
+ * Добавить объект «ещё такой же»: копируем ТЕКСТУРУ выделенного узла, а не
+ * весь THREE-объект. Клонировать объект нельзя — у площадки внутри лежит
+ * коллайдер-подсветка и настроенный renderOrder, и «копия» начинала бы жить
+ * своей жизнью, никак не попадая в файл правок.
  *
- * `props` копируется у узла-образца ЦЕЛИКОМ, а не собирается из position/scale.
- * Так переносится любой тип: у `ColorRect` остаются `rect` и `color` (без них
- * узел невидим), у `Sprite2D` — `texture`. Собрать props «по типу» значило бы
- * вести здесь вторую таблицу того, что нужно каждому типу, и она разошлась бы
- * со `scene.js`.
- *
- * `parent` — путь узла-слоя, куда вставлять. Без него `tools/level_edits.py`
- * откажется: положить узел в корень «на глазок» значит изменить порядок
- * отрисовки всего уровня.
+ * Источник правды — specs в `add`: студия показывает узел сразу, игра читает
+ * тот же specs при старте (web3d/level_overlay.js).
  */
-function addNode(type, srcPath) {
+async function addNode(type, srcPath) {
   if (!S.ed) return;
   const src = S.ed.editableByPath.get(srcPath);
   if (!src) return;
-  const n = Math.floor(Math.random() * 9000 + 1000);
-  const base = srcPath.replace(/\d+$/, '');
-  const path = `${base}${n}`;
-  // Позицию ставим ПО ЦЕНТРУ ВИДА: добавлять «где-то там» — значит гарантировать
-  // «не вижу, что добавилось».
-  const position = [Math.round(S.ed.pan.x), Math.round(S.ed.pan.y)];
-  const spec = {
-    path, type: src.node.type,
-    parent: src.parent || null,
-    from: srcPath,
-    props: { ...(src.node.props || {}), position },
-  };
-  const e = S.ed._spawnLocal(spec);
-  if (!e) { log(`не нашёл шаблон типа ${src.node.type}`, 'err'); return; }
-  // Копия шаблона нуждается в уникальном path внутри дерева THREE: иначе
-  // _groupOf в движке вернёт первый попавшийся узел, и «добавили» превратится
-  // в «сдвинули существующий».
-  e.obj.name = path;
-  S.ed.added.push(spec);
-  S.dirty = true;
-  log(`+ ${path} (из ${srcPath}, тип ${src.node.type})`
-      + (spec.parent ? ` в слой ${spec.parent}` : ' — родитель не определён, сборка откажет'), 
-      spec.parent ? 'info' : 'warn');
-  renderTree();
-  S.ed.select(path);
+  const tex = (src.node.props || {}).texture;
+  if (!tex) { log('у узла нет текстуры — выберите ассет в библиотеке', 'err'); return; }
+  const pos = [Math.round(S.ed.pan.x), Math.round(S.ed.pan.y)];
+  const p = await S.ed.addAsset({ path: tex }, pos);
+  if (p) { renderTree(); renderLayers(S.ed.layerList()); updateStatus(); }
 }
 
 function removeNode(path) {
@@ -414,8 +620,7 @@ function renderAssets() {
     const img = el('img');
     // `decoding="async"` + `loading="lazy"` не роскошь: в каталоге есть PNG по
     // 1.5 МБ (кадры персонажей), и без этого 500 карточек в одной сетке
-    // забивают декодер и вкладка «Картинки» на секунды превращается в пустую
-    // сетку серых плашек — хотя файлы в порядке.
+    // забивают декодер и вкладка «Картинки» превращается в сетку серых плашек.
     img.loading = 'lazy';
     img.decoding = 'async';
     img.src = assetUrl(a.path);
@@ -423,14 +628,7 @@ function renderAssets() {
     c.appendChild(img);
     c.appendChild(el('div', 'cap', a.path.split('/').pop()));
     c.title = `${a.path}\n${(a.bytes / 1024).toFixed(0)} KB`;
-    c.onclick = () => {
-      $('previewBig').innerHTML = '';
-      const big = el('img');
-      big.src = assetUrl(a.path);
-      $('previewBig').appendChild(big);
-      $('previewInfo').textContent = `${a.path}  ·  ${(a.bytes / 1024).toFixed(0)} KB`;
-      showTab('preview');
-    };
+    c.onclick = () => openImage(a);
     frag.appendChild(c);
   }
   if (!S.assets.images.length) {
@@ -452,6 +650,71 @@ function renderAssets() {
       'GLB не найдено. Просмотрщик ищет *.glb в каталоге игры; ' +
       'модели репозитория лежат в assets/3d/.'));
   }
+  renderLevelAssets();
+}
+
+/** Картинка на весь экран во вкладке «Картинки». */
+function openImage(a) {
+  const big = $('previewBig');
+  big.innerHTML = '';
+  const img = el('img');
+  img.src = assetUrl(a.path);
+  big.appendChild(img);
+  $('previewInfo').textContent = `${a.path}  ·  ${(a.bytes / 1024).toFixed(0)} KB`;
+  showTab('preview');
+}
+
+/**
+ * Клик по ассету в нижней библиотеке = ПОЛОЖИТЬ ЕГО В УРОВЕНЬ.
+ * Раньше клик просто открывал превью картинки, и «добавить платформу» было
+ * невозможно в принципе. Теперь объект появляется в центре вида (или в
+ * активном слое), сразу выделяется и тащится мышью; Shift+клик оставляет
+ * старое поведение — посмотреть картинку крупно.
+ */
+async function placeAsset(a) {
+  if (!S.ed) return;
+  const pos = [S.ed.pan.x, S.ed.pan.y];
+  const p = await S.ed.addAsset(a, pos);
+  if (!p) { log(`ассет не добавлен: ${a.path}`, 'err'); return; }
+  S.dirty = true;
+  $('saveBtn').classList.add('hot');
+  renderTree();
+  renderLayers(S.ed.layerList());
+  updateStatus();
+}
+
+/**
+ * Нижняя библиотека ассетов (как ASSET LIBRARY в редакторе уровней).
+ *
+ * Показывает картинки каталога игры плотной сеткой. Это не дубль вкладки
+ * «Картинки»: здесь библиотека всегда под рукой, пока правишь уровень, и
+ * открывает превью одним кликом, не уводя из сцены насовсем.
+ */
+function renderLevelAssets() {
+  const grid = $('lvAssetGrid');
+  if (!grid) return;
+  const q = (($('lvAssetFilter') || {}).value || '').toLowerCase();
+  const all = S.assets.images || [];
+  const list = all.filter((a) => !q || a.path.toLowerCase().includes(q));
+  const cnt = $('lvAssetCount');
+  if (cnt) cnt.textContent = `${list.length} / ${all.length}`;
+  grid.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  for (const a of list.slice(0, 400)) {
+    const card = el('div', 'acard');
+    const img = el('img');
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.src = assetUrl(a.path);
+    img.onerror = () => card.classList.add('bad');
+    card.appendChild(img);
+    card.appendChild(el('div', 'cap', a.path.split('/').pop()));
+    card.appendChild(el('div', 'sub', a.path.split('/').slice(0, -1).join('/') || '—'));
+    card.title = `${a.path}\n${(a.bytes / 1024).toFixed(0)} KB — клик: добавить в уровень, Shift+клик: посмотреть`;
+    card.onclick = (ev) => { if (ev.shiftKey) openImage(a); else placeAsset(a); };
+    frag.appendChild(card);
+  }
+  grid.appendChild(frag);
 }
 
 async function openGlb(path) {
@@ -544,6 +807,46 @@ async function boot() {
     t.onclick = () => showTab(t.dataset.tab);
   }
 
+  // Вкладки левой панели «Объекты / Слои». Обе показывают одно состояние с
+  // разных сторон: дерево — иерархию, список слоёв — видимость и замок.
+  for (const t of document.querySelectorAll('.ptab')) {
+    t.onclick = () => {
+      for (const x of document.querySelectorAll('.ptab')) x.classList.toggle('on', x === t);
+      const isTree = t.dataset.ptab === 'tree';
+      const pt = $('paneTree'), pl = $('paneLayers');
+      if (pt) pt.hidden = !isTree;
+      if (pl) pl.hidden = isTree;
+      const filt = $('treeFilter');
+      if (filt) filt.parentElement.style.display = isTree ? '' : 'none';
+    };
+  }
+
+  // Журнал — выдвижной ящик: держать 120 px под лог в редакторе нельзя.
+  const lg = $('logbox');
+  const setLog = (open) => {
+    if (!lg) return;
+    lg.classList.toggle('open', open);
+    const b = $('logToggle');
+    if (b) b.textContent = open ? 'Журнал ▾' : 'Журнал ▴';
+  };
+  if ($('logToggle')) $('logToggle').onclick = () => setLog(!lg.classList.contains('open'));
+  if ($('logClose')) $('logClose').onclick = () => setLog(false);
+
+  // Нижняя библиотека ассетов.
+  if ($('lvAssetFilter')) $('lvAssetFilter').oninput = renderLevelAssets;
+  if ($('lvAssetAll')) $('lvAssetAll').onclick = () => showTab('preview');
+
+  // Сворачиваемые секции боковой панели: клик по заголовку складывает секцию
+  // (как группы в Godot). При 6 секциях это держит нужное под рукой, не уходя
+  // в длинный скролл. ▾ в заголовке — индикатор раскрытия.
+  for (const h of document.querySelectorAll('.pane[data-pane="level"] .side .sec > h4')) {
+    const f = document.createElement('span');
+    f.className = 'fold';
+    f.textContent = '▾';
+    h.prepend(f);
+    h.addEventListener('click', () => h.parentElement.classList.toggle('collapsed'));
+  }
+
   // Вкладка «Игра»: iframe на страницу игры с того же сервера. Адрес берётся
   // относительно корня сервера (он и отдаёт каталог игры), поэтому страница
   // видит свои ассеты по тем же путям, что и при открытии напрямую.
@@ -570,7 +873,21 @@ async function boot() {
   // живёт на `/web3d/play.html`, а не на `/projects/games/<игра>/web3d/...`.
   // Полный путь из подписи «каталог: …» брать нельзя — это 404.
   const guessGamePage = async () => {
-    for (const cand of ['web3d/play.html', 'web3d/index.html', 'index.html']) {
+    // Раньше здесь были HEAD-запросы к трём кандидатам. У НОВОГО проекта
+    // нет ещё ни одной страницы игры, и все три промаха давали 404 в консоли
+    // — то есть «чисто созданный проект» выглядел как падение. Сервер теперь
+    // отвечает на /__gamepage одним 200 и говорит, что реально лежит на диске.
+    try {
+      const r = await fetch('/__gamepage', { cache: 'no-store' });
+      if (r.ok) {
+        const j = await r.json();
+        if (j.page) $('gamePage').value = j.page;
+        else if ($('gameInfo')) $('gameInfo').textContent =
+          'у проекта ещё нет страницы игры — это нормально для нового проекта';
+        return;
+      }
+    } catch { /* старый сервер без ручки — проверяем ниже */ }
+    for (const cand of ['index.html', 'play.html', 'web3d/play.html']) {
       try {
         const r = await fetch('/' + cand, { method: 'HEAD' });
         if (r.ok) { $('gamePage').value = cand; return; }
@@ -588,7 +905,10 @@ async function boot() {
   $('mode3d').onclick = () => setMode('3d');
   $('zin').onclick = () => { if (S.ed) { S.ed.zoom = Math.min(4, S.ed.zoom * 1.25); S.ed._applyOrthoZoom(); renderView(); } };
   $('zout').onclick = () => { if (S.ed) { S.ed.zoom = Math.max(0.05, S.ed.zoom / 1.25); S.ed._applyOrthoZoom(); renderView(); } };
-  $('fit').onclick = () => fitLevel();
+  $('fit').onclick = () => { S.sector = -1; fitLevel(); updateSectorSel(); };
+  $('secSel').onchange = (e) => gotoSector(parseInt(e.target.value, 10));
+  $('secPrev').onclick = () => gotoSector((S.sector < 0 ? 0 : S.sector) - 1);
+  $('secNext').onclick = () => gotoSector((S.sector < 0 ? -1 : S.sector) + 1);
   $('toggleCol').onclick = (e) => {
     if (!S.ed) return;
     S.ed.setCollisions(!S.ed.showCollisions);
@@ -617,13 +937,19 @@ async function boot() {
   };
   $('buildBtn').onclick = async () => {
     if (!S.ed) return;
-    if (S.dirty && !confirm('Есть несохранённые правки — пересборка их не увидит. Сохранить и пересобрать?')) return;
-    if (S.dirty) { await S.ed.saveEdits(); S.dirty = false; $('saveBtn').classList.remove('hot'); }
-    $('buildBtn').disabled = true;
-    log('пересборка уровня…');
-    try { await S.ed.rebuild(); renderTree(); }
-    catch (e) { log('сборка: ' + e.message, 'err'); }
-    finally { $('buildBtn').disabled = false; lintLevel(); }
+    // «Пересобрать» больше не зовёт python-сборщик: уровни генерируются из
+    // levels.js, а правки накладывает САМА ИГРА при старте. Поэтому достаточно
+    // сохранить оверлей и перезапустить iframe — человек сразу видит результат.
+    try {
+      await S.ed.saveEdits();
+      S.ed.dirty = false; S.dirty = false;
+      $('saveBtn').classList.remove('hot');
+      const f = $('gameFrame');
+      if (f.src) f.src = f.src;
+      else { $('gamePage').value = 'index.html'; $('gameOpen').click(); }
+      showTab('game');
+      log('правки сохранены — игра перезапущена с ними');
+    } catch (e) { log('применение: ' + e.message, 'err'); }
   };
 
   // Добавление: тип берём из текущего выделения — «сделай ещё такую же» это
@@ -666,7 +992,7 @@ async function boot() {
   };
 
   addEventListener('resize', () => {
-    if (S.ed) S.ed.resize();
+    if (S.ed) { S.ed.resize(); if (S.sectors.length) computeSectors(); }
     if (S.viewer) S.viewer.resize();
   });
 
@@ -676,6 +1002,8 @@ async function boot() {
     if (e.ctrlKey && e.code === 'KeyB') { e.preventDefault(); toggleSide(); }
   });
 
+  // Сюда мы попадаем ТОЛЬКО когда проект уже выбран (launcher.js), поэтому
+  // levels.json, scene.js и вендор three.js гарантированно доступны.
   try {
     await loadManifest();
     await openLevel($('levelSel').value);

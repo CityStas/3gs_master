@@ -41,11 +41,11 @@ exposes MCP resources. So:
 - if a path does not resolve, say which path you tried, not that you lack the capability.
 
 The working directory is the repository root, not the game directory. Reach a game with
-a relative path (`projects/games/<name>/...`) or with the absolute path the user supplied.
+a relative path (`projects/three/<name>/...`) or with the absolute path the user supplied.
 
 ## Where things live (and what is a copy)
 
-- `projects/games/<name>/` - the projects. Everything inside one is a **copy**.
+- `projects/three/<name>/` - the projects. Everything inside one is a **copy**.
 - `stack/` (`web3d/scene.js`), `vendor/three/` (the r186 runtime), `tools/`
   (`level_apply.py`, `level_edits.py`, `level_lint.py`, `web/serve.py`) - the
   **canonical source** of that copy, one table: `STACK_SRC` in `tools/project_init.py`.
@@ -74,7 +74,7 @@ consequences, and both have already caused a wasted session:
 The active game is recorded in `data/active_project.txt` (the launcher's argument is
 written there). Read it before doing anything project-specific:
 
-    cat data/active_project.txt        # -> projects/games/test
+    cat data/active_project.txt        # -> projects/three/test
 
 The same value is in the `THREE_PROJECT` environment variable. If a task says "the demo"
 or "the game" without a name, resolve it from those - do **not** ask the user until you
@@ -111,7 +111,7 @@ A project that is not named in `data/active_project.txt` is not yours to create.
 ### A plain scene, concretely
 
 "Write a complete single-file HTML three.js game" is a complete instruction. Deliver one
-file in the active project - `projects/games/<name>/ninja.html` - and nothing else.
+file in the active project - `projects/three/<name>/ninja.html` - and nothing else.
 
 The project already carries the pinned runtime at `web3d/vendor/`, so the page reaches it
 with an import map and a relative path:
@@ -140,8 +140,8 @@ A scene that lives under `scenes/` instead uses the repository runtime:
 
 ## Level format - read `LEVEL-SCHEMA.md` before writing a level
 
-A game's level is plain JSON: `projects/games/<name>/web3d/level.json`, registered in
-`projects/games/<name>/web3d/levels.json`. It is **not** a Godot scene, **not** a tilemap and
+A game's level is plain JSON: `projects/three/<name>/web3d/level.json`, registered in
+`projects/three/<name>/web3d/levels.json`. It is **not** a Godot scene, **not** a tilemap and
 **not** a Vite/TS module. `web3d/scene.js` turns it into a three.js scene and
 `web3d/engine.js` runs it. `LEVEL-SCHEMA.md` in the repository root is the full
 reference with a complete worked example - **open it before writing a level**, and
@@ -161,7 +161,7 @@ empty:
 > arbitrary placeholders that exist to show the SHAPE of the JSON. They are NOT assets,
 > NOT a plan, and NOT a suggestion of what to build. Never generate an asset just because
 > its name appears in an example here or in `LEVEL-SCHEMA.md`. Real assets are only the
-> files that actually exist under `projects/games/<name>/` (check with `ls`) or that the user's task
+> files that actually exist under `projects/three/<name>/` (check with `ls`) or that the user's task
 > explicitly asks for.
 
 - **`textures` is keyed by PATH from the game root, and the value is `[width, height]`.**
@@ -189,7 +189,7 @@ Your shell starts in the game directory, and the linter is copied into the game,
     python tools/level_lint.py web3d/<level_dir>/level.json
 
 (From the repository root the same tool is
-`./.venv/Scripts/python.exe tools/level_lint.py projects/games/<name>/web3d/level.json`.)
+`./.venv/Scripts/python.exe tools/level_lint.py projects/three/<name>/web3d/level.json`.)
 
 It names the node and the field, and its messages are the four mistakes above spelled
 out. Do not report a level as finished while the linter still exits 1.
@@ -201,10 +201,10 @@ single most common source of wasted turns. Consequences:
 
 - **Write bash, and only bash.** Do not mix in cmd or PowerShell syntax; a single line
   that mixes them fails at the parser before anything runs:
-  - WRONG: `cd /d F:\repo && find projects/games -type f 2>$null | Select-Object -First 50`
+  - WRONG: `cd /d F:\repo && find projects/three -type f 2>$null | Select-Object -First 50`
     (`cd /d` is cmd, `2>$null` and `Select-Object` are PowerShell, `find` is bash).
-  - RIGHT: `cd /f/Pets/Projects/local_tools/3GS_Master && find projects/games -type f -name '*.png' | head -50`
-  - Paths in bash use forward slashes (`/f/...`, `projects/games/test/...`), not `F:\...`.
+  - RIGHT: `cd /f/Pets/Projects/local_tools/3GS_Master && find projects/three -type f -name '*.png' | head -50`
+  - Paths in bash use forward slashes (`/f/...`, `projects/three/test/...`), not `F:\...`.
   - No PowerShell cmdlets (`Select-Object`, `Get-ChildItem`, `2>$null`); no cmd idioms
     (`cd /d`, `2>nul`, `&&` is fine but `cd /d` is not).
 - **`.cmd` launchers DO NOT RUN from this shell.** `serve-all.cmd`, `cmd\check.cmd`,
@@ -222,9 +222,9 @@ single most common source of wasted turns. Consequences:
 - **Run the underlying Python instead.** Every launcher is a thin wrapper over a script
   in `tools/`. Call it with the project's venv, from the repository root:
 
-      ./.venv/Scripts/python.exe tools/tscheck.py projects/games/<game>
+      ./.venv/Scripts/python.exe tools/tscheck.py projects/three/<game>
       ./.venv/Scripts/python.exe tools/project_init.py <name> --force
-      ./.venv/Scripts/python.exe tools/level_lint.py projects/games/<game>/web3d/level.json
+      ./.venv/Scripts/python.exe tools/level_lint.py projects/three/<game>/web3d/level.json
 
   (inside a game directory the linter is copied locally, so
   `python tools/level_lint.py web3d/level.json` from there also works).
@@ -236,7 +236,7 @@ single most common source of wasted turns. Consequences:
   do not fight the shell.
 
 **Every call is a fresh shell.** `cd` does not carry over to the next call. Chain it
-inside one command - `cd projects/games/x && npm install` - or use absolute paths. A bare
+inside one command - `cd projects/three/x && npm install` - or use absolute paths. A bare
 `npm install` after a previous `cd` runs in the repository root and fails with
 `ENOENT ... package.json`.
 
@@ -299,7 +299,7 @@ so plan the split up front.
 Run the project's checker rather than raw `tsc`. The user's `.cmd` wrapper is
 `cmd\check.cmd <game>`; from your bash shell run the same script directly:
 
-    ./.venv/Scripts/python.exe tools/tscheck.py projects/games/<game>
+    ./.venv/Scripts/python.exe tools/tscheck.py projects/three/<game>
 
 It prints a verdict, the error count per file, every substantive error in full, and the
 unused-symbol ones collapsed to a single line each. Raw `tsc --noEmit` is fifty-plus
@@ -311,7 +311,7 @@ so the prompt is cancelled and the turn is wasted.
 `cmd\check.cmd` runs a **second** gate after tsc, because a compiler cannot see what a
 browser evaluates:
 
-    ./.venv/Scripts/python.exe tools/pagecheck.py projects/games/<game>
+    ./.venv/Scripts/python.exe tools/pagecheck.py projects/three/<game>
 
 It resolves every module specifier in every page through that page's own importmap and
 checks the file exists, then checks every referenced asset. Run it **before** you say a
@@ -325,7 +325,7 @@ is not in `vendor/three/` (only `GLTFLoader.js` is vendored under `addons/loader
 
 Before writing an import of any `three/addons/...` path, check that the file exists:
 
-    ls projects/games/<game>/web3d/vendor/addons/
+    ls projects/three/<game>/web3d/vendor/addons/
 
 Three rules that matter more than they look:
 

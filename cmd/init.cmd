@@ -19,8 +19,8 @@ rem --- skeleton). There is no universal "new game" step any more - that name
 rem --- made models call the Three.js scaffolder for Roblox projects.
 rem ---
 rem ---   init.cmd                          current directory, engine from engine.json
-rem ---   init.cmd projects\games\my_game   a project directory
-rem ---   init.cmd my_game --engine threejs create the marker + Three.js stack
+rem ---   init.cmd projects\three\my_game --engine threejs  full path + stack
+rem ---   init.cmd my_game --engine threejs             resolves against CWD
 rem ---   init.cmd my_game --sync           refresh only the stack
 rem ---   init.cmd my_game --force          overwrite levels too
 rem ---   init.cmd my_game --cli            only what the CLI agent needs
