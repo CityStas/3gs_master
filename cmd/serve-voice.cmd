@@ -20,11 +20,12 @@ rem x_life's creature needs a VOICE, not an intellect: name the episode, state o
 rem hypothesis, name a goal. That is about 120 tokens, asked every few hundred
 rem ticks - so it has to be cheap, not clever. 0.8B q4 is 517 MiB.
 rem
-rem Port 8084. 8080 is the 9B builder, 8081 the embedder, 8082 the Qwen2.5-VL
+rem Port 8084. 8080 is the chat/coding model, 8081 the embedder, 8082 the Qwen2.5-VL
 rem vision server, 8083 the reranker - all four are taken.
 rem
-rem -ngl 0 is the DEFAULT on purpose. The card is 8 GB and the 9B builder holds
-rem about 6.4 GiB of it at ctx 65536; a second resident model would not fit, and
+rem -ngl 0 is the DEFAULT on purpose. The card is 8 GB and the model on :8080 holds a
+rem large slice of it (4.7 GiB at 4B, 6.4 GiB at 9B, both at ctx 65536); a second
+rem resident model would not fit, and
 rem the voice is called episodically, so CPU latency is acceptable. On the
 rem i3-12100 that is roughly 15-25 tok/s, i.e. 5-8 s per reflection.
 rem Set GS_VOICE_NGL=999 to put it on the GPU - sensible ONLY while :8080 is

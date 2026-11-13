@@ -6,8 +6,8 @@ call "%~dp0_env.cmd"
 
 rem --- Qwen2.5-VL-7B vision server (llama-mtmd) ----------------------------------
 rem OpenAI-compatible endpoint on http://127.0.0.1:8082/v1 . Useful for "look at this
-rem render and tell me what is wrong" loops. Kept separate from the 9B coding model
-rem because both together do not fit in 8 GB of VRAM.
+rem render and tell me what is wrong" loops. Kept separate from the coding model on
+rem :8080 because a 7B vision tower and a chat model together do not fit in 8 GB of VRAM.
 
 set "LLAMA=%GS_ROOT%bin\llama-mtmd\llama-server.exe"
 set "MODEL=%GS_MODELS_ROOT%\vlm\Qwen2.5-VL-7B\Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf"

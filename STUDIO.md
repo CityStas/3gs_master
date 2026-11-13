@@ -118,10 +118,11 @@ serve-all.cmd
 ```
 
 Откроются два окна (`3gs-llm` :8080, `3gs-embed` :8081), и **команда не вернёт  
-управление, пока оба не ответят** — 9B грузится ~30 с. На экране:
+управление, пока оба не ответят** — модель грузится с диска (9B ~30 с, 4B примерно
+вдвое быстрее). На экране:
 
 ```
-Waiting for the servers to finish loading (9B needs about 30 s)...
+Waiting for the servers to finish loading (the chat model loads from disk on the first request)...
   [ ready ] EMBED http://127.0.0.1:8081/health  (2.1s)
   [ ready ] LLM   http://127.0.0.1:8080/v1/models  (8.1s)
 servers ready in 8.1s

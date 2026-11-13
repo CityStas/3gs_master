@@ -13,7 +13,8 @@ rem
 rem      curl :8080/v1/models                       -> every registered model id
 rem      {"model":"omnicoder-9b", ...}              -> loads it, then answers
 rem
-rem  Why a router and not one server per port: the card is 8 GB, so exactly one 9B fits.
+rem  Why a router and not one server per port: the card is 8 GB, so exactly one 9B-class
+rem  model fits at a time.
 rem  Two servers would have to fight for VRAM; the router serialises them by design and
 rem  keeps ONE baseUrl for pi, so switching models inside a session is just `/model`.
 rem
@@ -50,9 +51,12 @@ rem --- Context. Per-model values now live in the preset; GS_LLM_CTX acts as a C
 rem --- applied during generation (tools\llm_models.py --ctx-cap), so exporting it
 rem --- shrinks every model at once instead of being silently ignored.
 rem ---
-rem Qwen3.5-9B is a HYBRID architecture: only 8 of 33 blocks use full attention
+rem Qwen3.5 is a HYBRID architecture: only 8 blocks use full attention
 rem (full_attention_interval=4), the rest are SSM with CONSTANT state. So the KV cache
-rem is charged for 8 layers, not 33: 17 KiB/token at q8_0.
+rem is charged for 8 layers, not for all of them: 17 KiB/token at q8_0 - the same for the
+rem 9B (8 of 33 blocks) and the 4B default (8 of 32).
+rem
+rem Numbers below are the 9B example; the 4B default carries 2614 MB of weights, ~3 GiB less.
 rem
 rem   ctx  8192 -> KV   136 MiB | total VRAM ~5.6 GiB
 rem   ctx 65536 -> KV  1088 MiB | total VRAM ~6.4 GiB | ~1.0 GiB left for the browser

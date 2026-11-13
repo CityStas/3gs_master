@@ -25,7 +25,7 @@ supplies those paths from a fixture dir, so a run is seconds per task, not minut
 
     python tools/level_autotest.py                     # offline: fixtures + scorer
     python tools/level_autotest.py --live              # score the model on :8080
-    python tools/level_autotest.py --live --model qwen3.5-9b
+    python tools/level_autotest.py --live --model qwen3.5-4b
     python tools/level_autotest.py --live --no-thinking   # thinking off via chat_template_kwargs
     python tools/level_autotest.py --list              # what the tasks are
     python tools/level_autotest.py --save out/         # keep raw answers next to the report

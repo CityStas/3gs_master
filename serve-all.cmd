@@ -62,10 +62,10 @@ if "%WAIT%"=="0" goto :summary
 
 rem --- Block until both ports answer. `start` returns instantly, so a chain like
 rem ---   serve-all.cmd && doctor.cmd && agent.cmd
-rem --- used to reach doctor while the 9B model was still loading (about 30 s).
+rem --- used to reach doctor while the chat model was still loading (about 30 s).
 rem --- doctor then exited 1 and cmd silently skipped everything after it.
 echo.
-echo Waiting for the servers to finish loading (9B needs about 30 s)...
+echo Waiting for the servers to finish loading (the chat model loads from disk on the first request)...
 "%PY%" "%GS_ROOT%tools\wait_ready.py" --timeout 300
 if errorlevel 1 (
   echo.

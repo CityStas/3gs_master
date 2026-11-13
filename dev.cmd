@@ -67,7 +67,7 @@ for /f "usebackq delims=" %%P in (`%PY% "%GS_ROOT%tools\find_project.py" "%GAMEA
 if not defined PROJREL goto :fail_mkdir
 
 rem --- 2. Models. Blocking: returns only when :8080 and :8081 answer, so the
-rem ---    agent never starts against a half-loaded 9B.
+rem ---    agent never starts against a half-loaded LLM.
 call "%GS_ROOT%serve-all.cmd"
 if errorlevel 1 (
   echo [ERROR] models did not come up - nothing was launched.
