@@ -207,7 +207,14 @@ def _merge(target: dict, generated: dict, owned: list[str], label: str,
 
 def _write(path: Path, data: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    # Force LF: Path.write_text defaults to os.linesep (CRLF on Windows), which
+    # flipped the committed LF blobs to CRLF on every sync and buried the real
+    # one-line change under a whole-file diff.
+    path.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
 
 
 def main(argv: list[str]) -> int:

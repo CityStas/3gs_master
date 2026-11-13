@@ -16,7 +16,12 @@ def _get():
 
 @mcp.tool()
 def threejs_rag_search(query:str,top_k:int=8,source:str="",path_prefix:str="")->str:
-    """Search local Three.js docs and the current project's indexed JS/TS/web code."""
+    """Search local Three.js docs and the current project's indexed JS/TS/web code.
+
+    Call this BEFORE answering a Three.js API question or writing Three.js code: the
+    result is the pinned r186 reference and the project's own source, not a model's
+    memory of the library. If an answer looks stale, run threejs_rag_status first.
+    """
     top_k=max(1,min(int(top_k or 8),12)); filters={}
     if source: filters["source"]=source
     if path_prefix: filters["path_prefix"]=path_prefix

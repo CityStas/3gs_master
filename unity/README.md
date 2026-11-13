@@ -435,7 +435,7 @@ FTS5, удаление O(log n)), поэтому `upsert` пишет явный 
 | `unity_*` не видно у модели | нет `"engine": "unity"` в `engine.json` проекта, либо агент запущен не через `agent.cmd` |
 | `Unity.exe not found` | задать `UNITY_EDITOR` или поставить редактор в `E:\Programs\Unity Hub\Unity\Editors\<ver>` |
 | `the Unity editor is already open on …` | закрыть редактор, либо использовать `unity_console()` вместо batch |
-| `rag_search` возвращает пусто | индекс пуст → `gs unity-index`; состояние → `unity_rag_status` |
+| `unity_rag_search` возвращает пусто | индекс пуст → `gs unity-index`; состояние → `unity_rag_status` |
 | Dense-поиск ничего не находит | индекс собран при выключенном `:8081` → `gs unity-index --vectors` |
 | Фетчер сыпет `http 429` | нормальное поведение под лимитом; докачать `gs unity-fetch --delay 0.3 --workers 3` |
 | Сцена открывается, компоненты пустые | `.unity`/`.prefab` писался текстом → строить editor-скриптом |

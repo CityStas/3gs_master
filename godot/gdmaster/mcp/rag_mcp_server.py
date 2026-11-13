@@ -1,6 +1,6 @@
 """RAG MCP-сервер.
 
-Модели отдаются только два инструмента: `rag_search` и `rag_status`.
+Модели отдаются только два инструмента: `godot_rag_search` и `godot_rag_status`.
 Остальное (reindex, get_document) доступно как CLI, но не как capability LLM —
 это осознанное сужение tool surface (§18 спеки).
 """
@@ -30,11 +30,12 @@ def _get() -> Retriever:
 
 
 @mcp.tool()
-def rag_search(query: str, top_k: int = 8, source: str = "", path_prefix: str = "") -> str:
+def godot_rag_search(query: str, top_k: int = 8, source: str = "", path_prefix: str = "") -> str:
     """Поиск по локальной базе знаний Godot 4.7 и по текущему проекту.
 
-    Используй, когда нужно уточнить Godot API, сигнатуру метода, имя свойства
-    или поведение узла, а также чтобы найти код/сцены в текущем проекте.
+    Вызывай ДО ответа на любой вопрос про Godot API - когда нужно уточнить сигнатуру
+    метода, имя свойства или поведение узла, - а также чтобы найти код/сцены в текущем
+    проекте. База закреплена на 4.7: ответ по памяти почти всегда из другой версии.
 
     Args:
         query: запрос. Лучше всего работают точные Godot-символы,
@@ -57,7 +58,7 @@ def rag_search(query: str, top_k: int = 8, source: str = "", path_prefix: str = 
     if not hits:
         return json.dumps(
             {"results": [], "note": "Ничего не найдено. Попробуй другие термины или "
-                                    "проверь rag_status."},
+                                    "проверь godot_rag_status."},
             ensure_ascii=False, indent=1)
     payload = {
         "query": query,
@@ -78,10 +79,10 @@ def rag_search(query: str, top_k: int = 8, source: str = "", path_prefix: str = 
 
 
 @mcp.tool()
-def rag_status() -> str:
+def godot_rag_status() -> str:
     """Состояние локального индекса знаний: сколько чанков, файлов, источников.
 
-    Вызывай, если rag_search возвращает пусто или данные выглядят устаревшими.
+    Вызывай, если godot_rag_search возвращает пусто или данные выглядят устаревшими.
     """
     store = IndexStore()
     stats = store.stats()

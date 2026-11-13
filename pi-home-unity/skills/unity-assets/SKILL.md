@@ -19,7 +19,7 @@ ComfyUI pipeline; the `assets` MCP server is registered for Unity with
 ```
 
 One call for the whole pack (`asset_generate_pack`), never one call per asset — each call pays a
-ComfyUI start/stop and a 9B model reload on an 8 GB card.
+ComfyUI start/stop and a model reload on an 8 GB card.
 
 ## Import rules that decide how it looks
 

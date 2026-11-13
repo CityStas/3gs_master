@@ -37,6 +37,10 @@ knowledge or tools in this profile.
 A fact about the **open project** comes from the live DataModel, never from documentation.
 A fact about **the platform** comes from the RAG, never from memory.
 
+In WorkBuddy the RAG is an MCP tool and it is enabled for all four engines - the same index
+answers a cloud model and the local one. If a `*_rag_search` tool is missing from the session,
+say so instead of answering from memory.
+
 ## Script types and where they live
 
 | Type | Runs | Goes in | Cannot |

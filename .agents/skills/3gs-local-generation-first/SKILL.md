@@ -106,10 +106,12 @@ cd F:/Pets/Projects/local_tools/3GS_Master
 **Один запуск на весь список.** Каждый отдельный вызов — новый старт движка и
 перезагрузка весов. Пак из восьми задач = один старт.
 
-> MCP-сервер `assets` (`asset_generate_pack`) зарегистрирован только в
-> `3GS_Master/.pi/mcp.json` — это конфиг pi, не WorkBuddy. Из WorkBuddy генерация
-> идёт CLI-пакетом выше. Хочешь инструментом — перенести блок `assets` в
-> `~/.workbuddy-ai/mcp.json` и нажать Trust.
+> MCP-сервер `assets` (`asset_generate_pack`) включён и в pi, и в WorkBuddy:
+> `mcp/registry.json` → `gs mcp-sync --apply` разворачивает его в `pi-home-*/mcp.json`
+> и в `~/.workbuddy-ai/mcp.json`. Из WorkBuddy генерация идёт инструментом
+> `asset_generate_pack`, а CLI-пакет ниже — тот же маршрут снаружи агента.
+> Если инструмента не видно в сессии WorkBuddy — сначала проверь, что сервер не
+> помечен `disabled`, и перезагрузи клиент; политика от формы вызова не меняется.
 
 ## 3. Схема JSON-плана
 

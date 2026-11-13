@@ -55,9 +55,10 @@ def rbx_rag_search(query: str, top_k: int = 8, source: str = "", path_prefix: st
     starter kit, the cookbook, troubleshooting and anti-patterns, plus the active Roblox
     project's own Luau indexed as source=project.
 
-    Use it for Roblox/Luau API questions (exact class, member, event or enum names), error
-    messages and "how do I do X in Roblox". It does NOT see the live Studio session - for
-    that use the Roblox Studio MCP tools (`execute_luau`, `script_read`, `search_game_tree`).
+    Call this BEFORE answering a Roblox/Luau API question (exact class, member, event or
+    enum names), an error message, or "how do I do X in Roblox". It does NOT see the live
+    Studio session - for that use the Roblox Studio MCP tools (`execute_luau`,
+    `script_read`, `search_game_tree`).
 
     Args:
         query: natural language or an exact API/error symbol, e.g. "RemoteEvent:FireClient"

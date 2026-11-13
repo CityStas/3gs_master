@@ -10,7 +10,7 @@
       "cwd": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\roblox",
       "exposure": "direct",
       "timeout": 300,
-      "description": "Roblox knowledge base: hybrid search (dense + BM25, RRF-fused) over the Creator Hub guides, the Engine API Reference (one chunk per class member, with Security/Thread Safety tags), the Open Cloud reference, the curated Russian starter kit, the cookbook, troubleshooting and anti-patterns, plus the active project's Luau as source=project. Tools: rbx_rag_search, rbx_rag_status."
+      "description": "Roblox knowledge base - tools: rbx_rag_search, rbx_rag_status. Hybrid search (dense + BM25, RRF-fused) over the Creator Hub guides, the Engine API Reference (one chunk per class member, with Security/Thread Safety tags), the Open Cloud reference, the curated Russian starter kit, the cookbook, troubleshooting and anti-patterns, plus the active project's Luau as source=project. Call rbx_rag_search BEFORE answering a Roblox platform question or writing Luau - platform facts come from the base, not from memory."
     },
     "rbx-project": {
       "command": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\.venv\\Scripts\\python.exe",
@@ -42,7 +42,7 @@
       "cwd": "F:\\Pets\\Projects\\local_tools\\3GS_Master",
       "exposure": "direct",
       "timeout": 7200,
-      "description": "Local asset generation, the first tier of ASSET-POLICY: text-to-image (z-image-turbo :8687), background removal, image-to-3D (Pixal3D/TRELLIS.2 via ComfyUI :8188), whole-pack runs. Tools: asset_image, asset_edit, asset_remove_bg, asset_to_3d, asset_character, asset_generate_pack, assets_status. The 7200 s timeout covers a pack of several 3D models - a legitimately long silence. For Roblox: generated images are decals/UI, generated meshes are imported through Studio's Asset Manager."
+      "description": "Local asset generation - the FIRST tier of ASSET-POLICY. Call one of these BEFORE downloading art or reaching for a cloud generator (ImageGen/VideoGen and any hosted API are not a route): text-to-image with z-image-turbo (:8687), background removal, image-to-3D (Pixal3D/TRELLIS.2 via ComfyUI :8188), whole-pack runs. Tools: asset_image, asset_edit, asset_remove_bg, asset_to_3d, asset_character, asset_generate_pack, assets_status. Use it whenever a task needs a texture, sprite, background, key art or a 3D model - even when the user did not say 'generate'. One asset_generate_pack call per pack, never one call per asset. The 7200 s timeout covers a pack of several 3D models - a legitimately long silence, do not retry it. For Roblox: generated images are decals/UI, generated meshes are imported through Studio's Asset Manager."
     }
   }
 }

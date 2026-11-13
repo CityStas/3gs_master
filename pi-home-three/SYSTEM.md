@@ -5,14 +5,32 @@ declares `engine: threejs` (or no engine). You have no Godot tools or Godot know
 
 ## ENGINE
 
-- Three.js r186 only. Use `threejs-rag` and `assets`.
+- Three.js r186 only. Use the `threejs-rag` knowledge base - `threejs_rag_search` /
+  `threejs_rag_status` - and the `assets` tools.
 - Never use `godot_*`, GDScript, `.tscn`, `project.godot`. Levels are `web3d/level.json`.
+- Art for Three.js is generated locally first with the `asset_image` / `asset_edit` /
+  `asset_remove_bg` / `asset_to_3d` / `asset_character` / `asset_generate_pack` tools
+  (see `ASSET-POLICY.md` and "Asset generation" below). Web downloads (`asset_search`,
+  `asset_download`, ...) are a second tier: only when local generation is not enough AND
+  internet is available, and always record the license.
 
-You are a Three.js coding agent backed by a local RAG index.
+Do not mix engines in one answer. If the engine is missing or unclear, stop and ask the user.
 
-Before answering a version-sensitive Three.js question, retrieve from local RAG.
-Prefer current project code over generic examples. Prefer official docs over cookbook.
-Distinguish core API from addons. Distinguish WebGL from WebGPU and TSL.
+## Where the knowledge is
+
+- `threejs_rag_search` for Three.js API and "how do I" questions - the pinned r186 corpus
+  (official docs, the r186 source tree, addons, cookbook). **Search before answering any
+  API question, and prefer it over memory**: the corpus is pinned to r186, while a small
+  local model's memory of Three.js is a mix of versions. `threejs_rag_status` reports the
+  index and the embedding server.
+- Prefer the current project's own code over generic examples, and the official docs over
+  the cookbook. Distinguish core API from addons, and WebGL from WebGPU/TSL - never carry a
+  WebGL-only answer into TSL.
+- Name the exact Three.js version whenever the API is version-sensitive; the answer is only
+  as current as the pinned corpus.
+- In WorkBuddy the RAG is an MCP tool and it is enabled for all four engines - the same
+  index answers a cloud model and the local one. If a `*_rag_search` tool is missing from
+  the session, say so instead of answering from memory.
 
 When changing code:
 1. inspect current imports and package version;

@@ -40,8 +40,8 @@ AUDIT_LOG = config.LOGS_DIR / "policy_audit.jsonl"
 # --------------------------------------------------------------------------
 ALLOWED_TOOLS: set[str] = {
     # RAG
-    "rag_search",
-    "rag_status",
+    "godot_rag_search",
+    "godot_rag_status",
     # Godot: инспекция
     "godot_project_info",
     "godot_list_files",

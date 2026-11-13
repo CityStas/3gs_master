@@ -10,7 +10,7 @@
       "cwd": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\unity",
       "exposure": "direct",
       "timeout": 300,
-      "description": "Unity 6000.3 knowledge base: hybrid search (dense + BM25, RRF-fused) over the pinned Manual, Scripting API, cookbook, rules, anti-patterns and troubleshooting, plus whatever Unity project is indexed as source=project."
+      "description": "Unity 6000.3 knowledge base - tools: unity_rag_search, unity_rag_status. Hybrid search (dense + BM25, RRF-fused) over the pinned Manual, Scripting API, cookbook, rules, anti-patterns and troubleshooting, plus whatever Unity project is indexed as source=project. Call unity_rag_search BEFORE answering a Unity API question or writing C#: it is the pinned 6000.3 text, not a model's memory of an older Unity."
     },
     "unity-project": {
       "command": "F:\\Pets\\Projects\\local_tools\\3GS_Master\\.venv\\Scripts\\python.exe",
@@ -35,7 +35,7 @@
       "cwd": "F:\\Pets\\Projects\\local_tools\\3GS_Master",
       "exposure": "direct",
       "timeout": 7200,
-      "description": "Local asset generation, the first tier of ASSET-POLICY: text-to-image (z-image-turbo :8687), background removal, image-to-3D (Pixal3D/TRELLIS.2 via ComfyUI :8188), whole-pack runs. Tools: asset_image, asset_edit, asset_remove_bg, asset_to_3d, asset_character, asset_generate_pack, assets_status. The 7200 s timeout covers a pack of several 3D models - a legitimately long silence. For Roblox: generated images are decals/UI, generated meshes are imported through Studio's Asset Manager."
+      "description": "Local asset generation - the FIRST tier of ASSET-POLICY. Call one of these BEFORE downloading art or reaching for a cloud generator (ImageGen/VideoGen and any hosted API are not a route): text-to-image with z-image-turbo (:8687), background removal, image-to-3D (Pixal3D/TRELLIS.2 via ComfyUI :8188), whole-pack runs. Tools: asset_image, asset_edit, asset_remove_bg, asset_to_3d, asset_character, asset_generate_pack, assets_status. Use it whenever a task needs a texture, sprite, background, key art or a 3D model - even when the user did not say 'generate'. One asset_generate_pack call per pack, never one call per asset. The 7200 s timeout covers a pack of several 3D models - a legitimately long silence, do not retry it. For Roblox: generated images are decals/UI, generated meshes are imported through Studio's Asset Manager."
     }
   }
 }

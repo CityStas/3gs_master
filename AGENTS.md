@@ -198,9 +198,42 @@ gs roblox-open [проект] [--empty]
 разворачивает его в `pi-home-*/mcp.json` и в `~/.workbuddy-ai/mcp.json`; руками эти
 файлы не правятся, иначе профили снова разъедутся. `gs mcp-sync` без флага — dry run.
 
+## RAG: поиск раньше памяти
+
+Правило Roblox выше — не про Roblox. Оно одинаково для всех четырёх движков и
+одинаково в pi и в WorkBuddy: облачная модель читает **тот же индекс** через MCP,
+и память у неё не точнее локальной.
+
+| движок | поиск | статус |
+|---|---|---|
+| Three.js | `threejs_rag_search` | `threejs_rag_status` |
+| Godot 4 | `godot_rag_search` | `godot_rag_status` |
+| Unity 6 | `unity_rag_search` | `unity_rag_status` |
+| Roblox | `rbx_rag_search` | `rbx_rag_status` |
+
+Вопрос про API движка, про поведение класса, про «почему не работает» → **сначала
+поиск, потом код.** Это один вызов на доли секунды; «я и так знаю» уже стоило часа
+на `MeshPart.MeshId` (правильный ответ — `MeshPart:ApplyMesh`, лежал в базе).
+
+- **Индекс — закреплённая версия, а не «документация вообще»**: r186, Godot 4.7,
+  Unity 6000.3. Ответ по памяти почти всегда из другой версии.
+- **`*_rag_status` перед первой правкой.** Если `embedding_server.status` не `ok`,
+  поиск молча деградировал до лексики и ранжирование врёт — подними `gs embed` и
+  повтори, а не доверяй выдаче.
+- **В WorkBuddy RAG — это MCP-инструмент, и он включён.** Все четыре сервера
+  прописаны в `mcp/registry.json` с `workbuddy.enabled: true`, разворачиваются
+  `gs mcp-sync --apply`. Если инструмента не видно в сессии — сначала проверь, что
+  сервер не помечен `disabled` в `~/.workbuddy-ai/mcp.json`, и только потом ищи
+  ошибку в индексе.
+- **Проектные серверы (`godot`, `unity-project`, `rbx-project`) в WorkBuddy
+  выключены намеренно**: они отвечают за `data/active_project.txt`, и лаунчеры 3GS
+  поднимают их, когда проект действительно в работе. Им нужен живой проект; RAG
+  нужен всегда.
+
 ## Правила Three.js
 
-- Для Three.js API сначала доверяй current official docs и current project code.
+- Для Three.js API сначала доверяй current official docs и current project code —
+  то есть `threejs_rag_search` (закреплённый r186) и исходникам проекта.
 - Не смешивай старые и новые версии API без явного указания версии.
 - Для addons (`OrbitControls`, `GLTFLoader`, postprocessing и т. п.) проверяй отдельную addon-документацию.
 - Для WebGPU/TSL не переносить WebGL-only решения механически.
@@ -325,6 +358,21 @@ gs roblox-open [проект] [--empty]
   работают рядом с любым движком).
 - **`faces_3d` для 2D:** дефолт графа 700 000 ≈ 40 МБ на проп, спрайту хватает
   5 000–20 000. `steps_3d` — суммарно 56 шагов на 4 сэмплера, время почти линейно.
+
+**Те же шаги через MCP** — это то, что видит облачная модель; сервер `assets` в
+`mcp/registry.json` включён в WorkBuddy всегда:
+
+| шаг | инструмент |
+|---|---|
+| картинка, спрайт, фон, заставка | `asset_image(prompt, resolution)` |
+| персонаж (вид спереди/сбоку/сзади) | `asset_character(prompt, quality)` |
+| картинка → GLB | `asset_to_3d(image, quality)` или `asset_to_3d_multiview(views)` |
+| убрать фон, пачкой | `asset_remove_bg(images=[...])` — один вызов, не по одному |
+| весь пак за раз | `asset_generate_pack(project, jobs)` |
+| что с движками и очередью | `assets_status`, `comfy_control("status")` |
+
+Правило «один запуск на пак» и запрет на облачные генераторы действуют и здесь:
+инструмент меняет форму вызова, но не политику.
 
 ## Запуск агента
 

@@ -11,6 +11,12 @@
 > «что нажать», без деталей реализации; `ПРОВЕРКА_RAG.md` - запуск на **новом  
 > пустом** проекте плюс проверка RAG и сборка простого 2D-уровня.
 
+> **Автономная раскладка — историческая.** Сейчас стек живёт внутри `3GS_Master`:
+> лаунчеры переехали в корень репозитория (`gs.cmd`, `dev.cmd`, `agent.cmd`,
+> `serve-all.cmd`) и обслуживают все четыре движка, а репозиторные правила —
+> `AGENTS.md` в корне. Дерево ниже описывает код и корпус gdmaster; строки с
+> `agent.cmd` без пути относятся к той автономной сборке.
+
 ---
 
 ## Что внутри
@@ -20,7 +26,7 @@ gdmaster/
 ├─ agent.cmd            <-- ЗАПУСК АГЕНТА, интерактивно (главная точка входа)
 ├─ ask.cmd              <-- разовый запрос без TUI: ask.cmd "задача"
 ├─ serve-all.cmd        <-- поднять оба сервера (LLM + embeddings)
-├─ serve-llm.cmd        Qwen3.5-9B на :8080
+├─ serve-llm.cmd        llama-server-роутер на :8080 (модель грузится по запросу)
 ├─ serve-embed.cmd      bge-m3 на :8081 (CPU)
 ├─ index.cmd            переиндексация базы знаний
 ├─ doctor.cmd           диагностика окружения
@@ -28,7 +34,7 @@ gdmaster/
 │
 ├─ bin/llama/           llama.cpp b11435 (CUDA 12.4 + cudart)
 ├─ bin/godot/           Godot 4.7.2 stable (своя копия)
-├─ models/              Qwen3.5-9B-Q4_K_M (6.17 GB), bge-m3-q4_k_m (438 MB)
+├─ models/              GGUF для роутера; по умолчанию 4B, список — `cmd\models.cmd`
 ├─ data/                индекс (SQLite + FTS5), active_project.txt, логи
 ├─ knowledge/           корпус: 810 XML class ref + 503 RST туториала + cookbook
 ├─ gdmaster/            код: RAG, Godot-слой, MCP-серверы
@@ -83,8 +89,8 @@ MCP-серверы берутся ровно из `.pi/mcp.json` проекта 
                    │         │
         ┌──────────▼──┐   ┌──▼─────────────┐
         │ Godot MCP   │   │ RAG MCP        │
-        │ 17 tools    │   │ rag_search     │
-        │ scene/script│   │ rag_status     │
+        │ 17 tools    │   │godot_rag_search│
+        │ scene/script│   │godot_rag_status│
         │ validate/run│   └──┬─────────────┘
         └──────┬──────┘      │
                │        ┌────▼──────────────────┐
@@ -489,7 +495,7 @@ cd /d F:\Pets\Projects\gdmaster
 Всего 23 (21 у Godot-сервера + 2 у RAG-сервера). Больше у неё ничего нет.
 
 **Знания**  
-`rag_search` · `rag_status`
+`godot_rag_search` · `godot_rag_status`
 
 **Инспекция (read-only)**  
 `godot_project_info` · `godot_list_files` · `godot_read_file` ·  
@@ -854,7 +860,7 @@ run_scene 120 : errors []
 | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | `LLM :8080 DOWN`                                                | не запущен `serve-llm.cmd`                                                                                                                                                                                           |                                                                       |
 | `EMBED :8081 DOWN`                                              | не запущен `serve-embed.cmd`; dense-поиск деградирует до lexical                                                                                                                                                     |                                                                       |
-| `rag_search` возвращает пусто                                   | индекс пуст → `index.cmd`; или `rag_status` покажет состояние                                                                                                                                                        |                                                                       |
+| `godot_rag_search` возвращает пусто                                   | индекс пуст → `index.cmd`; или `godot_rag_status` покажет состояние                                                                                                                                                        |                                                                       |
 | Godot-инструменты отвечают «проект не задан»                    | `agent.cmd D:\path\to\project`                                                                                                                                                                                       |                                                                       |
 | `Connection error.` в pi                                        | LLM-сервер не поднялся или упал по VRAM                                                                                                                                                                              |                                                                       |
 | Медленные ответы                                                | идёт индексация и занимает все 4 ядра CPU                                                                                                                                                                            |                                                                       |
@@ -862,7 +868,7 @@ run_scene 120 : errors []
 | pi виснет без вывода                                            | запущен `pi -p` без `--no-session`/без подачи `nul` на stdin; используйте `ask.cmd`                                                                                                                                  |                                                                       |
 | pi подтянул чужие инструменты                                   | не выставлен `PI_CODING_AGENT_DIR` → запускать только через `agent.cmd` / `ask.cmd`                                                                                                                                  |                                                                       |
 | pi не грузит `.pi/SYSTEM.md`, MCP и скиллы                      | то же: проектные ресурсы требуют доверия; `pi-home/settings.json` ставит `defaultProjectTrust: "always"`                                                                                                             |                                                                       |
-| `rag_search` не находит туториалы                               | в индексе нет `tutorial`-чанков → `index.cmd --only official_docs`                                                                                                                                                   |                                                                       |
+| `godot_rag_search` не находит туториалы                               | в индексе нет `tutorial`-чанков → `index.cmd --only official_docs`                                                                                                                                                   |                                                                       |
 | `curl` на `127.0.0.1:8080` отдаёт `502 upstream connect failed` | в системе настроен `HTTP_PROXY`, и `curl` ушёл через него, а не напрямую. Проверяй `doctor.cmd` (сырой сокет, прокси не влияет) или добавляй `curl --noproxy '*'`. Лаунчеры сами выставляют `NO_PROXY` для localhost |                                                                       |
 | Агент «запустил сцену», но окна нет                             | `godot_run_scene` всегда с `--headless` - окно не открывается by design                                                                                                                                              | это не ошибка; окно открывает `play.cmd`                              |
 | `play.cmd`: `Godot not found`                                   | нет `bin\godot\Godot_v4.7.2-stable_win64.exe`                                                                                                                                                                        | положить движок в `bin\godot\` или поправить путь в начале `play.cmd` |
@@ -883,7 +889,7 @@ run_scene 120 : errors []
   за 180 кадров не проявится.
 - Reranker (`bge-reranker-v2-m3`) не подключён - по спеке это Phase 4,  
   только если бенчмарк покажет выигрыш.
-- RAG работает по документации 4.7; если проект на другой версии, `rag_search`  
+- RAG работает по документации 4.7; если проект на другой версии, `godot_rag_search`  
   может дать API из 4.7 - проверять через `godot_project_info`.
 - **Контекст 24k - узкое место на многосоставных задачах.** Задача вида «добавь фичу +  
   сделай UI + не сломай существующее» упирается в компакцию и начинает терять  

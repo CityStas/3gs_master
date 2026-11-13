@@ -38,7 +38,7 @@
 отклоняет всё прочее ответом `TOOL_DENIED`. Сетевого имени в allowlist нет:
 
 ```
-rag_search, rag_status,
+godot_rag_search, godot_rag_status,
 godot_project_info, godot_list_files, godot_read_file,
 godot_scene_tree, godot_script_symbols, godot_find_symbol,
 godot_write_script, godot_patch_script,

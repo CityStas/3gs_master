@@ -67,6 +67,9 @@ a Unity project.
   that may already exist, and use `unity_find_symbol` for a name lookup.
 - `unity_project_info` first in any task: it reports the editor version, which may differ from
   the corpus version — trust the project and warn about the mismatch.
+- In WorkBuddy the RAG is an MCP tool and it is enabled for all four engines — the same index
+  answers a cloud model and the local one. If a `*_rag_search` tool is missing from the session,
+  say so instead of answering from memory.
 
 ## Working directory and project
 
@@ -100,6 +103,6 @@ the nearby lines instead of guessing). Every write leaves a backup under
 
 ## Do not trust generated code because it is generated
 
-Read the errors, fix the exact line, validate again. A 9B model does not stop and ask when it
-is unsure — it produces plausible Unity 5 code and moves on. The validation loop is the only
-defence.
+Read the errors, fix the exact line, validate again. A small local model does not stop and ask
+when it is unsure — it produces plausible Unity 5 code and moves on. The validation loop is the
+only defence.

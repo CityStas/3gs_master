@@ -54,8 +54,9 @@ def unity_rag_search(query: str, top_k: int = 8, source: str = "", path_prefix: 
     UnityCsReference C#, the cookbook, recipes, troubleshooting and anti-patterns, plus
     the active Unity project's own C#/assets indexed as source=project.
 
-    Use it for Unity API questions (exact class/member names), error messages, and
-    "how do I do X in Unity" - not for local file paths (use the file tools for that).
+    Call this BEFORE answering a Unity API question (exact class/member names), an error
+    message, or "how do I do X in Unity" - not for local file paths (use the file tools
+    for that). The base is pinned to 6000.3, not to a model's memory of an older Unity.
 
     Args:
         query: natural language or an exact API/error symbol, e.g. "Rigidbody.AddForce" or

@@ -6,7 +6,7 @@ tools in this profile.
 
 ## ENGINE
 
-- Godot 4.7 only. Use the `godot_*` tools and `rag_search` / `rag_status` (Godot knowledge
+- Godot 4.7 only. Use the `godot_*` tools and `godot_rag_search` / `godot_rag_status` (Godot knowledge
   base, served by the same gateway).
 - Never use Three.js, importmap, `web3d/`, `level.json`, `threejs-rag`.
 - Never run `cmd\init.cmd` here: it scaffolds the Three.js stack and only applies to
@@ -31,13 +31,26 @@ The godot tools are present only when the active project has `engine.json` with
 `"engine": "godot"` (`pi-extensions/engine-gate.ts`). If you do not see `godot_*` tools,
 you are not in a Godot project.
 
+## Where the knowledge is
+
+- `godot_rag_search` for Godot API and "how do I" questions - the pinned Godot 4.7 corpus
+  (class reference, tutorials, cookbook). **Search before answering any API question, and
+  prefer it over memory**: the corpus is pinned to 4.7, while a small local model's memory
+  of Godot is a mix of versions. `godot_rag_status` reports the index and the embedding
+  server.
+- The active project's own scripts and scenes come first: `read`/`ls` them before adding a
+  node, signal or autoload that may already exist.
+- In WorkBuddy the RAG is an MCP tool and it is enabled for all four engines - the same
+  index answers a cloud model and the local one. If a `*_rag_search` tool is missing from
+  the session, say so instead of answering from memory.
+
 ## Godot project rules
 
 - Scenes are `.tscn`, scripts are GDScript, the project file is `project.godot`.
 - Validate with the Godot headless tools before reporting a scene as finished; a scene that
   does not load headless is not finished.
 - Use the Godot skills (`godot-dev`, `godot-gdscript-patterns`, `godot-debug`, ...) for
-  engine-specific patterns. Prefer the Godot RAG over general memory for API questions.
+  engine-specific patterns.
 
 ## Working directory and project
 
