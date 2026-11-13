@@ -198,6 +198,41 @@ gs roblox-open [проект] [--empty]
 разворачивает его в `pi-home-*/mcp.json` и в `~/.workbuddy-ai/mcp.json`; руками эти
 файлы не правятся, иначе профили снова разъедутся. `gs mcp-sync` без флага — dry run.
 
+### Любой клиент, а не только WorkBuddy
+
+**Переносимость даёт не клиент, а сервер.** Каждый стек находит свой корень через
+`__file__` (`GDM_HOME` / `UNIM_HOME` / `RBX_HOME` / `THREE_RAG_HOME`), а `cwd` — лишь
+один из кандидатов при поиске проекта. Значит серверу `cwd` не нужен: нужен
+`PYTHONPATH`, чтобы разрешился `python -m <стек>.mcp...`. Cursor поля `cwd` не имеет
+вообще — и работает так же.
+
+Клиенты перечислены в `mcp/clients.json` (данные, не код): путь файла, корневой ключ,
+форма записи, стиль путей.
+
+```cmd
+gs mcp-sync --apply --client all        :: cursor, vscode, claude-code, opencode
+gs mcp-sync --apply --client cursor     :: только один
+gs mcp-sync --print-client cursor       :: JSON в stdout - для клиента, которого нет в таблице
+```
+
+| клиент | файл | ключ и пути | в git |
+|---|---|---|---|
+| Cursor | `.cursor/mcp.json` | `mcpServers`, `${workspaceFolder}` | да |
+| VS Code / Copilot | `.vscode/mcp.json` | `servers`, `${workspaceFolder}` | да |
+| Claude Code | `.mcp.json` | `mcpServers`, абсолютные | нет |
+| opencode | `opencode.json` | `mcp.servers`, `command` одним массивом | нет |
+
+Разница только в форме записи: у opencode `command` — это **один массив** (exe + args),
+`environment` вместо `env`, `disabled` вместо `enabled`.
+
+**Регистрация — половина дела, вторая половина — правило.** Без него модель просто не
+позовёт инструмент. Переносимый носитель правила один — текстовый файл, но имена у
+клиентов разные. Поэтому `AGENTS.md` остаётся единственным источником, а рядом лежат
+тонкие переадресации на него: `CLAUDE.md`, `.cursor/rules/3gs.mdc`,
+`.github/copilot-instructions.md`, `.windsurfrules`, `.clinerules`. Правило правится
+**только в `AGENTS.md`** — иначе пять копий разъедутся, как когда-то разъехались четыре
+`mcp.json`.
+
 ## RAG: поиск раньше памяти
 
 Правило Roblox выше — не про Roblox. Оно одинаково для всех четырёх движков и

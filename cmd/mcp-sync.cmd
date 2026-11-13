@@ -19,5 +19,7 @@ rem ---   gs mcp-sync              show what would change
 rem ---   gs mcp-sync --apply      write pi profiles + WorkBuddy
 rem ---   gs mcp-sync --apply --only pi
 rem ---   gs mcp-sync --print roblox
+rem ---   gs mcp-sync --apply --client all      Cursor / VS Code / Claude Code / opencode
+rem ---   gs mcp-sync --print-client cursor     JSON для клиента, которого нет в таблице
 "%PY%" "%GS_ROOT%tools\mcp_sync.py" %*
 exit /b %errorlevel%

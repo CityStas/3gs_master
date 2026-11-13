@@ -29,5 +29,41 @@
     "threejs-rag",
     "unity-project",
     "unity-rag"
+  ],
+  "client-claude-code": [
+    "assets",
+    "godot-rag",
+    "rbx-project",
+    "rbx-rag",
+    "roblox-studio",
+    "threejs-rag",
+    "unity-rag"
+  ],
+  "client-cursor": [
+    "assets",
+    "godot-rag",
+    "rbx-project",
+    "rbx-rag",
+    "roblox-studio",
+    "threejs-rag",
+    "unity-rag"
+  ],
+  "client-opencode": [
+    "assets",
+    "godot-rag",
+    "rbx-project",
+    "rbx-rag",
+    "roblox-studio",
+    "threejs-rag",
+    "unity-rag"
+  ],
+  "client-vscode": [
+    "assets",
+    "godot-rag",
+    "rbx-project",
+    "rbx-rag",
+    "roblox-studio",
+    "threejs-rag",
+    "unity-rag"
   ]
 }

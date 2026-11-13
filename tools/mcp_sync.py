@@ -26,6 +26,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "mcp" / "registry.json"
+CLIENTS_FILE = ROOT / "mcp" / "clients.json"
 MANIFEST = ROOT / "mcp" / ".generated.json"
 WORKBUDDY_MCP = Path(os.environ.get("WORKBUDDY_MCP",
                                     Path.home() / ".workbuddy-ai" / "mcp.json"))
@@ -56,11 +57,25 @@ def _active_project() -> str:
         return ""
 
 
-def _placeholders() -> dict:
-    """Absolute Windows paths with BACKslashes: these strings end up in `command`/`cwd`
+def _placeholders(style: str = "absolute") -> dict:
+    """Expand the registry's `{...}` placeholders.
+
+    `absolute` -> Windows paths with BACKslashes: these strings end up in `command`/`cwd`
     that the clients pass to CreateProcess, and a mixed separator is one more thing that
-    can go wrong in a way that only shows as "server failed to start"."""
+    can go wrong in a way that only shows as "server failed to start".
+
+    `workspace` -> `${workspaceFolder}` variables instead, so the rendered file names no
+    machine at all and can be committed (Cursor and VS Code both interpolate it in
+    `command`, `args` and `env`). Program Files paths stay absolute - nothing outside the
+    repo can be expressed relative to it."""
     py = ROOT / ".venv" / "Scripts" / "python.exe"
+    if style == "workspace":
+        return {
+            "{repo}": "${workspaceFolder}",
+            "{python}": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "{studio_mcp}": str(_studio_mcp()),
+            "{active_project}": _active_project(),
+        }
     return {
         "{repo}": str(ROOT),
         "{python}": str(py),
@@ -132,6 +147,81 @@ def _workbuddy_entry(cfg: dict, ph: dict) -> dict:
     if not (cfg.get("workbuddy") or {}).get("enabled", False):
         out["disabled"] = True
     return out
+
+
+def _load_clients() -> dict:
+    return _load(CLIENTS_FILE, {}).get("clients", {})
+
+
+def _is_ambient(cfg: dict) -> bool:
+    """Servers safe to load in a client that has no per-engine gating and no guaranteed
+    active project - the same set WorkBuddy gets: the four RAG bases and the asset
+    pipeline. The project servers answer for `data/active_project.txt` and are started by
+    the 3GS launchers when a project is actually in play."""
+    return bool((cfg.get("workbuddy") or {}).get("enabled", False))
+
+
+def _canonical(cfg: dict, ph: dict, style: str) -> tuple[str, list, dict]:
+    """Transport-neutral stdio launcher: interpreter, argv, env.
+
+    No `cwd`. Every stack resolves its own root from `__file__` (GDM_HOME / UNIM_HOME /
+    RBX_HOME / THREE_RAG_HOME) and treats cwd as only one candidate when resolving a
+    project path, so the module root travels in PYTHONPATH instead. That is what lets a
+    client with no `cwd` field at all (Cursor) work exactly like one that has it."""
+    command = _expand(cfg["command"], ph)
+    args = _expand(cfg.get("args", []), ph)
+    env = dict(_expand(cfg.get("env", {}) or {}, ph))
+    root = _expand(cfg.get("cwd", ""), ph)
+    if root and "python" in Path(command).name.lower():
+        env.setdefault("PYTHONPATH", root)
+    if style != "workspace":
+        command = _norm(command)
+        env = {k: _norm(v) for k, v in env.items()}
+    return command, list(args), env
+
+
+def _shape_entry(shape: str, command: str, args: list, env: dict) -> dict:
+    if shape == "command-array":
+        # opencode: the executable and its arguments share ONE array, and env is
+        # `environment`, and disabling is `disabled: true` (there is no `enabled`).
+        entry: dict = {"type": "local", "command": [command, *args]}
+        if env:
+            entry["environment"] = env
+        return entry
+    entry = {"type": "stdio", "command": command}
+    if args:
+        entry["args"] = args
+    if env:
+        entry["env"] = env
+    return entry
+
+
+def render_client(registry: dict, client: dict, ph: dict) -> dict:
+    style = client.get("path_style", "absolute")
+    shape = client.get("shape", "argv")
+    servers = {}
+    for name, cfg in registry["servers"].items():
+        if cfg.get("exposure", "direct") != "direct" or not _is_ambient(cfg):
+            continue
+        command, args, env = _canonical(cfg, ph, style)
+        servers[name] = _shape_entry(shape, command, args, env)
+    payload: dict = {}
+    if client.get("schema"):
+        payload["$schema"] = client["schema"]
+    return {"payload": payload, "servers": servers,
+            "root": client.get("root", ["mcpServers"])}
+
+
+def _dig(doc: dict, path: list) -> dict:
+    """Return (creating as needed) the nested dict a client keeps its servers under."""
+    cur = doc
+    for key in path:
+        nxt = cur.get(key)
+        if not isinstance(nxt, dict):
+            nxt = {}
+            cur[key] = nxt
+        cur = nxt
+    return cur
 
 
 def render_pi(registry: dict, engine: str, ph: dict) -> dict:
@@ -227,6 +317,12 @@ def main(argv: list[str]) -> int:
                          "`any` ones) and disable the rest. Needs a client reload.")
     ap.add_argument("--print", dest="show", choices=ENGINES, default="",
                     help="print one pi profile and exit")
+    ap.add_argument("--client", action="append", default=[], metavar="NAME[,NAME]",
+                    help="also render repo-local configs for these MCP clients - see "
+                         "mcp/clients.json. `--client all` renders every one.")
+    ap.add_argument("--print-client", metavar="NAME", default="",
+                    help="print one client's config block and exit - the way to configure "
+                         "a client that is not listed in mcp/clients.json")
     a = ap.parse_args(argv[1:])
 
     registry = _load(REGISTRY, None)
@@ -234,6 +330,20 @@ def main(argv: list[str]) -> int:
         print(f"[ERROR] cannot read {REGISTRY}", file=sys.stderr)
         return 2
     ph = _placeholders()
+    clients = _load_clients()
+
+    if a.print_client:
+        cdef = clients.get(a.print_client)
+        if not cdef:
+            print(f"[ERROR] unknown client {a.print_client!r}; known: "
+                  f"{', '.join(sorted(clients))}", file=sys.stderr)
+            return 2
+        r = render_client(registry, cdef,
+                          _placeholders(cdef.get("path_style", "absolute")))
+        out = dict(r["payload"])
+        _dig(out, r["root"]).update(r["servers"])
+        print(json.dumps(out, ensure_ascii=False, indent=2))
+        return 0
 
     if a.show:
         print(json.dumps(render_pi(registry, a.show, ph), ensure_ascii=False, indent=2))
@@ -289,11 +399,42 @@ def main(argv: list[str]) -> int:
         if off:
             print(f"  off    : {', '.join(off)}")
 
+    wanted: list[str] = []
+    for spec in a.client:
+        wanted += [s.strip() for s in spec.split(",") if s.strip()]
+    if "all" in wanted:
+        wanted = sorted(clients)
+    for cname in dict.fromkeys(wanted):
+        cdef = clients.get(cname)
+        if not cdef:
+            print(f"[ERROR] unknown client {cname!r}; known: "
+                  f"{', '.join(sorted(clients))}", file=sys.stderr)
+            return 2
+        style = cdef.get("path_style", "absolute")
+        path = ROOT / cdef["path"]
+        rendered = render_client(registry, cdef, _placeholders(style))
+        payload = dict(_load(path, {}))
+        for key, value in rendered["payload"].items():
+            payload.setdefault(key, value)
+        target = _dig(payload, rendered["root"])
+        label = f"client-{cname}"
+        merged, touched, dropped = _merge(target, rendered["servers"],
+                                          manifest.get(label, []), label, verbose=True)
+        target.clear()
+        target.update(merged)
+        if a.apply and (touched or dropped or not path.exists()):
+            _write(path, payload)
+        manifest[label] = sorted(rendered["servers"])
+        print(f"  target : {path}")
+        print(f"  mode   : {style} "
+              f"({'committable' if cdef.get('commit') else 'local only'})")
+
     if a.apply:
         _write(MANIFEST, manifest)
         print("\nwritten. Restart the client(s) to pick the new server list up:")
         print("  pi       - next `agent.cmd` session")
         print("  WorkBuddy- Settings -> Connectors/MCP -> reload, or restart the app")
+        print("  others   - reload the window / restart the client (see each client's docs)")
     else:
         print("\nnothing written. Re-run with --apply.")
     return 0

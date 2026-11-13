@@ -87,3 +87,12 @@ archive/
 data/active_project.txt
 # Кэш reliability-слоя: сводка шагов по прогонам. Воспроизводится из логов.
 data/reliability/
+
+# --- MCP-конфиги клиентов, собранные из mcp/registry.json -------------------
+# В git идут только переносимые файлы (${workspaceFolder}, без имени машины):
+# .cursor/mcp.json, .vscode/mcp.json и правила-переадресации (CLAUDE.md,
+# .cursor/rules/, .github/copilot-instructions.md, .windsurfrules, .clinerules).
+# Эти два содержат абсолютные пути этой машины - они локальные и пересобираются
+# командой `gs mcp-sync --apply --client all`.
+.mcp.json
+opencode.json

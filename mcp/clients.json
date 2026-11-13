@@ -1,0 +1,59 @@
+{
+  "$comment": [
+    "Every MCP client this repo can render a config for. Data, not code: adding a client",
+    "is one entry here, never a branch in tools/mcp_sync.py.",
+    "",
+    "The servers are transport-neutral by construction, and that is what makes this table",
+    "small. All four stacks resolve their own root from __file__ (GDM_HOME / UNIM_HOME /",
+    "RBX_HOME / THREE_RAG_HOME), and cwd is only one candidate when resolving a project",
+    "path - so no server NEEDS `cwd`. The only thing a client must get right is PYTHONPATH",
+    "(so `python -m gdmaster.mcp...` resolves) plus an absolute interpreter path. Cursor,",
+    "for example, has no `cwd` field at all and works anyway.",
+    "",
+    "root      : key path from the file root to the server map.",
+    "shape     : how one server entry is spelled. `argv` = {type,command,args,env},",
+    "            `command-array` = {type:\"local\",command:[exe,...args],environment}",
+    "            (opencode puts the executable and its arguments in ONE array).",
+    "path_style: `workspace` keeps ${workspaceFolder} so the file is portable and can be",
+    "            committed; `absolute` bakes this machine's paths in and must stay local.",
+    "commit    : whether the rendered file belongs in git.",
+    "",
+    "Schemas drift between client versions. Each entry links its docs; `--print-client`",
+    "always dumps the block for a client that is not listed here."
+  ],
+  "clients": {
+    "cursor": {
+      "path": ".cursor/mcp.json",
+      "root": ["mcpServers"],
+      "shape": "argv",
+      "path_style": "workspace",
+      "commit": true,
+      "docs": "https://cursor.com/docs/context/mcp"
+    },
+    "vscode": {
+      "path": ".vscode/mcp.json",
+      "root": ["servers"],
+      "shape": "argv",
+      "path_style": "workspace",
+      "commit": true,
+      "docs": "https://code.visualstudio.com/docs/copilot/customization/mcp-servers"
+    },
+    "claude-code": {
+      "path": ".mcp.json",
+      "root": ["mcpServers"],
+      "shape": "argv",
+      "path_style": "absolute",
+      "commit": false,
+      "docs": "https://docs.claude.com/en/docs/claude-code/mcp"
+    },
+    "opencode": {
+      "path": "opencode.json",
+      "root": ["mcp", "servers"],
+      "shape": "command-array",
+      "path_style": "absolute",
+      "commit": false,
+      "schema": "https://opencode.ai/config.json",
+      "docs": "https://opencode.ai/docs/mcp-servers/"
+    }
+  }
+}
