@@ -163,12 +163,6 @@ dev.cmd my_game
 | `archive\legacy\` (локально) | `web1.cmd`, `launch_studio.cmd`, `studio_new_test\` | устаревшие/тестовые: перенесены, **не удалены**, но `archive/` закрыт в `.gitignore` и в репозиторий не попадает |
 | `m2m\node_modules\.bin\`, `models\...\python_embeded\` | автогенерируемые shims npm/ComfyUI | не лаунчеры репозитория, не трогать |
 
-`web1.cmd` ссылался на несуществующий `projects/research/web_1`,
-`logs\launch_studio.cmd` - на жёстко зашитую версию RobloxStudioBeta.exe; оба
-нигде не упоминаются. В репозитории эти файлы удалены/перенесены, структура
-четырёх движков (`projects/{three,godot,unity,roblox}`, `knowledge/`,
-`godot/knowledge/`, `roblox/knowledge/`, `unity/knowledge/`, `pi-home-*`) не изменена.
-
 ## Четыре движка: как это работает на самом деле
 
 Проект - папка `projects/<движок>/<имя>`. Раскладку знает **один** модуль
@@ -240,12 +234,7 @@ Manage MCP Servers → Enable Studio as MCP server. Из репозитория 
 git ls-files projects
 ```
 
-Ровно шесть строк: `projects/.gitignore`, `projects/README.md` и четыре `engine.json`.
-Содержимое `projects/*` закрыто в [`.gitignore`](.gitignore), исключения открывают
-только маркеры. Также не версионируются `models/`, `bin/`, `.venv/`, `logs/`,
-`data/active_project.txt`, `local.env.cmd`, индексы `data/sqlite/`,
-`unity/knowledge/`, `roblox/data/`, `output/`, `m2m/` и локальный `archive/`.
-Поэтому свежий клон всегда стартует с **пустым списком проектов в студии** - это
+Свежий клон всегда стартует с **пустым списком проектов в студии** - это
 норма, а не потеря данных; проект создаётся в UI или командами выше.
 
 ## Документация
