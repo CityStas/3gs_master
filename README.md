@@ -222,6 +222,27 @@ MCP-серверы, `tools/pi_launch.py`, `tools/project_context.py`) умеет
 Встроенный MCP Studio включается **внутри Roblox Studio**: Assistant → … →
 Manage MCP Servers → Enable Studio as MCP server. Из репозитория это не настраивается.
 
+**Другие MCP-клиенты.** Серверы описаны в одном месте - `mcp/registry.json`, но у каждого
+клиента свой файл и своя форма записи. Одна команда раскладывает реестр по всем сразу:
+
+```cmd
+gs mcp-sync --apply --client all
+```
+
+| клиент | что получает |
+| --- | --- |
+| Cursor | `.cursor/mcp.json` (`${workspaceFolder}`, переносимый, в git) |
+| VS Code / Copilot | `.vscode/mcp.json` (то же) |
+| Claude Code | `.mcp.json` (абсолютные пути, в git не идёт) |
+| opencode | `opencode.json` (`mcp.servers`, абсолютные пути, в git не идёт) |
+
+Плюс профили `pi` (`pi-home-*/mcp.json`) и `~/.workbuddy-ai/mcp.json` - те же серверы из
+того же реестра. Список клиентов - `mcp/clients.json`: новый клиент это одна запись там,
+а не правка скрипта; для клиента, которого в таблице нет, `gs mcp-sync --print-client
+<имя>` выдаёт готовый JSON. Конфиг читается **только при старте** - после синхронизации
+клиент нужно перезагрузить. Без `--apply` это dry run: показывает, что устарело, ничего
+не пишет. Звать её нужно после правки `registry.json`, а не «на всякий случай».
+
 Дальше - `dev.cmd <имя>` (модели + `doctor` + агент). Инструменты движка появляются
 у агента только под проект с соответствующим `engine.json`.
 
@@ -247,4 +268,5 @@ git ls-files projects
 - [`godot/README.md`](godot/README.md) - Godot-стек (gdmaster)
 - [`unity/README.md`](unity/README.md) - Unity-стек
 - [`roblox/README.md`](roblox/README.md) - Roblox-стек (Luau, Studio MCP, корпус)
-- [`mcp/registry.json`](mcp/registry.json) - единственное описание MCP-серверов для pi и WorkBuddy
+- [`mcp/registry.json`](mcp/registry.json) - единственное описание MCP-серверов: pi, WorkBuddy и любые другие клиенты
+- [`mcp/clients.json`](mcp/clients.json) - куда и в какой форме рендерится реестр (Cursor, VS Code, Claude Code, opencode); новый клиент = одна запись здесь

@@ -529,7 +529,7 @@ cmd\init.cmd my_game --cli
 | `text_image_3D/` | Стек ComfyUI (движок + его модели). Внутренности не трогать                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `pi-home/`       | Изолированный конфиг pi: `models.json`, `settings.json`. Профили `pi-home-three`, `pi-home-godot`, `pi-home-unity` выбираются по `engine.json` проекта                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `.pi/`           | `SYSTEM.md`, `mcp.json`, `skills/`, `extensions/` - то, что видит агент                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `.workbuddy-ai/` | Память проекта (`memory/`), скиллы (`skills/`) и `mcp.json` - проектная декларация MCP для WorkBuddy                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `.workbuddy-ai/` | Память проекта (`memory/`) и скиллы (`skills/`). MCP-конфиги клиентов - в корне репо: `.cursor/mcp.json`, `.vscode/mcp.json`, `.mcp.json`, `opencode.json`                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `data/`          | `sqlite/lexical.db` (индекс), `active_project.txt`, `gen-staging/` (черновики прогонов), `gen.lock`, `gen-status.json`                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `studio/`        | **Оболочка студии — ОДНА на все проекты**: `studio.html`, `launcher.js` (пустая студия, без импортов), `app.js`, `leveledit.js`, `glbview.js`. `serve.py` отдаёт её по адресам `/web3d/studio*`; выбор проекта — ручки `/__projects`, `/__open`, `/__close`, `/__new`, `/__gamepage`                                                                                                                                                                                                                                                                                                                                                                             |
 | `projects/three/` | Твои Three.js-проекты: данные уровня, ассеты и игровой рантайм (`scene.js`, `engine.js`, `vendor/`). Именно ЭТУ папку показывает пустая студия; оболочки студии здесь нет намеренно                                                                                                                                                                                                                                                                                                                                                                                                                                      |
@@ -545,10 +545,26 @@ cmd\init.cmd my_game --cli
 
 ## MCP-серверы
 
-| Клиент             | Файл конфига                                                                                        | Что подключено                                                                     |
-| ------------------ | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| pi (агент проекта) | `.pi/mcp.json`                                                                                      | `threejs-rag` (гибридный поиск по корпусу), `assets` (локальная генерация пакетом) |
-| WorkBuddy          | `~/.workbuddy-ai/mcp.json` (уровень пользователя) + `.workbuddy-ai/mcp.json` (проектная декларация) | `threejs`, `threejs-devtools` (выключен)                                           |
+Серверы описаны в одном месте - `mcp/registry.json`. У каждого клиента свой файл и своя
+форма записи, поэтому эти файлы не правятся руками: их рендерит
+
+```cmd
+gs mcp-sync --apply --client all
+```
+
+| Клиент            | Файл конфига                                                    | Что подключено                                                        |
+| ----------------- | --------------------------------------------------------------- | --------------------------------------------------------------------- |
+| pi (агент проекта) | `pi-home-<движок>/mcp.json` - свой профиль на каждый движок      | серверы своего движка + общий `assets`; движок берётся из `engine.json` проекта |
+| WorkBuddy         | `~/.workbuddy-ai/mcp.json` (уровень пользователя)                 | 7 ambient: четыре `*-rag`, `assets`, `rbx-project`, `roblox-studio`     |
+| Cursor            | `.cursor/mcp.json` - `${workspaceFolder}`, переносимый, в git     | те же 7                                                               |
+| VS Code / Copilot | `.vscode/mcp.json` - `${workspaceFolder}`, переносимый, в git     | те же 7                                                               |
+| Claude Code       | `.mcp.json` - абсолютные пути, в git не идёт                     | те же 7                                                               |
+| opencode          | `opencode.json` - `mcp.servers`, абсолютные пути, в git не идёт   | те же 7                                                               |
+
+Проектные серверы `godot` и `unity-project` в ambient-набор не входят: они отвечают за
+`data/active_project.txt`, и их поднимают лаунчеры, когда проект реально в работе.
+Список клиентов и их схемы - `mcp/clients.json`; `gs mcp-sync --print-client <имя>` -
+JSON для клиента, которого в таблице нет.
 
 ### `threejs` - рендер сцены прямо в чате
 

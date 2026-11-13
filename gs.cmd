@@ -117,7 +117,8 @@ echo   roblox-open   open Roblox Studio on a place   [project] [--empty]
 echo   roblox-save   copy Studio's AutoRecovery dump into the project
 echo.
 echo   pi-here       pi with this project's profile  (run inside a project)
-echo   mcp-sync      render mcp\registry.json into the pi profiles and WorkBuddy
+echo   mcp-sync      render mcp\registry.json into pi profiles, WorkBuddy and any client
+echo                 ^(--apply --client all = cursor/vscode/claude-code/opencode; dry run^)
 echo   reliability   loop-guard log, run state, policy selftest (alias: rel)
 echo                 ^(dry run; --apply writes, --print ^<engine^> dumps one^)
 echo.

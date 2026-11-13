@@ -1,9 +1,12 @@
 {
   "$comment": [
     "ONE source of truth for every MCP server of 3GS_Master.",
-    "Render it into the pi profiles and into WorkBuddy with:  gs mcp-sync --apply",
-    "Never hand-edit pi-home-*/mcp.json or ~/.workbuddy-ai/mcp.json for these servers -",
-    "the next sync overwrites them. Add a server HERE and it appears in both clients.",
+    "Render it everywhere with:  gs mcp-sync --apply --client all",
+    "  pi profiles + ~/.workbuddy-ai/mcp.json + .cursor/mcp.json + .vscode/mcp.json",
+    "  + .mcp.json + opencode.json    -   the client list lives in mcp/clients.json",
+    "Never hand-edit pi-home-*/mcp.json, ~/.workbuddy-ai/mcp.json, .cursor/mcp.json,",
+    ".vscode/mcp.json, .mcp.json or opencode.json for these servers - the next sync",
+    "overwrites them. Add a server HERE and it appears on every surface at once.",
     "",
     "engines: which pi profile gets the server (threejs | godot | unity | roblox | any).",
     "workbuddy.enabled: whether WorkBuddy loads it in every session. WorkBuddy has no",
